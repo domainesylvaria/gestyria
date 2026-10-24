@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v169</title>
-  <meta name="application-name" content="Gestyria v169" />
+  <title>Gestyria v170</title>
+  <meta name="application-name" content="Gestyria v170" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3118,6 +3118,7 @@ var DomaineAppBundle = (() => {
       dependsOn: ["reservations"],
       available: true,
       defaultEnabled: true,
+      hidden: true,
       settingsSection: "pricing",
       configStatus: (s) => {
         const missing = s.accommodations.filter((a) => a.active && !(a.basePrice > 0));
@@ -3132,6 +3133,7 @@ var DomaineAppBundle = (() => {
       dependsOn: ["pricing"],
       available: true,
       defaultEnabled: true,
+      hidden: true,
       settingsSection: "rates"
     },
     {
@@ -3150,7 +3152,9 @@ var DomaineAppBundle = (() => {
       tabs: ["report", "annual"],
       dependsOn: ["reservations"],
       available: true,
-      defaultEnabled: true
+      defaultEnabled: true,
+      hidden: true,
+      followsModule: "profitability"
     },
     {
       id: "synthesis",
@@ -3209,6 +3213,8 @@ var DomaineAppBundle = (() => {
       dependsOn: [],
       available: true,
       defaultEnabled: true,
+      hidden: true,
+      followsModule: "meals",
       hostedBy: "meals"
     },
     {
@@ -4037,6 +4043,7 @@ var DomaineAppBundle = (() => {
     const def = getModuleDefinition(id);
     if (!def) return false;
     if (def.core) return true;
+    if (def.hidden) return def.followsModule ? isModuleEnabled(def.followsModule, settings) : true;
     if (!licenseAllows(id)) return false;
     if (!def.available) return def.defaultEnabled;
     return settings.modules[id]?.enabled ?? def.defaultEnabled;
@@ -16427,7 +16434,7 @@ function icalExportOutput_(e) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "169";
+  var APP_VERSION = "170";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -17864,7 +17871,7 @@ function icalExportOutput_(e) {
     const [pending, setPending] = (0, import_react21.useState)(null);
     const enabled = (id) => isModuleEnabled(id, settings);
     const moduleName = (id) => MODULES.find((x) => x.id === id)?.name || id;
-    const ordered = orderedModules(settings, TABS.map((x) => x.id));
+    const ordered = orderedModules(settings, TABS.map((x) => x.id)).filter((x) => !x.hidden);
     const moveModule = (index, delta) => {
       const ids = ordered.map((x) => x.id);
       const target = index + delta;
