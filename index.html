@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v180</title>
-  <meta name="application-name" content="Gestyria v180" />
+  <title>Gestyria v181</title>
+  <meta name="application-name" content="Gestyria v181" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2822,6 +2822,7 @@ var DomaineAppBundle = (() => {
       options: [
         { id: "form", label: "Formulaire de demande de r\xE9servation", default: true },
         { id: "platforms", label: "Liens vers les plateformes (Airbnb, Booking\u2026)", default: true },
+        { id: "opening", label: "Rappeler les p\xE9riodes de fermeture", default: true },
         { id: "cancellation", label: "Rappeler les conditions d'annulation", default: true }
       ],
       suggestion: "Comment r\xE9server, d\xE9lai de r\xE9ponse, acompte demand\xE9."
@@ -16489,7 +16490,7 @@ function icalExportOutput_(e) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "180";
+  var APP_VERSION = "181";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -51926,6 +51927,7 @@ if(C.preview){
           ].filter(([label, url]) => label && url);
           h2 += "<div>";
           if (on("platforms") && links.length > 0) h2 += `<h2>R\xE9server sur une plateforme</h2><p>Vous pr\xE9f\xE9rez r\xE9server sur un site que vous connaissez ?</p><p>${links.map(([label, url]) => `<a class="btn ghost" style="margin:0 8px 8px 0" href="${esc2(url)}" rel="noopener">${esc2(label)}</a>`).join("")}</p>`;
+          if (on("opening")) h2 += openingHtml();
           if (on("cancellation")) h2 += cancellationHtml();
           h2 += `<div class="note small">${est.phone ? `Une question ? Appelez-nous au <a href="tel:${esc2(est.phone.replace(/[^\d+]/g, ""))}">${esc2(est.phone)}</a>.` : "Nous vous r\xE9pondons rapidement."}</div></div></div></section>`;
           return h2;
