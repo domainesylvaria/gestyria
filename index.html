@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v168</title>
-  <meta name="application-name" content="Gestyria v168" />
+  <title>Gestyria v169</title>
+  <meta name="application-name" content="Gestyria v169" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16427,7 +16427,7 @@ function icalExportOutput_(e) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "168";
+  var APP_VERSION = "169";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -20747,32 +20747,7 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
   // src/modules/parametrage/StandaloneSection.tsx
   var import_react31 = __require("react");
   var import_jsx_runtime19 = __require("react/jsx-runtime");
-  async function getStandaloneHtml() {
-    if (window.__SYLVARIA_STANDALONE_HTML__) return window.__SYLVARIA_STANDALONE_HTML__;
-    for (const url of ["/domaine-sylvaria-gestion-complete.html", "/domaine_sylvaria_complet.html"]) {
-      try {
-        const res2 = await fetch(url);
-        if (res2.ok) return await res2.text();
-      } catch {
-      }
-    }
-    return null;
-  }
-  function downloadText(text, fileName) {
-    const blob = new Blob([text], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    setTimeout(() => {
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-    }, 300);
-  }
   var StandaloneSection = ({ onToast }) => {
-    const [busy, setBusy] = (0, import_react31.useState)(false);
     const [copied, setCopied] = (0, import_react31.useState)(false);
     const appUrl = ONLINE_APP_URL;
     const appLinkLabel = ONLINE_APP_URL;
@@ -20788,44 +20763,16 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
         onToast("Copie impossible : s\xE9lectionnez le lien \xE0 la main.");
       }
     };
-    const handleDownload = async () => {
-      setBusy(true);
-      try {
-        const html = await getStandaloneHtml();
-        if (!html) {
-          onToast("Fichier de l'application introuvable.");
-          return;
-        }
-        const today5 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-        downloadText(html, `gestyria-${APP_VERSION_LABEL}-${today5}.html`);
-        onToast("Fichier de l'application t\xE9l\xE9charg\xE9.");
-      } finally {
-        setBusy(false);
-      }
-    };
     return /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(
         SectionTitle,
         {
-          title: "Fichier de l'application",
-          description: "T\xE9l\xE9charger l'application compl\xE8te en un seul fichier HTML."
+          title: "Application en ligne",
+          description: `${APP_FULL_NAME} : le lien pour ouvrir l'application sur un autre appareil.`
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(InfoNote, { children: "Le fichier s'ouvre d'un double-clic dans Chrome, Edge ou Safari, sans installation ni connexion \xE0 un serveur. Il contient l'application, pas vos donn\xE9es : celles-ci restent dans le navigateur de chaque appareil et se partagent par la synchronisation Google Sheets." }),
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "p-3.5 rounded-xl border border-neutral-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "min-w-0", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "font-serif font-bold text-sm text-neutral-900", children: [
-            "Application autonome (.html) \xB7 ",
-            APP_FULL_NAME
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "text-[11px] text-neutral-500 mt-0.5", children: "Version actuellement ouverte, avec tous les onglets, fen\xEAtres et le Param\xE9trage." })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)(PrimaryButton, { onClick: handleDownload, disabled: busy, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(Download, { className: "w-3.5 h-3.5" }),
-          /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("span", { children: busy ? "Pr\xE9paration\u2026" : "T\xE9l\xE9charger le fichier HTML" })
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "mt-3 p-3.5 rounded-xl border border-neutral-200 bg-white", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsx)(InfoNote, { children: "Vos donn\xE9es ne sont pas dans le lien : elles restent dans le navigateur de chaque appareil et se partagent par la synchronisation Google Sheets." }),
+      /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "p-3.5 rounded-xl border border-neutral-200 bg-white", children: [
         /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "flex flex-col sm:flex-row sm:items-center justify-between gap-3", children: [
           /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "min-w-0", children: [
             /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("div", { className: "font-serif font-bold text-sm text-neutral-900", children: "Application en ligne" }),
@@ -21407,7 +21354,7 @@ Cette op\xE9ration est d\xE9finitive.`
     { id: "housekeeping", label: "M\xE9nage", icon: Sparkles, module: "housekeeping" },
     { id: "sheets", label: "Google Sheets", icon: FileSpreadsheet },
     { id: "privacy", label: "Donn\xE9es personnelles", icon: ShieldCheck },
-    { id: "standalone", label: "Fichier de l'application", icon: FileCode },
+    { id: "standalone", label: "Application en ligne", icon: FileCode },
     { id: "preferences", label: "Pr\xE9f\xE9rences", icon: SlidersHorizontal }
   ];
   var SettingsModal = ({ isOpen, onClose, onToast, sheets, onOpenTab, reservations, onReservationsChange, openSection }) => {
