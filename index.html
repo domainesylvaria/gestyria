@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v177</title>
-  <meta name="application-name" content="Gestyria v177" />
+  <title>Gestyria v178</title>
+  <meta name="application-name" content="Gestyria v178" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16488,7 +16488,7 @@ function icalExportOutput_(e) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "177";
+  var APP_VERSION = "178";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -51158,30 +51158,47 @@ body { font-family: ${fontName(doc.font, doc.font)}; font-size: ${doc.size}pt; }
 ${article.text || "(vide)"}` : ""
     ].filter(Boolean).join("\n\n");
   }
-  async function askAssistant(key, system, messages) {
-    let res2;
+  var THINKING_OFF = [{ thinkingBudget: 0 }, { thinkingLevel: "minimal" }, void 0];
+  var thinkingChoice = 0;
+  function cutToLastSentence(text) {
+    const end = Math.max(text.lastIndexOf(". "), text.lastIndexOf(".\n"), text.endsWith(".") ? text.length - 1 : -1, text.lastIndexOf("! "), text.lastIndexOf("? "));
+    return end > text.length * 0.3 ? text.slice(0, end + 1).trim() : text;
+  }
+  async function askAssistant(key, system, messages, maxOutputTokens = 2048) {
+    const send = (thinking) => fetch(API_URL, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": key },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: system }] },
+        contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
+        generationConfig: { maxOutputTokens, temperature: 0.6, ...thinking ? { thinkingConfig: thinking } : {} }
+      })
+    });
+    let res2 = null;
     try {
-      res2 = await fetch(API_URL, {
-        method: "POST",
-        headers: { "content-type": "application/json", "x-goog-api-key": key },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-          generationConfig: { maxOutputTokens: 1500, temperature: 0.6 }
-        })
-      });
+      for (let i = thinkingChoice; i < THINKING_OFF.length; i++) {
+        res2 = await send(THINKING_OFF[i]);
+        if (res2.status === 400) {
+          const detail = (await res2.clone().text()).toLowerCase();
+          if (i < THINKING_OFF.length - 1 && detail.includes("thinking")) continue;
+        }
+        thinkingChoice = i;
+        break;
+      }
     } catch {
       throw new Error("Connexion impossible : v\xE9rifiez internet.");
     }
+    if (!res2) throw new Error("Connexion impossible : v\xE9rifiez internet.");
     if (!res2.ok) {
       if (res2.status === 400 || res2.status === 401 || res2.status === 403) throw new Error("Cl\xE9 refus\xE9e : v\xE9rifiez-la (bouton \xAB Cl\xE9 \xBB).");
       if (res2.status === 429) throw new Error("Limite gratuite atteinte : r\xE9essayez dans une minute (ou demain si la limite du jour est \xE9puis\xE9e).");
       throw new Error(`L'assistant n'a pas r\xE9pondu (erreur ${res2.status}).`);
     }
     const data = await res2.json();
-    const text = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("\n").trim();
+    const candidate = data.candidates?.[0];
+    const text = (candidate?.content?.parts || []).map((p) => p.text || "").join("\n").trim();
     if (!text) throw new Error("R\xE9ponse vide : reformulez votre question.");
-    return text;
+    return candidate?.finishReason === "MAX_TOKENS" ? cutToLastSentence(text) : text;
   }
 
   // src/modules/siteweb/ai.ts
@@ -51217,7 +51234,7 @@ ${r.current.trim()}` : ""
     ].filter(Boolean).join("\n");
   }
   async function writeText(key, r) {
-    const text = await askAssistant(key, writerSystemPrompt(r.establishment, r.tone, r.length), [{ role: "user", content: writerPrompt(r) }]);
+    const text = await askAssistant(key, writerSystemPrompt(r.establishment, r.tone, r.length), [{ role: "user", content: writerPrompt(r) }], 1024);
     return text.replace(/^["«\s]+|["»\s]+$/g, "").trim();
   }
 
