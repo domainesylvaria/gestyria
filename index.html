@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v185</title>
-  <meta name="application-name" content="Gestyria v185" />
+  <title>Gestyria v186</title>
+  <meta name="application-name" content="Gestyria v186" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4320,9 +4320,11 @@ var DomaineAppBundle = (() => {
     const s = getSettings().services.find((x) => x.id === "chien_sejour");
     return s && s.active ? s.price : 0;
   }
+  var isStandaloneService = (s) => s.scope ? s.scope === "standalone" : !!s.showInPlanning;
+  var isLinkedService = (s) => !isStandaloneService(s);
   function supplementServices(roomId) {
     return getSettings().services.filter(
-      (s) => s.active && s.billing === "supplement" && !s.showInPlanning && s.id !== "chien_sejour" && (!s.roomIds || s.roomIds.includes(roomId))
+      (s) => s.active && s.billing === "supplement" && isLinkedService(s) && s.id !== "chien_sejour" && (!s.roomIds || s.roomIds.includes(roomId))
     ).sort((a, b) => a.order - b.order);
   }
   function supplementUnitPrice(s, roomId) {
@@ -10993,7 +10995,7 @@ var DomaineAppBundle = (() => {
         lt: lmTier ? tierNightPrice(lmTier, a.id, a.basePrice) : null
       };
     });
-    const sup = services.filter((s) => s.billing === "supplement" && !s.showInPlanning).map((s) => {
+    const sup = services.filter((s) => s.billing === "supplement" && isLinkedService(s)).map((s) => {
       const pr = {};
       accommodations.forEach((a) => {
         const price = supplementUnitPrice(s, a.id);
@@ -11001,12 +11003,42 @@ var DomaineAppBundle = (() => {
       });
       return { id: s.id, n: s.name, u: s.unit, l: supplementUnitLabel(s), mx: s.maxQuantity && s.maxQuantity > 0 ? s.maxQuantity : 10, pr };
     }).filter((s) => Object.keys(s.pr).length > 0);
+    const resources = settings.resources.filter((r) => r.active && r.bookableAlone === true).sort(byOrder);
+    const alone = [
+      ...resources.map((r) => ({
+        k: "r",
+        id: r.id,
+        n: r.name,
+        d: r.description,
+        m: r.pricingMode,
+        l: "",
+        p: r.price || 0,
+        h: r.halfDayPrice || 0,
+        o: [],
+        mx: r.capacity > 0 ? r.capacity : 20,
+        c: [r.openingHours, r.accessConditions].filter(Boolean).join(" \xB7 ")
+      })),
+      ...services.filter((s) => isStandaloneService(s) && s.bookableAlone === true).map((s) => ({
+        k: "s",
+        id: s.id,
+        n: s.name,
+        d: s.description,
+        m: s.unit,
+        l: supplementUnitLabel(s),
+        p: s.price || 0,
+        h: 0,
+        o: s.priceOptions.filter((o) => o.label.trim()).map((o) => ({ i: o.id, l: o.label, p: o.price })),
+        mx: s.maxQuantity && s.maxQuantity > 0 ? s.maxQuantity : 10,
+        c: [s.availability, s.conditions].filter(Boolean).join(" \xB7 ")
+      }))
+    ];
     const tax = touristTaxRule(settings);
     return {
       v: BOOKING_DATA_VERSION,
       start,
       rooms,
       sup,
+      alone,
       disc: settings.pricing.longStayDiscounts.filter((d) => d.minNights > 0 && d.percent > 0).map((d) => ({ n: d.minNights, p: d.percent })),
       lm: {
         on: useRates && lastMinute.enabled && (lastMinute.mode === "percent" ? lastMinute.percent > 0 : !!lmTier),
@@ -16695,7 +16727,7 @@ function siteAvailability_(list, todayIso) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "185";
+  var APP_VERSION = "186";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -20051,6 +20083,15 @@ function siteAvailability_(list, todayIso) {
               d.showInPlanning ? /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Couleur dans le planning", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(ColorInput, { value: d.colors.accentColor, onChange: (v) => set({ colors: { ...d.colors, accentColor: v } }) }) }) : /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", {}),
               /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "space-y-2", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(CheckboxRow, { checked: d.showInPlanning, onChange: (v) => set({ showInPlanning: v }), label: "Afficher comme ligne du planning" }),
+                /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+                  CheckboxRow,
+                  {
+                    checked: d.bookableAlone === true,
+                    onChange: (v) => set({ bookableAlone: v }),
+                    label: "R\xE9servable seul depuis le site web",
+                    hint: "Sans h\xE9bergement : le visiteur choisit la date, le nombre de personnes et le cr\xE9neau"
+                  }
+                ),
                 /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(CheckboxRow, { checked: d.active, onChange: (v) => set({ active: v }), label: "Ressource active" })
               ] })
             ] })
@@ -20086,8 +20127,13 @@ function siteAvailability_(list, todayIso) {
     { value: "sejour", label: "Par s\xE9jour" },
     { value: "unite", label: "Unit\xE9 personnalis\xE9e" }
   ];
-  var ServicesSection = ({ settings, onToast }) => {
+  var ServicesSection = ({
+    settings,
+    onToast,
+    scope = "standalone"
+  }) => {
     const ed = useCatalogEditor(settings, "services", "Service", onToast);
+    const linked = scope === "linked";
     const d = ed.draft;
     const set = (patch) => d && ed.setDraft({ ...d, ...patch });
     const unitLabel = (s) => s.unit === "unite" ? `par ${s.customUnitLabel || "unit\xE9"}` : SERVICE_UNITS.find((u) => u.value === s.unit)?.label.toLowerCase();
@@ -20095,8 +20141,8 @@ function siteAvailability_(list, todayIso) {
       /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
         SectionTitle,
         {
-          title: "Services et prestations",
-          description: "Pension pour animaux, petit-d\xE9jeuner, repas, location de mat\xE9riel, prestations personnalis\xE9es\u2026",
+          title: linked ? "Services li\xE9s aux h\xE9bergements" : "Services et prestations",
+          description: linked ? "Propos\xE9s avec un s\xE9jour, au tarif de chaque h\xE9bergement : suppl\xE9ment chien, forfait m\xE9nage, draps, petit-d\xE9jeuner\u2026" : "Prestations ind\xE9pendantes des h\xE9bergements, que l\u2019on peut aussi r\xE9server seules : pension pour animaux, massage, location de mat\xE9riel\u2026",
           action: !d && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
             AddButton,
             {
@@ -20114,6 +20160,8 @@ function siteAvailability_(list, todayIso) {
                 billing: "supplement",
                 includedInAccommodationIds: [],
                 showInPlanning: false,
+                scope,
+                bookableAlone: !linked,
                 active: true,
                 order: nextOrder(settings.services)
               })
@@ -20138,7 +20186,7 @@ function siteAvailability_(list, todayIso) {
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Tarif", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(NumberInput, { value: d.price, onChange: (v) => set({ price: v ?? 0 }), suffix: "\u20AC" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Description", className: "sm:col-span-2", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(TextArea, { value: d.description, onChange: (v) => set({ description: v }) }) })
             ] }),
-            d.billing === "supplement" && !d.showInPlanning && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "space-y-2", children: [
+            linked && d.billing === "supplement" && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "space-y-2", children: [
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700", children: "Suppl\xE9ment propos\xE9 dans les r\xE9servations" }),
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { className: "text-[11px] text-neutral-500", children: "Cochez les h\xE9bergements concern\xE9s. Le tarif ci-dessus est commun \xE0 tous ; saisissez un montant pour un h\xE9bergement dont le prix diff\xE8re (ex. m\xE9nage), sinon laissez vide." }),
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "space-y-1.5", children: settings.accommodations.filter((a) => a.active).map((a) => {
@@ -20224,7 +20272,7 @@ function siteAvailability_(list, todayIso) {
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Disponibilit\xE9", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(TextInput, { value: d.availability, onChange: (v) => set({ availability: v }), placeholder: "Ex. Sur r\xE9servation la veille" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Conditions d'application", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(TextInput, { value: d.conditions, onChange: (v) => set({ conditions: v }) }) })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "space-y-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: linked ? "space-y-2" : "hidden", children: [
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700", children: "Facturation" }),
               /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "flex flex-wrap gap-4", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
@@ -20250,7 +20298,7 @@ function siteAvailability_(list, todayIso) {
               )) })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3 items-end", children: [
-              d.showInPlanning ? /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Couleur dans le planning", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+              !linked && d.showInPlanning ? /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Couleur dans le planning", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
                 ColorInput,
                 {
                   value: (d.colors || NEW_ITEM_COLORS).accentColor,
@@ -20258,15 +20306,26 @@ function siteAvailability_(list, todayIso) {
                 }
               ) }) : /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", {}),
               /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "space-y-2", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
-                  CheckboxRow,
-                  {
-                    checked: d.showInPlanning,
-                    onChange: (v) => set({ showInPlanning: v, colors: d.colors || { ...NEW_ITEM_COLORS } }),
-                    label: "Afficher comme ligne du planning",
-                    hint: "Ex. Pension"
-                  }
-                ),
+                !linked && /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(import_jsx_runtime13.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+                    CheckboxRow,
+                    {
+                      checked: d.showInPlanning,
+                      onChange: (v) => set({ showInPlanning: v, colors: d.colors || { ...NEW_ITEM_COLORS } }),
+                      label: "Afficher comme ligne du planning",
+                      hint: "Ex. Pension"
+                    }
+                  ),
+                  /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+                    CheckboxRow,
+                    {
+                      checked: d.bookableAlone === true,
+                      onChange: (v) => set({ bookableAlone: v }),
+                      label: "R\xE9servable seul depuis le site web",
+                      hint: "Sans h\xE9bergement : le visiteur choisit la date et la quantit\xE9"
+                    }
+                  )
+                ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(CheckboxRow, { checked: d.active, onChange: (v) => set({ active: v }), label: "Service actif" })
               ] })
             ] })
@@ -20275,7 +20334,7 @@ function siteAvailability_(list, todayIso) {
       ) : /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
         CatalogList,
         {
-          items: ed.items,
+          items: ed.items.filter((s) => linked ? isLinkedService(s) : isStandaloneService(s)),
           colorOf: (s) => s.colors?.accentColor,
           onEdit: ed.startEdit,
           onToggleActive: ed.toggleActive,
@@ -20284,7 +20343,8 @@ function siteAvailability_(list, todayIso) {
             " ",
             unitLabel(s),
             s.priceOptions.length > 0 && ` \xB7 ${s.priceOptions.length} tarifs d\xE9taill\xE9s`,
-            s.billing === "inclus" ? " \xB7 inclus" : " \xB7 suppl\xE9ment",
+            linked && (s.billing === "inclus" ? " \xB7 inclus" : " \xB7 suppl\xE9ment"),
+            !linked && s.bookableAlone && " \xB7 r\xE9servable seul sur le site",
             s.showInPlanning && " \xB7 ligne du planning"
           ] })
         }
@@ -21976,6 +22036,10 @@ Cette op\xE9ration est d\xE9finitive.`
       { id: "", label: "Informations" },
       { id: "opening", label: "Ouverture et fermetures" }
     ],
+    accommodations: [
+      { id: "", label: "H\xE9bergements" },
+      { id: "linked", label: "Services li\xE9s aux h\xE9bergements" }
+    ],
     pricing: [
       { id: "", label: "Tarifs et r\xE9ductions" },
       { id: "rates", label: "Tarifs du calendrier" }
@@ -22075,9 +22139,9 @@ Cette op\xE9ration est d\xE9finitive.`
             t.id
           )) }),
           shown === "establishment" && (sub === "opening" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(OpeningSection, { ...props }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(EstablishmentSection, { ...props })),
-          shown === "accommodations" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(AccommodationsSection, { ...props }),
+          shown === "accommodations" && (sub === "linked" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(ServicesSection, { ...props, scope: "linked" }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(AccommodationsSection, { ...props })),
           shown === "resources" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(ResourcesSection, { ...props }),
-          shown === "services" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(ServicesSection, { ...props }),
+          shown === "services" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(ServicesSection, { ...props, scope: "standalone" }),
           shown === "platforms" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(PlatformsSection, { ...props }),
           shown === "reservationForm" && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(ReservationFormSection, { ...props }),
           shown === "pricing" && (sub === "rates" ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(RatesSection, { ...props }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(PricingSection, { ...props })),
@@ -51790,6 +51854,7 @@ form.bk,form.bk>*,.bk-m,.bk-step>*{min-width:0}
 .bk-opt{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--line)}
 .bk-ck{display:flex;gap:10px;align-items:flex-start;font-weight:400;margin:0;cursor:pointer}.bk-ck input{width:auto;margin-top:5px}
 .bk-q{width:76px}
+.bk-modes{display:flex;flex-wrap:wrap;gap:8px 22px}
 form.bk{gap:18px}
 @media(max-width:820px){
  .bk-cal,form.f .row3{grid-template-columns:minmax(0,1fr)}
@@ -51921,6 +51986,7 @@ function calc(){
  tot+=tx;
  return {nights:nights,sub:sub,pct:pct,da:da,kind:kind,lines:lines,tax:tx,total:tot};
 }function update(){
+ if(mode!=="stay")return;
  var ok=ready()&&st.from!==null&&st.to!==null;
  sum.hidden=!ok;sup.hidden=!ok;idn.hidden=!ok;
  var g=guests(),els=F.elements;
@@ -51967,7 +52033,88 @@ $("bk-prev").addEventListener("click",function(){if(st.month>0){st.month-=1;draw
 $("bk-next").addEventListener("click",function(){st.month+=1;draw();});
 rs.addEventListener("change",onRoom);
 ad.addEventListener("change",refresh);ch.addEventListener("change",refresh);
-F.addEventListener("reset",function(){setTimeout(function(){supFor="";onRoom();},0);});
+F.addEventListener("reset",function(){setTimeout(function(){supFor="";onRoom();syncMode();if(AL)aSetup();},0);});
+var mode="stay";
+var AL=$("bk-alone");
+function syncMode(){
+ var r=$("bk-mode-alone");mode=r&&r.checked?"alone":"stay";
+ var st1=$("bk-stay");if(st1)st1.hidden=mode!=="stay";
+ if(AL)AL.hidden=mode!=="alone";
+ if(mode==="stay")update();else aUpdate();
+}
+var ai=$("al-item"),ao=$("al-opt"),aq=$("al-qty"),asl=$("al-slots"),af=$("al-from"),at=$("al-to"),asum=$("al-sum"),amsg=$("al-msg");
+function aitem(){
+ if(!ai||!ai.value||!D.alone)return null;
+ var p=ai.value.split(":"),k=p.shift(),id=p.join(":");
+ for(var i=0;i<D.alone.length;i++)if(D.alone[i].k===k&&D.alone[i].id===id)return D.alone[i];
+ return null;
+}
+function nopts(n,from,to){var h="";for(var i=from;i<=to;i++)h+="<option value=\""+i+"\">"+i+"</option>";n.innerHTML=h;}
+function aSetup(){
+ var it=aitem();
+ $("al-optw").hidden=true;$("al-qtyw").hidden=true;$("al-slotw").hidden=true;$("al-tow").hidden=true;
+ $("al-desc").textContent=it?(it.d+(it.c?" · "+it.c:"")):"";
+ if(it){
+  var needTo=false;
+  $("al-qtyw").hidden=false;nopts(aq,1,it.mx);
+  if(it.k==="r"){
+   $("al-qlabel").textContent="Personnes";
+   ao.innerHTML=it.h>0?"<option value=\"slot\">Créneau</option><option value=\"half\">Demi-journée (par personne)</option>":"";
+   $("al-optw").hidden=!(it.h>0);
+   needTo=it.m==="per_day";
+   if(it.m==="per_slot"||it.m==="per_person_slot"){$("al-slotw").hidden=false;nopts(asl,1,8);}
+  }else{
+   $("al-qlabel").textContent=it.m==="animal"?"Animaux":it.m==="personne"?"Personnes":"Quantité";
+   if(it.o.length){var h2="";it.o.forEach(function(o){h2+="<option value=\""+e(o.i)+"\">"+e(o.l)+" · "+eur(o.p)+"</option>";});ao.innerHTML=h2;$("al-optw").hidden=false;needTo=true;}
+   else if(it.m==="nuit")needTo=true;
+  }
+  $("al-tow").hidden=!needTo;
+ }
+ aUpdate();
+}
+function aUpdate(){
+ if(mode!=="alone")return;
+ var it=aitem(),els=F.elements;
+ amsg.textContent="";amsg.className="status";
+ var ok=false;
+ if(it&&af.value){
+  var needTo=!$("al-tow").hidden,qty=+aq.value||1,from=dnum(af.value),to=at.value?dnum(at.value):from;
+  var days=to-from+1,total=0,what=[];
+  if(from<T)amsg.textContent="Cette date est passée.";
+  else if(needTo&&(!at.value||to<from))amsg.textContent=at.value?"La dernière date ne peut pas précéder la première.":"";
+  else{
+   if(it.k==="r"){
+    var half=it.h>0&&ao.value==="half";
+    if(it.m==="free")total=0;
+    else if(half){total=it.h*qty;what.push("Demi-journée × "+qty+" personne"+(qty>1?"s":""));}
+    else if(it.m==="per_slot"){var s1=+asl.value||1;total=it.p*s1;what.push(s1+" créneau"+(s1>1?"x":""));}
+    else if(it.m==="per_person_slot"){var s2=+asl.value||1;total=it.p*qty*s2;what.push(qty+" personne"+(qty>1?"s":"")+", "+s2+" créneau"+(s2>1?"x":""));}
+    else{total=it.p*days;what.push(days+" jour"+(days>1?"s":""));}
+    if(it.m==="free")what.push("Gratuit");
+    ok=true;
+   }else{
+    var opt=null;it.o.forEach(function(o){if(o.i===ao.value)opt=o;});
+    if(opt){var nl=/nuit/i.test(opt.l),cnt=nl?Math.max(1,to-from):days;total=opt.p*qty*cnt;what.push(opt.l+" × "+qty+", "+cnt+(nl?" nuit":" jour")+(cnt>1?"s":""));ok=true;}
+    else if(it.m==="nuit"){var nn=to-from;if(nn<1)amsg.textContent="Indiquez la date de fin (au moins une nuit).";else{total=it.p*qty*nn;what.push(qty+" × "+nn+" nuit"+(nn>1?"s":""));ok=true;}}
+    else{total=it.p*qty;what.push("Quantité : "+qty);ok=true;}
+   }
+  }
+  if(ok){
+   total=Math.round(total*100)/100;
+   var period=needTo&&to>from?"Du "+fr(from)+" au "+fr(to):"Le "+fr(from);
+   asum.innerHTML="<strong>"+e(it.n)+"</strong><br>"+e(period)+"<br>"+e(what.join(" · "))+"<br><strong>Total estimé : "+eur(total)+"</strong><br><span class=\"muted small\">Estimation à confirmer par l’établissement.</span>";
+   els.arrival.value=ds(from);els.departure.value=ds(needTo&&to>from?to:from);els.room.value=it.n;els.adults.value=qty;els.children.value="";
+   els.recap.value=["Réservation sans hébergement : "+it.n,period,what.join(" ; "),"Total estimé : "+eur(total)].join(NL);
+  }
+ }
+ asum.hidden=!ok;idn.hidden=!ok;
+ if(!ok){els.recap.value="";els.arrival.value="";els.departure.value="";}
+}
+if(AL){
+ ai.addEventListener("change",aSetup);
+ [ao,aq,asl,af,at].forEach(function(n){n.addEventListener("change",aUpdate);n.addEventListener("input",aUpdate);});
+ [$("bk-mode-stay"),$("bk-mode-alone")].forEach(function(r){if(r)r.addEventListener("change",syncMode);});
+}
 draw();
 if(C.connector&&C.id&&window.fetch){
  fetch(C.connector+"?action=siteAvailability&id="+encodeURIComponent(C.id)).then(function(r){return r.json();}).then(function(j){
@@ -52000,7 +52147,7 @@ document.querySelectorAll('form[data-site-form]').forEach(function(f){
   if(!name||!contact){say(f,'Indiquez votre nom et un moyen de vous r\xE9pondre (e-mail ou t\xE9l\xE9phone).',false);return;}
   if(kind==='request'){
    var a=val(f,'arrival'),d=val(f,'departure');
-   if(!a||!d||d<=a){say(f,'Choisissez vos dates dans le calendrier (arriv\xE9e puis d\xE9part).',false);return;}
+   if(!a||!d||d<a){say(f,'Choisissez vos dates dans le calendrier ou le formulaire.',false);return;}
    var rc=val(f,'recap');
    var lines=rc?rc.split(String.fromCharCode(10)):['Demande de r\xE9servation','H\xE9bergement : '+(val(f,'room')||'peu importe'),'Du '+fr(a)+' au '+fr(d),'Personnes : '+(val(f,'adults')||'1')+' adulte(s)'+(Number(val(f,'children'))>0?', '+val(f,'children')+' enfant(s)':'')];
    message=lines.join('\\n')+(message?'\\n\\n'+message:'');
@@ -52200,10 +52347,13 @@ if(C.preview){
       const end = `<p class="muted small">Les informations saisies servent uniquement \xE0 r\xE9pondre \xE0 votre demande${ctx.connectorUrl ? "" : " ; elles sont envoy\xE9es depuis votre messagerie"}.</p><button class="btn" type="submit">Envoyer</button><p class="status" role="status" aria-live="polite"></p>`;
       if (kind === "request") {
         const options = accommodations.map((a) => `<option value="${esc2(a.id)}">${esc2(a.name)}</option>`).join("");
-        const data = JSON.stringify(bookingData()).replace(/</g, "\\u003c");
+        const bk = bookingData();
+        const data = JSON.stringify(bk).replace(/</g, "\\u003c");
+        const aloneOn = bk.alone.length > 0;
         return `<form class="f bk" id="bk-form" data-site-form="request" novalidate>
 <script type="application/json" id="bk-data">${data}<\/script>
-<div class="bk-step"><h3><span class="bk-n">1</span> Votre logement et vos voyageurs</h3>
+${aloneOn ? `<div class="bk-step"><h3>Que souhaitez-vous r\xE9server ?</h3><div class="bk-modes"><label class="bk-ck"><input type="radio" name="bk-mode" id="bk-mode-stay" value="stay" checked> <span>Un s\xE9jour avec h\xE9bergement</span></label><label class="bk-ck"><input type="radio" name="bk-mode" id="bk-mode-alone" value="alone"> <span>Seulement un service ou un espace (${esc2(bk.alone.map((a) => a.n).join(", "))})</span></label></div></div>` : ""}
+<div id="bk-stay"><div class="bk-step"><h3><span class="bk-n">1</span> Votre logement et vos voyageurs</h3>
 <div class="row3"><div><label for="bk-room">Logement</label><select id="bk-room"><option value="">Choisir un logement</option>${options}</select></div><div><label for="bk-adults">Adultes</label><select id="bk-adults"><option value="">\u2013</option></select></div><div><label for="bk-children">Enfants</label><select id="bk-children"><option value="0">0</option></select></div></div>
 <p class="muted small" id="bk-hint">Choisissez le logement et le nombre de voyageurs pour afficher les tarifs complets dans le calendrier.</p>${longStayHtml(true)}</div>
 <div class="bk-step"><h3><span class="bk-n">2</span> Vos dates</h3>
@@ -52211,7 +52361,13 @@ if(C.preview){
 <div id="bk-cal" class="bk-cal"></div>
 <p class="muted small bk-legend"><span class="bk-key k-sel"></span> s\xE9jour choisi <span class="bk-key k-off"></span> indisponible ou ferm\xE9 \xB7 prix par nuit pour les voyageurs indiqu\xE9s</p>
 <p class="status" id="bk-msg" role="status" aria-live="polite"></p><div id="bk-sum" class="note" hidden></div></div>
-<div class="bk-step" id="bk-sup" hidden><h3><span class="bk-n">3</span> Services suppl\xE9mentaires</h3><div id="bk-suplist"></div></div>
+<div class="bk-step" id="bk-sup" hidden><h3><span class="bk-n">3</span> Services suppl\xE9mentaires</h3><div id="bk-suplist"></div></div></div>
+${aloneOn ? `<div id="bk-alone" hidden><div class="bk-step"><h3><span class="bk-n">1</span> Votre service ou espace</h3>
+<div><label for="al-item">Service</label><select id="al-item"><option value="">Choisir\u2026</option>${bk.alone.map((a) => `<option value="${esc2(a.k + ":" + a.id)}">${esc2(a.n)}</option>`).join("")}</select></div>
+<p class="muted small" id="al-desc"></p>
+<div class="row3"><div id="al-optw" hidden><label for="al-opt">Formule</label><select id="al-opt"></select></div><div id="al-qtyw" hidden><label for="al-qty" id="al-qlabel">Personnes</label><select id="al-qty"></select></div><div id="al-slotw" hidden><label for="al-slots">Cr\xE9neaux</label><select id="al-slots"></select></div></div>
+<div class="row"><div><label for="al-from" id="al-flabel">Date</label><input type="date" id="al-from"></div><div id="al-tow" hidden><label for="al-to">Jusqu'au (inclus)</label><input type="date" id="al-to"></div></div>
+<p class="status" id="al-msg" role="status" aria-live="polite"></p><div id="al-sum" class="note" hidden></div></div></div>` : ""}
 <div class="bk-step" id="bk-ident" hidden><h3><span class="bk-n">4</span> Vos coordonn\xE9es</h3>
 <input type="hidden" name="arrival"><input type="hidden" name="departure"><input type="hidden" name="room"><input type="hidden" name="adults"><input type="hidden" name="children"><input type="hidden" name="recap">
 ${who}<div><label for="r-message">Pr\xE9cisions (facultatif)</label><textarea id="r-message" name="message"></textarea></div>${hp}${end}</div></form>`;
