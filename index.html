@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v175</title>
-  <meta name="application-name" content="Gestyria v175" />
+  <title>Gestyria v176</title>
+  <meta name="application-name" content="Gestyria v176" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16488,7 +16488,7 @@ function icalExportOutput_(e) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "175";
+  var APP_VERSION = "176";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -17094,21 +17094,21 @@ function icalExportOutput_(e) {
   var import_react21 = __require("react");
 
   // src/core/pricing/touristTax.ts
-  var DEFAULT_TOURIST_TAX = { mode: "person", value: 0, exemptChildren: true };
+  var DEFAULT_TOURIST_TAX = { mode: "person", value: 0, exemptChildren: false };
   function touristTaxRule(settings = getSettings()) {
     return { ...DEFAULT_TOURIST_TAX, ...settings.pricing.touristTax || {} };
   }
   function suggestedTouristTax(input4, settings = getSettings()) {
     const rule = touristTaxRule(settings);
     if (!rule.value || rule.value <= 0 || input4.nights <= 0) return 0;
-    const amount = rule.mode === "percent" ? Math.max(0, input4.roomAmount) * rule.value / 100 : rule.value * input4.nights * (rule.exemptChildren ? input4.adults : input4.adults + input4.children + input4.babies);
+    const amount = rule.mode === "percent" ? Math.max(0, input4.roomAmount) * rule.value / 100 : rule.value * input4.nights * (input4.adults + (rule.exemptChildren ? 0 : input4.children));
     return Math.round(amount * 100) / 100;
   }
   function touristTaxSentence(settings = getSettings()) {
     const rule = touristTaxRule(settings);
     const v = String(rule.value).replace(".", ",");
     if (!rule.value) return "Taxe de s\xE9jour non r\xE9gl\xE9e";
-    return rule.mode === "percent" ? `${v} % du co\xFBt de l'h\xE9bergement` : `${v} \u20AC par personne et par nuit${rule.exemptChildren ? " (adultes)" : ""}`;
+    return rule.mode === "percent" ? `${v} % du co\xFBt de l'h\xE9bergement` : `${v} \u20AC par personne et par nuit${rule.exemptChildren ? " (adultes)" : " (adultes et enfants)"}`;
   }
 
   // src/modules/parametrage/fields.tsx
@@ -17286,6 +17286,14 @@ function icalExportOutput_(e) {
       type: "button",
       onClick,
       className: "flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-neutral-700 bg-white hover:bg-neutral-100 border border-neutral-200 rounded-xl transition-colors cursor-pointer",
+      children
+    }
+  );
+  var StickyActions = ({ children, flush = true, className = "" }) => /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+    "div",
+    {
+      className: `sticky bottom-0 z-10 flex items-center justify-end gap-2 border-t border-neutral-200 bg-white/95 backdrop-blur-xs py-3 ${flush ? "-mx-4 sm:-mx-6 -mb-4 sm:-mb-6 mt-4 px-4 sm:px-6" : "mt-2 rounded-b-2xl"} ${className}`,
+      "data-sticky-actions": true,
       children
     }
   );
@@ -17787,7 +17795,7 @@ function icalExportOutput_(e) {
 
   // src/modules/parametrage/GeneralSections.tsx
   var import_jsx_runtime9 = __require("react/jsx-runtime");
-  var SaveBar = ({ dirty, onSave, onReset }) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "flex items-center justify-end gap-2 pt-4 mt-4 border-t border-neutral-100", children: [
+  var SaveBar = ({ dirty, onSave, onReset }) => /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(StickyActions, { children: [
     dirty && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { className: "text-[11px] text-amber-700 font-semibold mr-auto", children: "Modifications non enregistr\xE9es" }),
     /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(SecondaryButton, { onClick: onReset, children: "Annuler" }),
     /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(PrimaryButton, { onClick: onSave, disabled: !dirty, children: "Enregistrer" })
@@ -18020,14 +18028,14 @@ function icalExportOutput_(e) {
                 className: "w-3.5 h-3.5 accent-sy-325032 cursor-pointer"
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { children: "Enfants et b\xE9b\xE9s exon\xE9r\xE9s (seuls les adultes paient)" })
+            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { children: "Enfants exon\xE9r\xE9s (d\xE9coch\xE9e : les enfants paient comme les adultes ; les b\xE9b\xE9s ne paient jamais)" })
           ] }),
           tax.value > 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { className: "text-[11px] text-neutral-600", children: [
-            "Exemple : 2 adultes, 3 nuits, h\xE9bergement \xE0 300 \u20AC \u2192",
+            "Exemple : 2 adultes, 1 enfant, 1 b\xE9b\xE9, 3 nuits, h\xE9bergement \xE0 300 \u20AC \u2192",
             " ",
             /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("strong", { children: [
               String(
-                suggestedTouristTax({ nights: 3, adults: 2, children: 0, babies: 0, roomAmount: 300 }, { ...settings, pricing: { ...draft, touristTax: tax } })
+                suggestedTouristTax({ nights: 3, adults: 2, children: 1, babies: 1, roomAmount: 300 }, { ...settings, pricing: { ...draft, touristTax: tax } })
               ).replace(".", ","),
               " ",
               "\u20AC"
@@ -19631,7 +19639,7 @@ function icalExportOutput_(e) {
       isNew && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("span", { className: "text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800", children: "Nouvelle fiche" })
     ] }),
     children,
-    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "flex items-center justify-end gap-2 pt-2 border-t border-neutral-100", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)(StickyActions, { flush: false, children: [
       /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(SecondaryButton, { onClick: onCancel, children: "Annuler" }),
       /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(PrimaryButton, { onClick: onSave, disabled: !canSave, children: "Enregistrer" })
     ] })
@@ -20383,7 +20391,7 @@ function icalExportOutput_(e) {
         ] }, acc.id);
       }) }),
       /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(IcalExportBlock, { settings, onToast }),
-      /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)("div", { className: "flex items-center justify-end gap-2 pt-4 mt-4 border-t border-neutral-100", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime15.jsxs)(StickyActions, { children: [
         dirty && /* @__PURE__ */ (0, import_jsx_runtime15.jsx)("span", { className: "text-[11px] text-amber-700 font-semibold mr-auto", children: "Modifications non enregistr\xE9es" }),
         /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(SecondaryButton, { onClick: () => setDraft(draftFrom(settings)), children: "Annuler" }),
         /* @__PURE__ */ (0, import_jsx_runtime15.jsx)(PrimaryButton, { onClick: save, disabled: !dirty, children: "Enregistrer" })
@@ -20944,7 +20952,7 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
             " Ajouter un r\xF4le"
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "flex justify-end", children: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(PrimaryButton, { onClick: save, children: "Enregistrer le verrouillage" }) })
+        /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(StickyActions, { children: /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(PrimaryButton, { onClick: save, children: "Enregistrer le verrouillage" }) })
       ] })
     ] });
   };
