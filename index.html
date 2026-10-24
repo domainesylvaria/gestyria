@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v179</title>
-  <meta name="application-name" content="Gestyria v179" />
+  <title>Gestyria v180</title>
+  <meta name="application-name" content="Gestyria v180" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2806,6 +2806,7 @@ var DomaineAppBundle = (() => {
         { id: "longStay", label: "Remises longs s\xE9jours", default: true },
         { id: "extraGuest", label: "Suppl\xE9ment par personne", default: true },
         { id: "services", label: "Tarifs des services et ressources (piscine, pension\u2026)", default: true },
+        { id: "opening", label: "P\xE9riodes de fermeture et d'ouverture (Ouverture et fermetures)", default: true },
         { id: "cancellation", label: "Conditions d'annulation", default: true }
       ],
       suggestion: "Ce qui est inclus dans le prix, la taxe de s\xE9jour, les moyens de paiement."
@@ -16488,7 +16489,7 @@ function icalExportOutput_(e) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "179";
+  var APP_VERSION = "180";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -51810,6 +51811,20 @@ if(C.preview){
       if (s.length === 0 && !ns && !note) return "";
       return `<h2>Annulation</h2><ul class="clean">${s.map((x) => `<li>${esc2(x)}</li>`).join("")}</ul>${ns ? `<p>${esc2(ns)}</p>` : ""}${note ? `<p class="muted">${esc2(note)}</p>` : ""}`;
     };
+    const openingHtml = () => {
+      const today5 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      const days2 = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
+      const lines2 = settings.opening.periods.filter((p) => p.start && p.end && (p.everyYear || p.end >= today5)).filter((p) => p.mode !== "open" || !settings.opening.defaultOpen).map((p) => {
+        const when2 = periodText2(p.start, p.end, p.everyYear);
+        const label = p.label.trim() ? `${esc2(p.label.trim())} : ` : "";
+        if (p.mode === "closed") return `${label}ferm\xE9 ${esc2(when2)}`;
+        if (p.mode === "days") return `${label}ouvert ${esc2(when2)}, arriv\xE9es le ${p.weekdays.map((d) => days2[d]).join(", ")} seulement`;
+        return `${label}ouvert ${esc2(when2)}`;
+      });
+      if (lines2.length === 0 && settings.opening.defaultOpen) return "";
+      const base = settings.opening.defaultOpen ? "" : "<p>En dehors des p\xE9riodes ci-dessous, nous sommes ferm\xE9s.</p>";
+      return `<h2>Ouverture</h2>${base}<ul class="clean">${lines2.map((l) => `<li>${l}</li>`).join("")}</ul>`;
+    };
     const formHtml = (kind) => {
       const hp = `<div class="hp" aria-hidden="true"><label>Ne pas remplir<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>`;
       const who = `<div class="row"><div><label for="${kind}-name">Votre nom</label><input id="${kind}-name" name="name" required autocomplete="name"></div><div><label for="${kind}-contact">E-mail ou t\xE9l\xE9phone</label><input id="${kind}-contact" name="contact" required autocomplete="email"></div></div>`;
@@ -51895,6 +51910,7 @@ if(C.preview){
             ].filter((r) => r.price);
             if (rows.length > 0) h2 += `<h2>Services</h2><div class="scroll"><table><tbody>${rows.map((r) => `<tr><td>${esc2(r.name)}${r.text ? `<br><span class="muted small">${esc2(r.text)}</span>` : ""}</td><td class="price">${esc2(r.price)}</td></tr>`).join("")}</tbody></table></div>`;
           }
+          if (on("opening")) h2 += openingHtml();
           if (on("cancellation")) h2 += cancellationHtml();
           h2 += `<p style="margin-top:22px">${linkTo(pageByKind("booking") || pageByKind("contact"), "R\xE9server")}</p>`;
           return h2 + "</div></section>";
