@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v184</title>
-  <meta name="application-name" content="Gestyria v184" />
+  <title>Gestyria v185</title>
+  <meta name="application-name" content="Gestyria v185" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -10914,6 +10914,110 @@ var DomaineAppBundle = (() => {
     notify13();
   }
 
+  // src/core/pricing/openingCalendar.ts
+  var WEEKDAY_LABELS = ["Dim.", "Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam."];
+  var WEEKEND_DAYS = [5, 6];
+  function weekdayOf(date) {
+    const [y, m, d] = date.split("-").map((n) => parseInt(n, 10));
+    return new Date(y, m - 1, d).getDay();
+  }
+  function openingPeriodFor(date, settings = getSettings()) {
+    let found = null;
+    settings.opening.periods.forEach((p) => {
+      if (periodCovers(p, date)) found = p;
+    });
+    return found;
+  }
+  function isOpenNight(date, settings = getSettings()) {
+    const p = openingPeriodFor(date, settings);
+    if (!p) return settings.opening.defaultOpen;
+    if (p.mode === "closed") return false;
+    if (p.mode === "days") return p.weekdays.includes(weekdayOf(date));
+    return true;
+  }
+  function hasOpeningRules(settings = getSettings()) {
+    return !settings.opening.defaultOpen || settings.opening.periods.length > 0;
+  }
+  function closedNightsOfStay(checkIn, nights, settings = getSettings()) {
+    if (!checkIn || !hasOpeningRules(settings)) return [];
+    return Array.from({ length: Math.max(0, nights) }, (_, i) => addDaysIso(checkIn, i)).filter((d) => !isOpenNight(d, settings));
+  }
+
+  // src/core/pricing/touristTax.ts
+  var DEFAULT_TOURIST_TAX = { mode: "person", value: 0, exemptChildren: false };
+  function touristTaxRule(settings = getSettings()) {
+    return { ...DEFAULT_TOURIST_TAX, ...settings.pricing.touristTax || {} };
+  }
+  function suggestedTouristTax(input4, settings = getSettings()) {
+    const rule = touristTaxRule(settings);
+    if (!rule.value || rule.value <= 0 || input4.nights <= 0) return 0;
+    const amount = rule.mode === "percent" ? Math.max(0, input4.roomAmount) * rule.value / 100 : rule.value * input4.nights * (input4.adults + (rule.exemptChildren ? 0 : input4.children));
+    return Math.round(amount * 100) / 100;
+  }
+  function touristTaxSentence(settings = getSettings()) {
+    const rule = touristTaxRule(settings);
+    const v = String(rule.value).replace(".", ",");
+    if (!rule.value) return "Taxe de s\xE9jour non r\xE9gl\xE9e";
+    return rule.mode === "percent" ? `${v} % du co\xFBt de l'h\xE9bergement` : `${v} \u20AC par personne et par nuit${rule.exemptChildren ? " (adultes)" : " (adultes et enfants)"}`;
+  }
+
+  // src/modules/siteweb/liveData.ts
+  var BOOKING_DATA_VERSION = 2;
+  var BOOKING_DAYS = 540;
+  var byOrder = (a, b) => (a.order || 0) - (b.order || 0);
+  function buildBookingData(settings, start = todayIso4()) {
+    const accommodations = settings.accommodations.filter((a) => a.active).sort(byOrder);
+    const services = settings.services.filter((s) => s.active).sort(byOrder);
+    const useRates = ratesEnabled(settings);
+    const rules = hasOpeningRules(settings);
+    const lastMinute = settings.rates.lastMinute;
+    const lmTier = useRates && lastMinute.enabled && lastMinute.mode === "tier" ? findTier(lastMinute.tierId, settings) : void 0;
+    const rooms = accommodations.map((a) => {
+      const p = [];
+      const c = [];
+      for (let i = 0; i < BOOKING_DAYS; i++) {
+        const d = addDaysIso(start, i);
+        p.push(useRates ? nightRate(a.id, d, a.basePrice, settings).price : a.basePrice);
+        if (rules && !isOpenNight(d, settings)) c.push(i);
+      }
+      return {
+        id: a.id,
+        n: a.name,
+        i: a.baseGuestsCount,
+        x: a.extraGuestPrice,
+        mg: a.maxGuests,
+        ma: a.maxAdults || 0,
+        mc: a.maxChildren ?? -1,
+        p,
+        c,
+        lt: lmTier ? tierNightPrice(lmTier, a.id, a.basePrice) : null
+      };
+    });
+    const sup = services.filter((s) => s.billing === "supplement" && !s.showInPlanning).map((s) => {
+      const pr = {};
+      accommodations.forEach((a) => {
+        const price = supplementUnitPrice(s, a.id);
+        if ((!s.roomIds || s.roomIds.includes(a.id)) && price > 0) pr[a.id] = price;
+      });
+      return { id: s.id, n: s.name, u: s.unit, l: supplementUnitLabel(s), mx: s.maxQuantity && s.maxQuantity > 0 ? s.maxQuantity : 10, pr };
+    }).filter((s) => Object.keys(s.pr).length > 0);
+    const tax = touristTaxRule(settings);
+    return {
+      v: BOOKING_DATA_VERSION,
+      start,
+      rooms,
+      sup,
+      disc: settings.pricing.longStayDiscounts.filter((d) => d.minNights > 0 && d.percent > 0).map((d) => ({ n: d.minNights, p: d.percent })),
+      lm: {
+        on: useRates && lastMinute.enabled && (lastMinute.mode === "percent" ? lastMinute.percent > 0 : !!lmTier),
+        days: lastMinute.daysBefore,
+        mode: lastMinute.mode,
+        pct: lastMinute.percent
+      },
+      tax: { mode: tax.mode, value: tax.value, exChildren: !!tax.exemptChildren }
+    };
+  }
+
   // src/core/sync/syncedStores.ts
   var META_STORAGE_KEY2 = "domaine_sylvaria_sync_meta_v1";
   var INVOICE_COUNTER_PREFIX = "domaine_sylvaria_invoice_counter_";
@@ -11023,6 +11127,15 @@ var DomaineAppBundle = (() => {
       kind: "replace",
       read: readSiteForSync,
       write: writeSiteFromSync
+    },
+    {
+      // Prix, remises, services et taxe du calendrier de réservation du site : calculés par l'application, lus par le site via le connecteur
+      id: "siteLive",
+      label: "Prix du site web (calcul\xE9s)",
+      kind: "replace",
+      read: () => isModuleEnabled("website") ? buildBookingData(getSettings()) : void 0,
+      write: () => {
+      }
     },
     {
       id: "reviewMeta",
@@ -12554,8 +12667,8 @@ var DomaineAppBundle = (() => {
     }
   }
   function getAppsScriptCode() {
-    return `// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V25)
+    return `\uFEFF// =========================================================================
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V26)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -12635,6 +12748,7 @@ var DomaineAppBundle = (() => {
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
 // V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Domaine Sylvaria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V26 : la r\xE9ponse \xAB siteAvailability \xBB transmet aussi les prix, remises, services et taxe de s\xE9jour calcul\xE9s par l'application (jeu \xAB siteLive \xBB), pour que le site suive les tarifs de l'application sans \xEAtre r\xE9g\xE9n\xE9r\xE9. Aucune nouvelle autorisation.
 // V25 : disponibilit\xE9s du site web (action "siteAvailability" : pour chaque h\xE9bergement, les dates d'arriv\xE9e et de d\xE9part des s\xE9jours en cours ou \xE0 venir, sans aucune donn\xE9e personnelle ; l'identifiant public du livret publi\xE9 sert de laissez-passer). Adresse en ligne par d\xE9faut : /gestyria/. Aucune nouvelle autorisation.
 // V24 : saisie d'une commande de repas par l'administratrice, y compris apr\xE8s coup (action "mealOrderAdmin" : jour pass\xE9 accept\xE9, statut Servie, rattach\xE9e au s\xE9jour, sans e-mail ni limite d'heure). R\xE9serv\xE9e \xE0 la cl\xE9 de l'administratrice ; les clients restent soumis aux jours et heures limites. Aucune nouvelle autorisation.
 // Mise \xE0 jour depuis la V10 \xE0 V16 : collez TOUT ce code (jusqu'\xE0 la derni\xE8re ligne), puis
@@ -13330,7 +13444,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 25;
+var CONNECTOR_VERSION = 26;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Domaine Sylvaria - Photos m\xE9nage";
@@ -13556,7 +13670,11 @@ function routeGetV10_(e, action) {
   if (action === "siteAvailability") {
     var avCtx = bookContext_(p.id, "", "");
     if (avCtx.error) return avCtx.error;
-    return siteAvailability_(avCtx.store && avCtx.store.reservationsList, new Date().toISOString().slice(0, 10));
+    var availability = siteAvailability_(avCtx.store && avCtx.store.reservationsList, new Date().toISOString().slice(0, 10));
+    // V26 : prix, remises, services et taxe calcul\xE9s par l'application (jeu synchronis\xE9 \xAB siteLive \xBB), pour que le site suive l'application sans \xEAtre r\xE9g\xE9n\xE9r\xE9
+    var liveEntry = avCtx.store && avCtx.store.appStores && avCtx.store.appStores.siteLive;
+    if (liveEntry && isObject_(liveEntry.value)) availability.live = liveEntry.value;
+    return availability;
   }
   if (action === "tasks") {
     if (!isAdminRequest_(e, null)) return keyRequiredResponse_();
@@ -15816,7 +15934,7 @@ function siteAvailability_(list, todayIso) {
   return { status: "success", version: CONNECTOR_VERSION, today: todayIso, rooms: rooms };
 }
 
-// ===== FIN DU CONNECTEUR (V25) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== FIN DU CONNECTEUR (V26) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
 
@@ -16577,7 +16695,7 @@ function siteAvailability_(list, todayIso) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "184";
+  var APP_VERSION = "185";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -17181,24 +17299,6 @@ function siteAvailability_(list, todayIso) {
 
   // src/modules/parametrage/GeneralSections.tsx
   var import_react21 = __require("react");
-
-  // src/core/pricing/touristTax.ts
-  var DEFAULT_TOURIST_TAX = { mode: "person", value: 0, exemptChildren: false };
-  function touristTaxRule(settings = getSettings()) {
-    return { ...DEFAULT_TOURIST_TAX, ...settings.pricing.touristTax || {} };
-  }
-  function suggestedTouristTax(input4, settings = getSettings()) {
-    const rule = touristTaxRule(settings);
-    if (!rule.value || rule.value <= 0 || input4.nights <= 0) return 0;
-    const amount = rule.mode === "percent" ? Math.max(0, input4.roomAmount) * rule.value / 100 : rule.value * input4.nights * (input4.adults + (rule.exemptChildren ? 0 : input4.children));
-    return Math.round(amount * 100) / 100;
-  }
-  function touristTaxSentence(settings = getSettings()) {
-    const rule = touristTaxRule(settings);
-    const v = String(rule.value).replace(".", ",");
-    if (!rule.value) return "Taxe de s\xE9jour non r\xE9gl\xE9e";
-    return rule.mode === "percent" ? `${v} % du co\xFBt de l'h\xE9bergement` : `${v} \u20AC par personne et par nuit${rule.exemptChildren ? " (adultes)" : " (adultes et enfants)"}`;
-  }
 
   // src/modules/parametrage/fields.tsx
   var import_react18 = __require("react");
@@ -19422,37 +19522,6 @@ function siteAvailability_(list, todayIso) {
 
   // src/modules/tarifs/OpeningSection.tsx
   var import_react24 = __require("react");
-
-  // src/core/pricing/openingCalendar.ts
-  var WEEKDAY_LABELS = ["Dim.", "Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam."];
-  var WEEKEND_DAYS = [5, 6];
-  function weekdayOf(date) {
-    const [y, m, d] = date.split("-").map((n) => parseInt(n, 10));
-    return new Date(y, m - 1, d).getDay();
-  }
-  function openingPeriodFor(date, settings = getSettings()) {
-    let found = null;
-    settings.opening.periods.forEach((p) => {
-      if (periodCovers(p, date)) found = p;
-    });
-    return found;
-  }
-  function isOpenNight(date, settings = getSettings()) {
-    const p = openingPeriodFor(date, settings);
-    if (!p) return settings.opening.defaultOpen;
-    if (p.mode === "closed") return false;
-    if (p.mode === "days") return p.weekdays.includes(weekdayOf(date));
-    return true;
-  }
-  function hasOpeningRules(settings = getSettings()) {
-    return !settings.opening.defaultOpen || settings.opening.periods.length > 0;
-  }
-  function closedNightsOfStay(checkIn, nights, settings = getSettings()) {
-    if (!checkIn || !hasOpeningRules(settings)) return [];
-    return Array.from({ length: Math.max(0, nights) }, (_, i) => addDaysIso(checkIn, i)).filter((d) => !isOpenNight(d, settings));
-  }
-
-  // src/modules/tarifs/OpeningSection.tsx
   var import_jsx_runtime12 = __require("react/jsx-runtime");
   var dateClass2 = "w-full py-2 px-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-sy-325032 text-neutral-900";
   var MODE_OPTIONS2 = [
@@ -28601,10 +28670,10 @@ ${m.message}
     return `${s.name.trim()} : ${unit ? `${euros4(s.price)} par ${unit}` : euros4(s.price)}`;
   }
   var RESOURCE_UNITS = { per_slot: "cr\xE9neau", per_person_slot: "personne et par cr\xE9neau", per_day: "jour" };
-  var byOrder = (list3) => [...list3].sort((a, b) => a.order - b.order);
+  var byOrder2 = (list3) => [...list3].sort((a, b) => a.order - b.order);
   var inlineConditions = (s) => s.trim().replace(/\.$/, "").replace(/\s*\(([^)]*)\)/g, ", $1").replace(/^./, (c) => c.toLowerCase());
   function animalServices(settings) {
-    return byOrder(settings.services.filter((s) => s.active && s.unit === "animal" && !s.showInPlanning));
+    return byOrder2(settings.services.filter((s) => s.active && s.unit === "animal" && !s.showInPlanning));
   }
   function termsContext(terms, settings, pricingEnabled, bookEnabled) {
     const { facts, fromBook } = effectiveFacts(terms, settings);
@@ -28688,7 +28757,7 @@ ${m.message}
         sources.push("establishment");
         const vat = e.vatMention.trim().replace(/\.$/, "");
         p.push(`Les prix sont indiqu\xE9s en euros, toutes taxes comprises${vat ? ` (${vat})` : ""}. Le prix du s\xE9jour est celui indiqu\xE9 dans la confirmation de r\xE9servation.`);
-        const included = byOrder(settings.services.filter((s) => s.active && s.billing === "inclus")).map((s) => s.name.trim()).filter(Boolean);
+        const included = byOrder2(settings.services.filter((s) => s.active && s.billing === "inclus")).map((s) => s.name.trim()).filter(Boolean);
         if (included.length) {
           sources.push("services");
           p.push(`Le prix comprend : ${listText(included)}.`);
@@ -28798,7 +28867,7 @@ ${m.message}
       }
       case "capacity": {
         sources.push("accommodations");
-        const rooms = byOrder(settings.accommodations.filter((a) => a.active));
+        const rooms = byOrder2(settings.accommodations.filter((a) => a.active));
         if (rooms.length === 0) return { paragraphs: [], missing: [], sources, empty: true };
         const lines2 = rooms.map((a) => {
           const max = a.maxGuests || 0;
@@ -28813,11 +28882,11 @@ ${m.message}
       }
       case "services": {
         const animalIds = animalServices(settings).map((s) => s.id);
-        const services = byOrder(settings.services.filter((s) => s.active && !animalIds.includes(s.id) && s.billing !== "inclus")).map((s) => {
+        const services = byOrder2(settings.services.filter((s) => s.active && !animalIds.includes(s.id) && s.billing !== "inclus")).map((s) => {
           const line = serviceLine(s);
           return line ? `${line}${s.conditions.trim() ? ` (${inlineConditions(s.conditions)})` : ""}` : "";
         }).filter(Boolean);
-        const resources = byOrder(settings.resources.filter((r) => r.active && r.pricingMode !== "free" && r.price > 0)).map(
+        const resources = byOrder2(settings.resources.filter((r) => r.active && r.pricingMode !== "free" && r.price > 0)).map(
           (r) => `${r.name.trim()} : ${euros4(r.price)} par ${RESOURCE_UNITS[r.pricingMode]}${r.halfDayPrice ? `, forfait demi-journ\xE9e ${euros4(r.halfDayPrice)}` : ""}`
         );
         if (services.length) sources.push("services");
@@ -28828,7 +28897,7 @@ ${m.message}
         break;
       }
       case "pool": {
-        const pools = byOrder(settings.resources.filter((r) => r.active));
+        const pools = byOrder2(settings.resources.filter((r) => r.active));
         if (pools.length === 0) return { paragraphs: [], missing: [], sources: ["resources"], empty: true };
         sources.push("resources");
         pools.forEach((r) => {
@@ -29427,7 +29496,7 @@ ${body}
     const setOption = (key, value) => onChange({ options: { ...s.options, [key]: value } });
     const textLabel = TEXT_LABELS[s.kind] || { label: "Texte (facultatif)", placeholder: "" };
     const e = settings.establishment;
-    const byOrder3 = (list3) => [...list3].sort((a, b) => a.order - b.order);
+    const byOrder4 = (list3) => [...list3].sort((a, b) => a.order - b.order);
     return /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "space-y-3 pt-3 mt-3 border-t border-neutral-100", children: [
       /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("p", { className: "text-[11px] text-neutral-500", children: SECTION_META[s.kind].help }),
       /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [
@@ -29453,7 +29522,7 @@ ${body}
       ] }),
       s.kind === "rooms" && /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "space-y-2", children: [
         /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("div", { className: "text-[11px] font-semibold text-neutral-700", children: "Chambres affich\xE9es" }),
-        byOrder3(settings.accommodations.filter((a) => a.active)).map((a) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !s.options[`hide_${a.id}`], onChange: (v) => setOption(`hide_${a.id}`, !v), label: a.name, hint: a.description ? void 0 : "Pas encore de description (Param\xE9trage > H\xE9bergements)" }, a.id)),
+        byOrder4(settings.accommodations.filter((a) => a.active)).map((a) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !s.options[`hide_${a.id}`], onChange: (v) => setOption(`hide_${a.id}`, !v), label: a.name, hint: a.description ? void 0 : "Pas encore de description (Param\xE9trage > H\xE9bergements)" }, a.id)),
         /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1", children: [
           /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !!s.options.showCapacity, onChange: (v) => setOption("showCapacity", v), label: "Capacit\xE9" }),
           /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !!s.options.showEquipments, onChange: (v) => setOption("showEquipments", v), label: "\xC9quipements" }),
@@ -29486,9 +29555,9 @@ ${body}
       ] }),
       s.kind === "services" && /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "space-y-2", children: [
         /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !!s.options.showResources, onChange: (v) => setOption("showResources", v), label: "Montrer les espaces (piscine, spa\u2026)", hint: "Fiches de Param\xE9trage > Espaces et ressources" }),
-        s.options.showResources && byOrder3(settings.resources.filter((r) => r.active)).map((r) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("div", { className: "pl-5", children: /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !s.options[`hide_${r.id}`], onChange: (v) => setOption(`hide_${r.id}`, !v), label: r.name }) }, r.id)),
+        s.options.showResources && byOrder4(settings.resources.filter((r) => r.active)).map((r) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("div", { className: "pl-5", children: /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !s.options[`hide_${r.id}`], onChange: (v) => setOption(`hide_${r.id}`, !v), label: r.name }) }, r.id)),
         /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("div", { className: "text-[11px] font-semibold text-neutral-700 pt-1", children: "Services affich\xE9s (Param\xE9trage > Services et prestations)" }),
-        byOrder3(settings.services.filter((x) => x.active)).map((x) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !s.options[`hide_${x.id}`], onChange: (v) => setOption(`hide_${x.id}`, !v), label: x.name }, x.id)),
+        byOrder4(settings.services.filter((x) => x.active)).map((x) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !s.options[`hide_${x.id}`], onChange: (v) => setOption(`hide_${x.id}`, !v), label: x.name }, x.id)),
         /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !!s.options.showPrices, onChange: (v) => setOption("showPrices", v), label: "Afficher les prix" }),
         /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("p", { className: "text-[10px] text-neutral-500", children: isModuleEnabled("meals", settings) ? "La carte des repas a sa propre rubrique \xAB Repas et petit-d\xE9jeuner \xBB, reprise du module Repas." : "Pour montrer votre carte des repas, activez le module Repas (Param\xE9trage > Modules)." })
       ] }),
@@ -33789,10 +33858,10 @@ Cordialement`
       const room = ROOMS[id];
       if (room && !rows.some((r) => r.id === id)) rows.push({ id, kind, room, visible });
     };
-    const byOrder3 = (a, b) => a.order - b.order;
-    [...settings.accommodations].sort(byOrder3).forEach((a) => add(a.id, "accommodation", a.active && a.showInPlanning));
-    [...settings.resources].sort(byOrder3).forEach((r) => add(r.id, "resource", r.active && r.showInPlanning));
-    [...settings.services].filter((s) => s.showInPlanning).sort(byOrder3).forEach((s) => add(s.id, "service", s.active));
+    const byOrder4 = (a, b) => a.order - b.order;
+    [...settings.accommodations].sort(byOrder4).forEach((a) => add(a.id, "accommodation", a.active && a.showInPlanning));
+    [...settings.resources].sort(byOrder4).forEach((r) => add(r.id, "resource", r.active && r.showInPlanning));
+    [...settings.services].filter((s) => s.showInPlanning).sort(byOrder4).forEach((s) => add(s.id, "service", s.active));
     Object.keys(LEGACY_KINDS).forEach((id) => add(id, LEGACY_KINDS[id], true));
     return includeHidden ? rows : rows.filter((r) => r.visible);
   }
@@ -51752,7 +51821,7 @@ function dnum(s){var p=s.split("-");return Math.round(Date.UTC(+p[0],+p[1]-1,+p[
 function ds(n){var d=new Date(n*86400000);return d.getUTCFullYear()+"-"+pad(d.getUTCMonth()+1)+"-"+pad(d.getUTCDate());}
 function fr(n){var d=new Date(n*86400000);return d.getUTCDate()+" "+MON[d.getUTCMonth()]+" "+d.getUTCFullYear();}
 var now=new Date(),T=dnum(now.getFullYear()+"-"+pad(now.getMonth()+1)+"-"+pad(now.getDate()));
-var S=dnum(D.start);
+var S=dnum(D.start);function setData(n){D=n;S=dnum(D.start);}
 var rs=$("bk-room"),ad=$("bk-adults"),ch=$("bk-children"),cal=$("bk-cal"),sum=$("bk-sum"),sup=$("bk-sup"),supl=$("bk-suplist"),idn=$("bk-ident"),msg=$("bk-msg"),hint=$("bk-hint");
 var supFor="";var st={room:null,from:null,to:null,month:0,sup:{}};
 function say(t){msg.textContent=t||"";msg.className="status "+(t?"err":"");}
@@ -51824,18 +51893,34 @@ function pick(n){
  draw();update();
 }
 function calc(){
- var nights=st.to-st.from,sub=0;
- for(var k=st.from;k<st.to;k++)sub+=night(k);
+ var nights=st.to-st.from,sub=0,k,g=guests(),rm=st.room;
+ for(k=st.from;k<st.to;k++)sub+=night(k);
  var pct=0;D.disc.forEach(function(x){if(nights>=x.n&&x.p>pct)pct=x.p;});
- var da=Math.round(sub*pct/100),lines=[],tot=sub-da;
+ var da=Math.round(sub*pct/100),kind=pct>0?"long":"";
+ var until=st.from-T;
+ if(D.lm&&D.lm.on&&until>=0&&until<=D.lm.days){
+  var lmA=0;
+  if(D.lm.mode==="percent")lmA=Math.round(sub*D.lm.pct/100);
+  else if(rm.lt!==null&&rm.lt!==undefined){
+   var ex=rm.x>0?(Math.max(0,g.a-rm.i)+g.c)*rm.x:0,low=0;
+   for(k=st.from;k<st.to;k++)low+=Math.min(rm.p[idx(k)],rm.lt)+ex;
+   lmA=Math.round((sub-low)*100)/100;
+  }
+  if(lmA>da){da=lmA;kind="lm";pct=sub>0?Math.round(lmA/sub*1000)/10:0;}
+ }
+ var room=sub-da,tot=room,lines=[],tx=0;
+ if(D.tax&&D.tax.value>0){
+  tx=D.tax.mode==="percent"?room*D.tax.value/100:D.tax.value*nights*(g.a+(D.tax.exChildren?0:g.c));
+  tx=Math.round(tx*100)/100;
+ }
  D.sup.forEach(function(s){
-  var q=st.sup[s.id],pr=s.pr[st.room.id];if(!q||!pr)return;
+  var q=st.sup[s.id],pr=s.pr[rm.id];if(!q||!pr)return;
   var a=Math.round(pr*q*(s.u==="nuit"?nights:1)*100)/100;
   lines.push({n:s.n,q:q,a:a,u:s.u,l:s.l});tot+=a;
  });
- return {nights:nights,sub:sub,pct:pct,da:da,lines:lines,total:tot};
-}
-function update(){
+ tot+=tx;
+ return {nights:nights,sub:sub,pct:pct,da:da,kind:kind,lines:lines,tax:tx,total:tot};
+}function update(){
  var ok=ready()&&st.from!==null&&st.to!==null;
  sum.hidden=!ok;sup.hidden=!ok;idn.hidden=!ok;
  var g=guests(),els=F.elements;
@@ -51845,13 +51930,15 @@ function update(){
  buildSup();sup.hidden=!st.hasSup;
  var c=calc(),h="<strong>"+e(st.room.n)+"</strong><br>Du "+fr(st.from)+" au "+fr(st.to)+" · "+c.nights+" nuit"+(c.nights>1?"s":"")+" · "+g.a+" adulte"+(g.a>1?"s":"")+(g.c?", "+g.c+" enfant"+(g.c>1?"s":""):"");
  h+="<br>Hébergement : "+eur(c.sub);
- if(c.da>0)h+="<br>Remise séjour long ("+c.pct+" %) : -"+eur(c.da);
+ if(c.da>0)h+="<br>"+(c.kind==="lm"?"Remise dernière minute":"Remise séjour long")+" ("+c.pct+" %) : -"+eur(c.da);
  c.lines.forEach(function(l){h+="<br>"+e(l.n)+(l.q>1?" × "+l.q:"")+" : "+eur(l.a);});
+ if(c.tax>0)h+="<br>Taxe de séjour : "+eur(c.tax);
  h+="<br><strong>Total estimé : "+eur(c.total)+"</strong><br><span class=\"muted small\">Estimation à confirmer par l’établissement avec la disponibilité réelle.</span>";
  sum.innerHTML=h;
  var r=["Logement : "+st.room.n,"Du "+fr(st.from)+" au "+fr(st.to)+" ("+c.nights+" nuit"+(c.nights>1?"s":"")+")","Voyageurs : "+g.a+" adulte(s)"+(g.c?", "+g.c+" enfant(s)":""),"Hébergement : "+eur(c.sub)];
- if(c.da>0)r.push("Remise séjour long ("+c.pct+" %) : -"+eur(c.da));
+ if(c.da>0)r.push((c.kind==="lm"?"Remise dernière minute":"Remise séjour long")+" ("+c.pct+" %) : -"+eur(c.da));
  c.lines.forEach(function(l){r.push(l.n+(l.q>1?" x "+l.q:"")+" : "+eur(l.a));});
+ if(c.tax>0)r.push("Taxe de séjour : "+eur(c.tax));
  r.push("Total estimé : "+eur(c.total));
  els.recap.value=r.join(NL);
 }
@@ -51884,9 +51971,15 @@ F.addEventListener("reset",function(){setTimeout(function(){supFor="";onRoom();}
 draw();
 if(C.connector&&C.id&&window.fetch){
  fetch(C.connector+"?action=siteAvailability&id="+encodeURIComponent(C.id)).then(function(r){return r.json();}).then(function(j){
-  if(!j||j.status!=="success"||!j.rooms)return;
-  avail=j.rooms;
+  if(!j||j.status!=="success")return;
+  /* Prix, remises, services et taxe à jour (envoyés par l’application à chaque enregistrement) */
+  if(j.live&&j.live.v===2&&j.live.rooms&&j.live.rooms.length){
+   setData(j.live);
+   if(st.room){var nr=roomOf(st.room.id);if(!nr){rs.value="";onRoom();return;}st.room=nr;supFor="";}
+  }
+  avail=j.rooms||{};
   if(st.room){buildClosed(st.room);if(st.from!==null&&st.to!==null)for(var k=st.from;k<st.to;k++)if(closed(k)){st.from=st.to=null;say("Ces dates viennent d’être prises : choisissez-en d’autres.");break;}draw();update();}
+  else draw();
  }).catch(function(){});
 }
 })();`;
@@ -51969,7 +52062,7 @@ if(C.preview){
     const unit = { per_slot: "cr\xE9neau", per_person_slot: "personne et cr\xE9neau", per_day: "jour" }[r.pricingMode];
     return `${euro3(r.price)} / ${unit}`;
   }
-  var byOrder2 = (a, b) => (a.order || 0) - (b.order || 0);
+  var byOrder3 = (a, b) => (a.order || 0) - (b.order || 0);
   var publicSection = (book, kind) => book.sections.find((s) => s.kind === kind && s.enabled && s.privacy === "public");
   function photoIdsNeeded(site, book, menu) {
     const ids = /* @__PURE__ */ new Set();
@@ -52053,9 +52146,9 @@ if(C.preview){
       const url = safeUrl(b.url);
       return url && b.text.trim() ? `<div class="wrap narrow" style="padding:16px 20px"><a class="btn" href="${esc2(url)}" rel="noopener">${esc2(b.text)}</a></div>` : "";
     }).join("");
-    const accommodations = settings.accommodations.filter((a) => a.active).sort(byOrder2);
-    const services = settings.services.filter((s) => s.active).sort(byOrder2);
-    const resources = settings.resources.filter((r) => r.active).sort(byOrder2);
+    const accommodations = settings.accommodations.filter((a) => a.active).sort(byOrder3);
+    const services = settings.services.filter((s) => s.active).sort(byOrder3);
+    const resources = settings.resources.filter((r) => r.active).sort(byOrder3);
     const extraOf = (id) => site.extras[id] || { description: "", photos: [], keywords: "" };
     const roomText = (a) => extraOf(a.id).description.trim() || a.description.trim();
     const capacity = (a) => a.maxGuests > 0 ? a.minGuests > 0 && a.minGuests < a.maxGuests ? `${a.minGuests} \xE0 ${a.maxGuests} personnes` : `Jusqu'\xE0 ${a.maxGuests} personne${a.maxGuests > 1 ? "s" : ""}` : "";
@@ -52100,32 +52193,7 @@ if(C.preview){
       const items = discounts.map((d) => `<li>${d.percent.toLocaleString("fr-FR")} % de remise \xE0 partir de ${d.minNights} nuits</li>`).join("");
       return compact ? `<p class="bk-disc"><strong>S\xE9jours longs :</strong></p><ul class="clean">${items}</ul>` : `<h2>S\xE9jours longs</h2><ul class="clean">${items}</ul>`;
     };
-    const bookingData = () => {
-      const start = todayIso4();
-      const days2 = 540;
-      const useRates = ratesEnabled(settings);
-      const rules = hasOpeningRules(settings);
-      const rooms = accommodations.map((a) => {
-        const p = [];
-        const c = [];
-        for (let i = 0; i < days2; i++) {
-          const d = addDaysIso(start, i);
-          p.push(useRates ? nightRate(a.id, d, a.basePrice, settings).price : a.basePrice);
-          if (rules && !isOpenNight(d, settings)) c.push(i);
-        }
-        return { id: a.id, n: a.name, i: a.baseGuestsCount, x: a.extraGuestPrice, mg: a.maxGuests, ma: a.maxAdults || 0, mc: a.maxChildren ?? -1, p, c };
-      });
-      const sup = services.filter((s) => s.billing === "supplement" && !s.showInPlanning).map((s) => {
-        const pr = {};
-        accommodations.forEach((a) => {
-          const price = supplementUnitPrice(s, a.id);
-          if ((!s.roomIds || s.roomIds.includes(a.id)) && price > 0) pr[a.id] = price;
-        });
-        return { id: s.id, n: s.name, u: s.unit, l: supplementUnitLabel(s), mx: s.maxQuantity && s.maxQuantity > 0 ? s.maxQuantity : 10, pr };
-      }).filter((s) => Object.keys(s.pr).length > 0);
-      const disc = settings.pricing.longStayDiscounts.filter((d) => d.minNights > 0 && d.percent > 0).map((d) => ({ n: d.minNights, p: d.percent }));
-      return { start, rooms, sup, disc };
-    };
+    const bookingData = () => buildBookingData(settings);
     const formHtml = (kind) => {
       const hp = `<div class="hp" aria-hidden="true"><label>Ne pas remplir<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>`;
       const who = `<div class="row"><div><label for="${kind}-name">Votre nom</label><input id="${kind}-name" name="name" required autocomplete="name"></div><div><label for="${kind}-contact">E-mail ou t\xE9l\xE9phone</label><input id="${kind}-contact" name="contact" required autocomplete="email"></div></div>`;
@@ -52796,7 +52864,8 @@ Sitemap: ${base}sitemap.xml
             /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("p", { className: "font-semibold text-neutral-800", children: "4. Faire vivre le site" }),
               /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("ul", { className: "list-disc pl-5 space-y-1", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Apr\xE8s une modification de texte, de photo, de page ou de r\xE9glage : r\xE9g\xE9n\xE9rez le zip et remplacez les fichiers du site (sur Netlify Drop : d\xE9posez le nouveau dossier sur le site existant)." }),
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Apr\xE8s une modification de texte, de photo, de page ou de r\xE9glage du site : r\xE9g\xE9n\xE9rez le zip et remplacez les fichiers (sur Netlify Drop : d\xE9posez le nouveau dossier sur le site existant)." }),
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Les prix, remises (s\xE9jour long, derni\xE8re minute), services, taxe de s\xE9jour, fermetures et nuits d\xE9j\xE0 r\xE9serv\xE9es du calendrier n'ont pas besoin de r\xE9g\xE9n\xE9ration : le site les relit dans l'application \xE0 chaque visite (connecteur Google \xE0 jour, livret d'accueil publi\xE9, application ouverte au moins une fois depuis le changement)." }),
                 /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Les messages et demandes du site arrivent dans l'application si le connecteur Google est install\xE9 et le livret d'accueil publi\xE9 ; sinon ils ouvrent la messagerie du visiteur." })
               ] })
             ] })
