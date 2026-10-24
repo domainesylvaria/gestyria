@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v166</title>
-  <meta name="application-name" content="Gestyria v166" />
+  <title>Gestyria v167</title>
+  <meta name="application-name" content="Gestyria v167" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1378,6 +1378,12 @@ var DomaineAppBundle = (() => {
     });
     return hits;
   }
+  var POSITIVE_WORDS = /\b(pratique|joli|jolie|beau|belle|magnifique|superbe|super|parfait|parfaite|agreable|apprecie|apprecies|appreciee|confortable|propre|excellent|excellente|genial|geniale|top|charmant|charmante|accueillant|accueillante|sympa|sympathique|calme|spacieux|spacieuse|delicieux|delicieuse|bon|bonne|bien|ravi|ravie|content|contente|satisfait|satisfaite|recommande|merci|adore|adorable|plaisant|plaisante|reposant|reposante|soigne|soignee|equipe|equipee|fonctionnel|fonctionnelle|idyllique|exceptionnel|exceptionnelle)\b/;
+  var NEGATIVE_WORDS = /\b(pas|ne|n|jamais|aucun|aucune|rien|manque|manquait|dommage|decu|decue|deception|mal|mauvais|mauvaise|sale|sales|froid|froide|bruit|bruyant|bruyante|probleme|problemes|trop|impossible|desagreable|desagreables|malaise|malaises|gene|genant|genante|vetuste|use|usee|defaut|defauts|casse|cassee|insuffisant|insuffisante|petit|petite|souci|soucis|attente|cher|chere|decevant|decevante|inconfortable|bof|moyen|moyenne|nul|nulle|honte|reproche|regrette|regret)\b/;
+  function isPositiveSentence(sentence2) {
+    const n = normalizeText(sentence2).replace(/['’]/g, " ");
+    return POSITIVE_WORDS.test(n) && !NEGATIVE_WORDS.test(n);
+  }
   function themeStats(reviews, themes) {
     const map = /* @__PURE__ */ new Map();
     themes.filter((t) => t.active).forEach((theme) => map.set(theme.id, { theme, mentions: 0, positive: 0, negative: 0, average: 0, goodQuotes: [], badQuotes: [] }));
@@ -1393,7 +1399,7 @@ var DomaineAppBundle = (() => {
         st.mentions++;
         sums.set(hit.themeId, (sums.get(hit.themeId) || 0) + r.guestRating);
         const quote = { text: hit.sentence, author: r.authorName, rating: r.guestRating };
-        if (r.guestRating >= 4) {
+        if (r.guestRating >= 4 || isPositiveSentence(hit.sentence)) {
           st.positive++;
           if (st.goodQuotes.length < 3) st.goodQuotes.push(quote);
         } else {
@@ -16419,7 +16425,7 @@ function icalExportOutput_(e) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "166";
+  var APP_VERSION = "167";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -40941,7 +40947,7 @@ Cliquer pour modifier le tarif` : void 0,
     const count = inPeriod.length;
     const average = count ? inPeriod.reduce((s, r) => s + r.guestRating, 0) / count : 0;
     const good = count ? Math.round(inPeriod.filter((r) => r.guestRating >= 4).length / count * 100) : 0;
-    const strengths = stats.filter((s) => s.positive > 0 && s.average >= 4).sort((a, b) => b.positive - a.positive || b.average - a.average);
+    const strengths = stats.filter((s) => s.positive > 0 && s.positive >= s.negative).sort((a, b) => b.positive - a.positive || b.average - a.average);
     const improvements = stats.filter((s) => s.negative > 0).sort((a, b) => b.negative - a.negative || a.average - b.average);
     const maxMentions = Math.max(1, ...stats.map((s) => s.mentions));
     const [messages, setMessages] = (0, import_react79.useState)(null);
@@ -41063,7 +41069,7 @@ Cliquer pour modifier le tarif` : void 0,
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("span", { className: "w-28 shrink-0 text-right font-mono text-[11px] text-neutral-600", children: s.mentions ? `${s.mentions} \xB7 moy. ${avgText(s.average)}` : "-" })
         ] }) }, s.theme.id)) }),
-        /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("p", { className: "text-[10px] text-neutral-400", children: "Vert : avis not\xE9s 4 ou 5. Orange : avis not\xE9s 3 ou moins." })
+        /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("p", { className: "text-[10px] text-neutral-400", children: "Vert : avis not\xE9s 4 ou 5, et phrases positives des avis moins bien not\xE9s. Orange : phrases des avis not\xE9s 3 ou moins qui ne sont pas positives." })
       ] }),
       commented > 0 && /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("div", { className: "grid grid-cols-1 lg:grid-cols-2 gap-4", children: [
         /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("section", { className: card3, "data-strengths": true, children: [
