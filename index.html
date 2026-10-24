@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v178</title>
-  <meta name="application-name" content="Gestyria v178" />
+  <title>Gestyria v179</title>
+  <meta name="application-name" content="Gestyria v179" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16488,7 +16488,7 @@ function icalExportOutput_(e) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "178";
+  var APP_VERSION = "179";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -50955,7 +50955,7 @@ body { font-family: ${fontName(doc.font, doc.font)}; font-size: ${doc.size}pt; }
                   if (!multiple && ids[0]) {
                     onChange([ids[0]]);
                     onClose();
-                  } else setChosen((c) => [...c, ...ids]);
+                  } else setChosen((c) => Array.from(/* @__PURE__ */ new Set([...c, ...ids])));
                 }
               }
             )
@@ -50975,7 +50975,7 @@ body { font-family: ${fontName(doc.font, doc.font)}; font-size: ${doc.size}pt; }
             {
               type: "button",
               onClick: () => {
-                onChange(chosen);
+                onChange(Array.from(new Set(chosen)));
                 onClose();
               },
               className: "px-4 py-2 text-xs font-bold text-white bg-sy-325032 hover:bg-sy-253d25 rounded-xl cursor-pointer",
@@ -50987,8 +50987,9 @@ body { font-family: ${fontName(doc.font, doc.font)}; font-size: ${doc.size}pt; }
       document.body
     );
   };
-  var PhotoField = ({ ids, multiple = true, onChange, onToast, label }) => {
+  var PhotoField = ({ ids: rawIds, multiple = true, onChange, onToast, label }) => {
     const [open, setOpen] = (0, import_react118.useState)(false);
+    const ids = Array.from(new Set(rawIds));
     return /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("div", { className: "space-y-1.5", children: [
       label && /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700", children: label }),
       /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("div", { className: "flex flex-wrap items-center gap-2", children: [
