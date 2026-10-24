@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v167</title>
-  <meta name="application-name" content="Gestyria v167" />
+  <title>Gestyria v168</title>
+  <meta name="application-name" content="Gestyria v168" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -8757,6 +8757,7 @@ var DomaineAppBundle = (() => {
         }
       });
     }
+    const hasGuestsOn = (zoneId, date) => (byRoom.has(zoneId) || zoneById.get(zoneId)?.isRoom ? byRoom.get(zoneId) || [] : stays).some((r) => r.checkIn <= date && date <= r.checkOut);
     hk.recurring.filter((rule) => rule.active && rule.everyDays > 0 && rule.startDate).forEach((rule) => {
       let first = rule.startDate;
       const lower = from > startFrom ? from : startFrom;
@@ -8767,6 +8768,7 @@ var DomaineAppBundle = (() => {
       for (let date = first; date <= to; date = addDays(date, rule.everyDays)) {
         const id = `rec_${rule.id}_${date}`;
         const saved = stored[id];
+        if (!saved && rule.onlyWhenOccupied && !hasGuestsOn(rule.zoneId, date)) continue;
         if (saved) {
           result.set(id, view(saved, true));
         } else {
@@ -16425,7 +16427,7 @@ function icalExportOutput_(e) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "167";
+  var APP_VERSION = "168";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -18625,6 +18627,21 @@ function icalExportOutput_(e) {
                 /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Field, { label: "Heure", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("input", { type: "time", value: r.time, onChange: (e) => updateRule(r.id, { time: e.target.value }), className: timeInput }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Field, { label: "Check-list", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Select, { value: r.checklistId, onChange: (v) => updateRule(r.id, { checklistId: v }), options: checklistOptions }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Field, { label: "Dur\xE9e", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(NumberInput, { value: r.estimatedMinutes, onChange: (v) => updateRule(r.id, { estimatedMinutes: v ?? 0 }), suffix: "min" }) })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("label", { className: "flex items-start gap-2 text-[11px] text-neutral-700 cursor-pointer", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+                  "input",
+                  {
+                    type: "checkbox",
+                    checked: !!r.onlyWhenOccupied,
+                    onChange: (e) => updateRule(r.id, { onlyWhenOccupied: e.target.checked }),
+                    className: "mt-0.5"
+                  }
+                ),
+                /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("span", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("b", { children: "Seulement les jours avec des clients" }),
+                  " : pas de t\xE2che ni d'alerte quand il n'y a personne (s\xE9jour en cours, arriv\xE9e ou d\xE9part). Pour un h\xE9bergement, ses propres s\xE9jours ; pour un espace commun, tout l'\xE9tablissement."
+                ] })
               ] })
             ] }, r.id))
           ] }),
