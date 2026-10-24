@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v183</title>
-  <meta name="application-name" content="Gestyria v183" />
+  <title>Gestyria v184</title>
+  <meta name="application-name" content="Gestyria v184" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3049,8 +3049,13 @@ var DomaineAppBundle = (() => {
       lastGeneratedAt: str(raw.lastGeneratedAt)
     };
   }
+  var storedSiteReader = () => void 0;
+  function registerSiteReader(reader) {
+    storedSiteReader = reader;
+  }
   function readSite(settings) {
-    return normalizeSite(settings.modules.website?.settings);
+    const own = storedSiteReader();
+    return normalizeSite(own !== void 0 ? own : settings.modules.website?.settings);
   }
   function cleanDomain(input4) {
     const d = String(input4 || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/:\d+$/, "");
@@ -10789,17 +10794,60 @@ var DomaineAppBundle = (() => {
 
   // src/modules/siteweb/store.ts
   var import_react15 = __require("react");
-  var getSite = (settings = getSettings()) => readSite(settings);
-  function saveSite(settings, next, message) {
-    const current2 = settings.modules.website || { enabled: false };
-    saveSettings(
-      { ...settings, modules: { ...settings.modules, website: { ...current2, settings: next } } },
-      message
+  var SITE_CONTENT_KEY = "domaine_sylvaria_site_content_v1";
+  var siteListeners = /* @__PURE__ */ new Set();
+  var siteVersion = 0;
+  var notifySite = () => {
+    siteVersion++;
+    siteListeners.forEach((l) => l());
+  };
+  function readOwnSite() {
+    try {
+      const raw = localStorage.getItem(SITE_CONTENT_KEY);
+      return raw === null ? void 0 : JSON.parse(raw);
+    } catch {
+      return void 0;
+    }
+  }
+  registerSiteReader(readOwnSite);
+  try {
+    window.addEventListener("storage", (e) => {
+      if (e.key === SITE_CONTENT_KEY) notifySite();
+    });
+  } catch {
+  }
+  function useSiteVersion() {
+    return (0, import_react15.useSyncExternalStore)(
+      (cb) => {
+        siteListeners.add(cb);
+        return () => {
+          siteListeners.delete(cb);
+        };
+      },
+      () => siteVersion,
+      () => siteVersion
     );
+  }
+  var getSite = (settings = getSettings()) => readSite(settings);
+  function saveSite(_settings, next, message) {
+    setItemOrThrow(SITE_CONTENT_KEY, JSON.stringify(next));
+    notifySite();
+    logEvent("info", message);
     try {
       window.dispatchEvent(new CustomEvent("domaine_sylvaria_trigger_sync"));
     } catch {
     }
+  }
+  function readSiteForSync() {
+    const own = readOwnSite();
+    if (own !== void 0) return own;
+    const legacy = getSettings().modules.website?.settings;
+    return legacy && typeof legacy === "object" && Object.keys(legacy).length > 0 ? legacy : void 0;
+  }
+  function writeSiteFromSync(value) {
+    if (value && typeof value === "object") localStorage.setItem(SITE_CONTENT_KEY, JSON.stringify(value));
+    else localStorage.removeItem(SITE_CONTENT_KEY);
+    notifySite();
   }
   var LIBRARY_STORAGE_KEY = "domaine_sylvaria_site_library_v1";
   function read3() {
@@ -10968,6 +11016,13 @@ var DomaineAppBundle = (() => {
       kind: "map",
       read: readLibraryForSync,
       write: (value) => writeLibraryFromSync(isPlainObject(value) ? value : null)
+    },
+    {
+      id: "siteContent",
+      label: "Contenu du site web",
+      kind: "replace",
+      read: readSiteForSync,
+      write: writeSiteFromSync
     },
     {
       id: "reviewMeta",
@@ -16522,7 +16577,7 @@ function siteAvailability_(list, todayIso) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "183";
+  var APP_VERSION = "184";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -52701,13 +52756,50 @@ Sitemap: ${base}sitemap.xml
           "Derni\xE8re g\xE9n\xE9ration : ",
           new Date(site.lastGeneratedAt).toLocaleString("fr-FR")
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("details", { className: "text-xs text-neutral-600", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("summary", { className: "cursor-pointer font-semibold text-neutral-800", children: "Comment mettre le site en ligne ?" }),
-          /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("ol", { className: "list-decimal pl-5 mt-2 space-y-1", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "D\xE9compressez le .zip, puis envoyez tout son contenu \xE0 la racine de votre h\xE9bergement (FTP, gestionnaire de fichiers de l'h\xE9bergeur)." }),
-            /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Sans h\xE9bergeur : d\xE9posez le dossier sur un service gratuit de pages statiques (Netlify, Cloudflare Pages, GitHub Pages)." }),
-            /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Faites pointer votre nom de domaine vers l'h\xE9bergement (r\xE9glage DNS chez votre registrar)." }),
-            /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Apr\xE8s chaque modification, g\xE9n\xE9rez de nouveau le site et remplacez les fichiers." })
+        /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("details", { className: "text-xs text-neutral-600", open: true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("summary", { className: "cursor-pointer font-semibold text-neutral-800", children: "Mettre le site en ligne, pas \xE0 pas" }),
+          /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { className: "mt-2 space-y-3", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("p", { className: "font-semibold text-neutral-800", children: "1. Pr\xE9parer le fichier" }),
+              /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("ol", { className: "list-decimal pl-5 space-y-1", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "V\xE9rifiez l'aper\xE7u ci-dessus (ordinateur, tablette, t\xE9l\xE9phone) et lisez les avertissements \xE9ventuels en orange." }),
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Cliquez sur \xAB G\xE9n\xE9rer et t\xE9l\xE9charger le site \xBB : un fichier .zip est enregistr\xE9 dans le dossier T\xE9l\xE9chargements de votre appareil." }),
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Faites un clic droit sur ce fichier, puis \xAB Extraire tout \xBB (Windows) ou double-cliquez dessus (Mac) : vous obtenez un dossier. Son contenu (index.html, style.css, assets\u2026) est le site entier." }),
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Pour essayer sans rien envoyer : ouvrez le fichier index.html du dossier dans votre navigateur." })
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("p", { className: "font-semibold text-neutral-800", children: "2. Choisir o\xF9 le mettre (au choix)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("ul", { className: "list-disc pl-5 space-y-1", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("li", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("strong", { children: "Le plus simple et gratuit :" }),
+                  " Netlify Drop. Allez sur app.netlify.com/drop, cr\xE9ez un compte gratuit, puis glissez le dossier extrait dans la zone indiqu\xE9e. Le site est en ligne en quelques secondes, avec une adresse en .netlify.app."
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("li", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("strong", { children: "Chez votre h\xE9bergeur (OVH, o2switch, IONOS\u2026) :" }),
+                  " ouvrez le gestionnaire de fichiers de votre espace (ou un logiciel FTP comme FileZilla), allez dans le dossier public (souvent \xAB www \xBB ou \xAB public_html \xBB) et envoyez tout le contenu du dossier extrait, sans le dossier lui-m\xEAme."
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("li", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("strong", { children: "Autres services gratuits :" }),
+                  " Cloudflare Pages ou GitHub Pages fonctionnent de la m\xEAme fa\xE7on (on y d\xE9pose le dossier tel quel)."
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("p", { className: "font-semibold text-neutral-800", children: "3. Utiliser votre propre nom de domaine (facultatif)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("ol", { className: "list-decimal pl-5 space-y-1", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Achetez le nom chez un registrar (OVH, Gandi, IONOS\u2026) si ce n'est pas d\xE9j\xE0 fait." }),
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Dans l'application, ouvrez R\xE9glages, saisissez le nom de domaine (ex. www.mondomaine.fr), enregistrez, puis g\xE9n\xE9rez de nouveau le site : le fichier CNAME et le plan du site sont ajout\xE9s." }),
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Chez Netlify (ou votre h\xE9bergeur), ajoutez ce domaine dans \xAB Domain management \xBB et notez les valeurs DNS demand\xE9es ; chez le registrar, saisissez ces valeurs dans la zone DNS. La propagation prend de quelques minutes \xE0 24 h." })
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("p", { className: "font-semibold text-neutral-800", children: "4. Faire vivre le site" }),
+              /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("ul", { className: "list-disc pl-5 space-y-1", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Apr\xE8s une modification de texte, de photo, de page ou de r\xE9glage : r\xE9g\xE9n\xE9rez le zip et remplacez les fichiers du site (sur Netlify Drop : d\xE9posez le nouveau dossier sur le site existant)." }),
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("li", { children: "Les messages et demandes du site arrivent dans l'application si le connecteur Google est install\xE9 et le livret d'accueil publi\xE9 ; sinon ils ouvrent la messagerie du visiteur." })
+              ] })
+            ] })
           ] })
         ] })
       ] })
@@ -52824,7 +52916,8 @@ Sitemap: ${base}sitemap.xml
   ];
   var WebsiteView = ({ reservations, externalReviews, onToast }) => {
     const settings = useSettings();
-    const saved = (0, import_react123.useMemo)(() => getSite(settings), [settings]);
+    const siteVersion2 = useSiteVersion();
+    const saved = (0, import_react123.useMemo)(() => getSite(settings), [settings, siteVersion2]);
     const [draft, setDraft] = (0, import_react123.useState)(null);
     const [view, setView] = (0, import_react123.useState)("pages");
     const site = draft || saved;
