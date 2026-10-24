@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v182</title>
-  <meta name="application-name" content="Gestyria v182" />
+  <title>Gestyria v183</title>
+  <meta name="application-name" content="Gestyria v183" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12500,7 +12500,7 @@ var DomaineAppBundle = (() => {
   }
   function getAppsScriptCode() {
     return `// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V24)
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V25)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -12580,6 +12580,7 @@ var DomaineAppBundle = (() => {
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
 // V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Domaine Sylvaria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V25 : disponibilit\xE9s du site web (action "siteAvailability" : pour chaque h\xE9bergement, les dates d'arriv\xE9e et de d\xE9part des s\xE9jours en cours ou \xE0 venir, sans aucune donn\xE9e personnelle ; l'identifiant public du livret publi\xE9 sert de laissez-passer). Adresse en ligne par d\xE9faut : /gestyria/. Aucune nouvelle autorisation.
 // V24 : saisie d'une commande de repas par l'administratrice, y compris apr\xE8s coup (action "mealOrderAdmin" : jour pass\xE9 accept\xE9, statut Servie, rattach\xE9e au s\xE9jour, sans e-mail ni limite d'heure). R\xE9serv\xE9e \xE0 la cl\xE9 de l'administratrice ; les clients restent soumis aux jours et heures limites. Aucune nouvelle autorisation.
 // Mise \xE0 jour depuis la V10 \xE0 V16 : collez TOUT ce code (jusqu'\xE0 la derni\xE8re ligne), puis
 // D\xE9ployer > G\xE9rer les d\xE9ploiements > crayon > Nouvelle version > D\xE9ployer (aucune nouvelle autorisation).
@@ -13274,7 +13275,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 24;
+var CONNECTOR_VERSION = 25;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Domaine Sylvaria - Photos m\xE9nage";
@@ -13495,6 +13496,12 @@ function routeGetV10_(e, action) {
   if (action === "icalExportInfo") {
     if (!isAdminRequest_(e, null)) return keyRequiredResponse_();
     return { status: "success", version: CONNECTOR_VERSION, token: PropertiesService.getScriptProperties().getProperty(ICAL_EXPORT_PROP) || "" };
+  }
+  // V25 : nuits d\xE9j\xE0 prises par h\xE9bergement, pour le calendrier du site web (aucune donn\xE9e personnelle) ; prot\xE9g\xE9 par l'identifiant public du livret publi\xE9
+  if (action === "siteAvailability") {
+    var avCtx = bookContext_(p.id, "", "");
+    if (avCtx.error) return avCtx.error;
+    return siteAvailability_(avCtx.store && avCtx.store.reservationsList, new Date().toISOString().slice(0, 10));
   }
   if (action === "tasks") {
     if (!isAdminRequest_(e, null)) return keyRequiredResponse_();
@@ -14965,7 +14972,7 @@ function sendStayLink_(data) {
 // V16 : DEMANDES D'AVIS AUTOMATIQUES APR\xC8S LE S\xC9JOUR (FACULTATIF) + NOTES PLAUSIBLES
 // =========================================================================
 
-var DEFAULT_APP_URL_ = "https://domainesylvaria.github.io/sylvaria/";
+var DEFAULT_APP_URL_ = "https://domainesylvaria.github.io/gestyria/";
 var APP_URL_PROP = "ADRESSE_APPLICATION";
 
 // Adresse en ligne de l'application, transmise par l'app (administratrice, connecteur prot\xE9g\xE9) ; \xE0 d\xE9faut, l'adresse par d\xE9faut
@@ -15733,7 +15740,28 @@ function icalExportOutput_(e) {
   return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.ICAL);
 }
 
-// ===== FIN DU CONNECTEUR (V24) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== V25 : disponibilit\xE9s pour le calendrier du site web =====
+// Pour chaque h\xE9bergement : les s\xE9jours en cours ou \xE0 venir, en dates seulement (arriv\xE9e, d\xE9part). Ni nom, ni prix, ni plateforme.
+// Les s\xE9jours annul\xE9s et ceux termin\xE9s avant aujourd'hui sont \xE9cart\xE9s.
+function siteAvailability_(list, todayIso) {
+  var day = /^\\d{4}-\\d{2}-\\d{2}$/;
+  var rooms = {};
+  listOf_(list).forEach(function(r) {
+    if (!r || !r.id || !day.test(String(r.checkIn)) || !day.test(String(r.checkOut))) return;
+    if (r.reservationStatus === "cancelled" || r.icalCancelled) return;
+    if (r.checkOut <= r.checkIn || r.checkOut < todayIso) return;
+    var room = String(r.roomId || "").toLowerCase();
+    if (!/^[a-z0-9_-]{1,60}$/.test(room)) return;
+    if (!rooms[room]) rooms[room] = [];
+    rooms[room].push([String(r.checkIn), String(r.checkOut)]);
+  });
+  Object.keys(rooms).forEach(function(k) {
+    rooms[k].sort(function(a, b) { return a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0; });
+  });
+  return { status: "success", version: CONNECTOR_VERSION, today: todayIso, rooms: rooms };
+}
+
+// ===== FIN DU CONNECTEUR (V25) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
 
@@ -16494,7 +16522,7 @@ function icalExportOutput_(e) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "182";
+  var APP_VERSION = "183";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -51680,9 +51708,20 @@ function idx(n){return n-S;}
 function closed(n){var r=st.room,i=idx(n);if(!r||i<0||i>=r.p.length)return true;return r.cs[i]===1;}
 function night(n){var r=st.room,g=guests(),i=idx(n);var extra=r.x>0?(Math.max(0,g.a-r.i)+g.c)*r.x:0;return r.p[i]+extra;}
 function fill(sel,from,to,keep){var h="";for(var i=from;i<=to;i++)h+="<option value=\""+i+"\">"+i+"</option>";sel.innerHTML=(from>0&&sel===ad?"<option value=\"\">–</option>":"")+h;if(keep>=from&&keep<=to)sel.value=""+keep;}
+var avail=null;
+/* Nuits fermées par le paramétrage + nuits déjà prises (disponibilités lues auprès du connecteur, dates seulement) */
+function buildClosed(r){
+ r.cs={};var i,k;
+ for(i=0;i<r.c.length;i++)r.cs[r.c[i]]=1;
+ var list=avail&&avail[String(r.id).toLowerCase()];
+ if(list)for(i=0;i<list.length;i++){
+  var a=dnum(list[i][0])-S,b=dnum(list[i][1])-S;
+  for(k=Math.max(0,a);k<b&&k<r.p.length;k++)r.cs[k]=1;
+ }
+}
 function onRoom(){
  var r=roomOf(rs.value);st.room=r;st.from=st.to=null;
- if(r){r.cs={};for(var i=0;i<r.c.length;i++)r.cs[r.c[i]]=1;
+ if(r){buildClosed(r);
   var mg=r.mg||6,ma=r.ma>0?Math.min(r.ma,mg):mg,mc=r.mc>=0?Math.min(r.mc,mg-1):mg-1;
   fill(ad,1,ma,+ad.value);fill(ch,0,Math.max(0,mc),+ch.value);}
  else{ad.innerHTML="<option value=\"\">–</option>";ch.innerHTML="<option value=\"0\">0</option>";}
@@ -51788,6 +51827,13 @@ rs.addEventListener("change",onRoom);
 ad.addEventListener("change",refresh);ch.addEventListener("change",refresh);
 F.addEventListener("reset",function(){setTimeout(function(){supFor="";onRoom();},0);});
 draw();
+if(C.connector&&C.id&&window.fetch){
+ fetch(C.connector+"?action=siteAvailability&id="+encodeURIComponent(C.id)).then(function(r){return r.json();}).then(function(j){
+  if(!j||j.status!=="success"||!j.rooms)return;
+  avail=j.rooms;
+  if(st.room){buildClosed(st.room);if(st.from!==null&&st.to!==null)for(var k=st.from;k<st.to;k++)if(closed(k)){st.from=st.to=null;say("Ces dates viennent d’être prises : choisissez-en d’autres.");break;}draw();update();}
+ }).catch(function(){});
+}
 })();`;
   var SITE_JS = `(function(){
 var C=window.SITE||{};
@@ -52324,6 +52370,7 @@ Sitemap: ${base}sitemap.xml
     }
     if (missing.size > 0) warnings.push(`${missing.size} photo${missing.size > 1 ? "s" : ""} introuvable${missing.size > 1 ? "s" : ""} (retir\xE9e${missing.size > 1 ? "s" : ""} de la phototh\xE8que ou illisible${missing.size > 1 ? "s" : ""}) : elle${missing.size > 1 ? "s ne sont" : " n'est"} pas affich\xE9e${missing.size > 1 ? "s" : ""}.`);
     if (!est.email.trim() && !ctx.connectorUrl) warnings.push("Aucune adresse e-mail dans Param\xE9trage > \xC9tablissement : les formulaires ne pourront pas envoyer de message.");
+    if ((!ctx.connectorUrl || !ctx.publicId) && pages.some((p) => p.kind === "booking")) warnings.push("Le calendrier de r\xE9servation ne montrera pas les nuits d\xE9j\xE0 r\xE9serv\xE9es : il faut le connecteur Google (V25) et le livret d'accueil publi\xE9.");
     if (accommodations.length === 0) warnings.push("Aucun h\xE9bergement actif : la page \xAB H\xE9bergements \xBB sera vide.");
     const empty = pages.filter((p) => !p.intro.trim() && p.blocks.length === 0 && ["home", "rooms", "booking"].includes(p.kind));
     if (empty.length > 0) warnings.push(`Pas d'introduction \xE9crite pour : ${empty.map((p) => p.title).join(", ")}.`);
@@ -52804,24 +52851,7 @@ Sitemap: ${base}sitemap.xml
             ]
           },
           t.id
-        )) }),
-        /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "ml-auto flex items-center gap-2", children: [
-          dirty && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("span", { className: "text-[11px] font-semibold text-amber-800", children: "Modifications non enregistr\xE9es" }),
-          /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)(
-            "button",
-            {
-              type: "button",
-              onClick: save,
-              disabled: !dirty,
-              className: "flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-sy-325032 hover:bg-sy-253d25 rounded-xl cursor-pointer disabled:opacity-40 min-h-[2.5rem]",
-              "data-site-save": true,
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Save, { className: "w-3.5 h-3.5" }),
-                " Enregistrer"
-              ]
-            }
-          )
-        ] })
+        )) })
       ] }),
       view === "pages" && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(PagesPanel, { site, settings, onChange: setDraft, onToast }),
       view === "library" && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(LibraryPanel, { site, onToast }),
@@ -52840,7 +52870,24 @@ Sitemap: ${base}sitemap.xml
             setDraft((d) => d ? { ...d, lastGeneratedAt: iso } : null);
           }
         }
-      )
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "sticky bottom-0 z-10 flex items-center justify-end gap-3 border-t border-neutral-200 bg-white/95 backdrop-blur-xs py-3", "data-sticky-actions": true, children: [
+        dirty && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("span", { className: "text-[11px] font-semibold text-amber-800", children: "Modifications non enregistr\xE9es" }),
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)(
+          "button",
+          {
+            type: "button",
+            onClick: save,
+            disabled: !dirty,
+            className: "flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-sy-325032 hover:bg-sy-253d25 rounded-xl cursor-pointer disabled:opacity-40 min-h-[2.5rem]",
+            "data-site-save": true,
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Save, { className: "w-3.5 h-3.5" }),
+              " Enregistrer"
+            ]
+          }
+        )
+      ] })
     ] });
   };
 
