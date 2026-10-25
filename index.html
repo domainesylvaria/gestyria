@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v187</title>
-  <meta name="application-name" content="Gestyria v187" />
+  <title>Gestyria v188</title>
+  <meta name="application-name" content="Gestyria v188" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2753,6 +2753,161 @@ var DomaineAppBundle = (() => {
     return { state: "ok" };
   }
 
+  // src/modules/siteweb/themes.ts
+  var SITE_STYLES = [
+    {
+      id: "classique",
+      label: "Classique",
+      description: "Titres \xE0 empattements, formes arrondies, l'ambiance chambres d'h\xF4tes.",
+      preview: { font: "Georgia, serif", radius: 999, weight: 600, letterSpacing: "0", upper: false, bg: "#ffffff", ink: "#1f2933" }
+    },
+    {
+      id: "moderne",
+      label: "Moderne",
+      description: "Caract\xE8res sans empattement, gros titres gras, boutons carr\xE9s, bandeau de couleur.",
+      preview: { font: "system-ui, sans-serif", radius: 6, weight: 800, letterSpacing: "-0.02em", upper: false, bg: "#ffffff", ink: "#16191d" }
+    },
+    {
+      id: "elegant",
+      label: "\xC9l\xE9gant",
+      description: "Titres fins a\xE9r\xE9s, menu en petites capitales, boutons \xE0 contour, beaucoup d'espace.",
+      preview: { font: "Georgia, serif", radius: 0, weight: 400, letterSpacing: "0.08em", upper: true, bg: "#fbfaf7", ink: "#2b2b2b" }
+    },
+    {
+      id: "chaleureux",
+      label: "Chaleureux",
+      description: "Fond cr\xE8me, grandes cartes tr\xE8s arrondies avec ombres douces, bandeau courbe.",
+      preview: { font: "Georgia, serif", radius: 22, weight: 600, letterSpacing: "0", upper: false, bg: "#fffaf4", ink: "#3a2c20" }
+    },
+    {
+      id: "epure",
+      label: "\xC9pur\xE9",
+      description: "Noir et blanc, filets fins, titres l\xE9gers tr\xE8s grands, aucune fioriture.",
+      preview: { font: '"Helvetica Neue", Arial, sans-serif', radius: 0, weight: 300, letterSpacing: "-0.01em", upper: false, bg: "#ffffff", ink: "#111111" }
+    }
+  ];
+  var isSiteStyleId = (v) => SITE_STYLES.some((s) => s.id === v);
+  function styleCss(id) {
+    switch (id) {
+      case "moderne":
+        return `
+:root{--r:6px}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+h1,h2,h3{font-family:inherit;font-weight:800;letter-spacing:-.02em}
+.top{background:#fff;border-bottom:0;box-shadow:0 1px 0 var(--line)}
+.brand{font-family:inherit;font-weight:800;letter-spacing:-.02em}
+nav a{border-radius:6px;font-weight:600}
+nav a[aria-current=page]{background:transparent;color:var(--cd);box-shadow:inset 0 -3px 0 var(--c);border-radius:0}
+.hero,.hero.has-photo{background:var(--c);color:var(--on)}
+.hero h1,.hero.has-photo h1{color:var(--on)}
+.hero .btn{background:#fff;color:var(--cd);border-color:#fff}
+.btn{border-radius:6px}
+.card,.review,.bk-step{border-radius:6px;border:0;box-shadow:0 2px 14px rgba(0,0,0,.08)}
+.gallery img,.dish img{border-radius:6px}
+section.alt{background:#f5f6f7}
+th{background:#eef0f1}
+.tags li{border-radius:6px}
+.note{border-radius:0 6px 6px 0}
+.cta{background:var(--cd)}
+`;
+      case "elegant":
+        return `
+:root{--r:2px}
+body{font-family:Georgia,"Times New Roman",serif;line-height:1.85;background:#fbfaf7}
+h1,h2,h3{font-weight:400;letter-spacing:.04em}
+h1{font-size:clamp(2.1rem,5vw,3.4rem);font-weight:300}
+.top{background:#fbfaf7}
+.brand{font-weight:400;letter-spacing:.12em;text-transform:uppercase;font-size:.95rem;white-space:nowrap}
+nav a{text-transform:uppercase;letter-spacing:.08em;font-size:.72rem;border-radius:0;padding:8px 8px;white-space:nowrap}
+nav a:hover{background:transparent;color:var(--cd)}
+nav a[aria-current=page]{background:transparent;color:var(--cd);border-bottom:1px solid var(--cd)}
+.hero,.hero.has-photo{background:var(--cd);color:#fff}
+.hero h1,.hero.has-photo h1{color:#fff}
+.hero .hero-in{padding:76px 20px 64px}
+.hero-home .hero-in{padding:130px 20px 110px}
+.btn{border-radius:0;background:transparent;color:var(--cd);border:1px solid var(--cd);letter-spacing:.12em;text-transform:uppercase;font-size:.8rem;font-weight:400;padding:13px 26px}
+.btn:hover{background:var(--cd);color:#fff;border-color:var(--cd)}
+.hero .btn,.hero.has-photo .btn{background:transparent;color:#fff;border-color:#fff}
+.hero .btn:hover,.hero.has-photo .btn:hover{background:#fff;color:var(--cd)}
+.card,.review,.bk-step{border-radius:0;border:1px solid var(--cm);background:#fff}
+.card .pic,.gallery img,.dish img{border-radius:0}
+section.block{padding:76px 0}
+section.alt{background:#f3f0ea}
+th{background:transparent;border-bottom:2px solid var(--cd);text-transform:uppercase;letter-spacing:.08em;font-size:.8rem}
+.tags li{border-radius:0;background:transparent}
+.note{background:#f3f0ea;border-radius:0}
+.bk-d,.bk-n{border-radius:0}
+.cta{background:var(--cd)}
+input,select,textarea{border-radius:0}
+`;
+      case "chaleureux":
+        return `
+:root{--r:24px}
+body{background:#fffaf4;color:#3a2c20}
+h1,h2,h3{color:#3a2c20}
+.muted{color:#6f5d4d}
+.top{background:rgba(255,250,244,.96)}
+nav a{border-radius:999px;font-weight:600}
+.hero{background:var(--cm);border-radius:0 0 44px 44px}
+.hero.has-photo{border-radius:0 0 44px 44px}
+.hero .hero-in{padding-bottom:64px}
+.btn{padding:14px 28px;box-shadow:0 4px 12px rgba(0,0,0,.12)}
+.btn.ghost{box-shadow:none}
+.card,.review,.bk-step{border:0;border-radius:24px;background:#fff;box-shadow:0 8px 26px rgba(80,50,20,.11)}
+.card .pic{border-radius:24px 24px 0 0}
+.gallery img,.dish img{border-radius:18px}
+section.alt{background:#f7eee2}
+section.block{padding:60px 0}
+th{background:#f7eee2}
+.note{background:#f7eee2;border-left-color:#c98a00;border-radius:0 18px 18px 0}
+.tags li{background:#f7eee2;border-color:#ead9bd}
+input,select,textarea{border-radius:14px}
+.bk-d{border-radius:12px}
+footer{background:#3a2c20}
+.cta{background:#c98a00;color:#fff;border-radius:44px 44px 0 0}
+.cta .btn{background:#fff;color:#7a5200}
+`;
+      case "epure":
+        return `
+:root{--r:0;--ink:#111;--muted:#555;--line:#d9d9d9}
+body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:#111;line-height:1.75}
+a{color:#111}
+h1,h2,h3{font-family:inherit;font-weight:300;letter-spacing:-.01em;color:#111}
+h1{font-size:clamp(2.4rem,6.5vw,4.4rem)}
+.top{background:#fff;border-bottom:1px solid #111}
+.brand{font-family:inherit;font-weight:700;letter-spacing:.02em}
+nav a{border-radius:0;font-size:.9rem}
+nav a:hover{background:transparent;text-decoration:underline;text-underline-offset:6px}
+nav a[aria-current=page]{background:transparent;color:#111;text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:2px}
+.hero{background:#fff;color:#111;border-bottom:1px solid #111}
+.hero.has-photo{background:#111;color:#fff}
+.hero.has-photo h1{color:#fff}
+.btn{border-radius:0;background:#111;border-color:#111;color:#fff;font-weight:500}
+.btn:hover{background:#333;border-color:#333}
+.btn.ghost{background:transparent;color:#111}
+.btn.ghost:hover{background:#f3f3f3}
+.hero.has-photo .btn{background:#fff;color:#111;border-color:#fff}
+.card,.review,.bk-step{border-radius:0;border:1px solid #111;background:#fff}
+.card .pic,.gallery img,.dish img{border-radius:0}
+section.alt{background:#f5f5f5}
+th{background:#111;color:#fff}
+.price{color:#111}
+.note{background:#f5f5f5;border-left:4px solid #111;border-radius:0}
+.tags li{border-radius:0;background:#fff;border-color:#111}
+input,select,textarea{border-radius:0;border-color:#111}
+.bk-d,.bk-n{border-radius:0}
+.bk-d.sel{background:#e9e9e9;border-color:#111}
+.bk-d.st,.bk-d.en{background:#111;color:#fff}
+.bk-d small{color:#111}.bk-d.st small,.bk-d.en small{color:#fff}
+footer{background:#111}
+.cta{background:#111}
+.stars{color:#111}
+`;
+      default:
+        return "";
+    }
+  }
+
   // src/modules/siteweb/content.ts
   var LIBRARY_PREFIX = "sl_";
   var isLibraryId = (id) => id.startsWith(LIBRARY_PREFIX);
@@ -2950,6 +3105,7 @@ var DomaineAppBundle = (() => {
       guestbook: { show: true },
       form: { contact: true, request: true },
       booking: { mode: "validation" },
+      style: "classique",
       lastGeneratedAt: ""
     };
   }
@@ -3048,6 +3204,7 @@ var DomaineAppBundle = (() => {
       guestbook: { show: isObj(raw.guestbook) ? bool(raw.guestbook.show, true) : true },
       form: { contact: bool(form.contact, true), request: bool(form.request, true) },
       booking: { mode: isObj(raw.booking) && raw.booking.mode === "auto" ? "auto" : "validation" },
+      style: isSiteStyleId(raw.style) ? raw.style : "classique",
       lastGeneratedAt: str(raw.lastGeneratedAt)
     };
   }
@@ -16971,7 +17128,7 @@ function siteRequestDecision_(data) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "187";
+  var APP_VERSION = "188";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -52163,7 +52320,7 @@ ${r.current.trim()}` : ""
       on: onWhite >= 4.5 ? "#ffffff" : "#1b1f23"
     };
   }
-  function siteCss(p) {
+  function siteCss(p, style = "classique") {
     return `:root{--c:${p.main};--cd:${p.dark};--cs:${p.soft};--cm:${p.mid};--on:${p.on};--ink:#1f2933;--muted:#5b6670;--line:#e5e8e6;--r:14px}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
@@ -52287,6 +52444,7 @@ form.bk{gap:18px}
 }
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 @media print{.top,.burger,form,footer,.cta{display:none}}
+${styleCss(style)}
 `;
   }
   var BOOKING_JS = String.raw`(function(){
@@ -53023,7 +53181,7 @@ ${who}<p class="muted small" id="bk-mode-note">${site.booking.mode === "auto" ? 
       return `<script type="application/ld+json">${JSON.stringify(data).replace(/</g, "\\u003c")}<\/script>`;
     };
     const config = (first) => `<script>window.SITE=${JSON.stringify({ connector: ctx.connectorUrl, id: ctx.publicId, email: est.email.trim(), preview, first }).replace(/</g, "\\u003c")};<\/script>`;
-    const css = siteCss(palette);
+    const css = siteCss(palette, site.style);
     const files = [];
     const pageInfo = [];
     const seoKeywords = site.seoKeywords.trim();
@@ -53467,6 +53625,40 @@ Sitemap: ${base}sitemap.xml
     const domainOk = !site.domain.trim() || !!cleanDomain(site.domain);
     const toggleReview = (id, on) => set({ reviews: { ...site.reviews, ids: on ? [...site.reviews.ids, id] : site.reviews.ids.filter((x) => x !== id) } });
     return /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "space-y-4", "data-site-settings": true, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)(Card3, { title: "Style du site", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("p", { className: "text-xs text-neutral-600", children: [
+          "Le style change la typographie, les formes, l'en-t\xEAte, les boutons et les cartes. Votre couleur principale (",
+          est.themeColor || "couleur de l'application",
+          ") est reprise partout."
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("div", { className: "grid grid-cols-2 lg:grid-cols-5 gap-2.5", role: "radiogroup", "aria-label": "Style du site", "data-site-styles": true, children: SITE_STYLES.map((s) => {
+          const active2 = site.style === s.id;
+          const main = est.themeColor || "#325032";
+          return /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)(
+            "button",
+            {
+              type: "button",
+              role: "radio",
+              "aria-checked": active2,
+              onClick: () => set({ style: s.id }),
+              className: `text-left rounded-xl border p-2.5 cursor-pointer transition-all ${active2 ? "border-sy-325032 ring-2 ring-sy-325032/30 bg-sy-325032/5" : "border-neutral-200 hover:border-neutral-300 bg-white"}`,
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("span", { className: "block rounded-lg px-3 py-3 mb-2 border border-neutral-100", style: { background: s.preview.bg }, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("span", { style: { display: "block", fontFamily: s.preview.font, fontWeight: s.preview.weight, letterSpacing: s.preview.letterSpacing, textTransform: s.preview.upper ? "uppercase" : "none", color: s.preview.ink, fontSize: 15, lineHeight: 1.2 }, children: "Domaine" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("span", { style: { display: "inline-block", marginTop: 8, padding: "3px 12px", fontSize: 10, fontWeight: 600, color: s.id === "elegant" ? main : "#fff", background: s.id === "elegant" ? "transparent" : s.id === "epure" ? "#111" : main, border: `1px solid ${s.id === "epure" ? "#111" : main}`, borderRadius: Math.min(s.preview.radius, 14) }, children: "R\xE9server" })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("span", { className: "block text-xs font-bold text-neutral-900", children: [
+                  s.label,
+                  active2 && " \u2713"
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("span", { className: "block text-[11px] text-neutral-500 leading-snug", children: s.description })
+              ]
+            },
+            s.id
+          );
+        }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(InfoNote, { children: "Le style est appliqu\xE9 \xE0 toutes les pages ; v\xE9rifiez le r\xE9sultat dans \xAB Aper\xE7u et g\xE9n\xE9ration \xBB. Il peut \xEAtre chang\xE9 \xE0 tout moment, vos textes et photos ne bougent pas." })
+      ] }),
       /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)(Card3, { title: "Nom de domaine", children: [
         /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Field, { label: "Nom de domaine du site", hint: "Exemple : www.domainesylvaria.fr. Vide : vous n'en avez pas encore, l'aper\xE7u fonctionne quand m\xEAme.", children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(TextInput, { value: site.domain, onChange: (v) => set({ domain: v }), placeholder: "www.mon-domaine.fr" }) }),
         !domainOk && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("p", { className: "text-xs text-red-700", children: "Ce n'est pas un nom de domaine valide (exemple : www.mon-domaine.fr)." }),
