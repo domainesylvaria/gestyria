@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v198</title>
-  <meta name="application-name" content="Gestyria v198" />
+  <title>Gestyria v199</title>
+  <meta name="application-name" content="Gestyria v199" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6650,7 +6650,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "198";
+  var APP_VERSION = "199";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -13923,7 +13923,7 @@ ${body}
   }
   function getAppsScriptCode() {
     return `// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V31)
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V32)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -14003,6 +14003,7 @@ ${body}
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
 // V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Domaine Sylvaria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V32 : si le PDF des CGV ne peut pas \xEAtre fabriqu\xE9, elles sont \xE9crites dans l'e-mail ; fonction essaiCgv() et point \xAB cgv \xBB dans \xAB V\xE9rifier le connecteur \xBB. Aucune nouvelle autorisation.
 // V31 : les conditions g\xE9n\xE9rales de vente (enregistr\xE9es dans l'application) sont jointes en PDF \xE0 l'e-mail de confirmation de r\xE9servation envoy\xE9 au client ; dans le livret, les services li\xE9s aux chambres (suppl\xE9ment chien, m\xE9nage\u2026) sont pr\xE9sent\xE9s avec chaque chambre et non plus seuls. Aucune nouvelle autorisation.
 // V30 : rappels automatiques d'acompte (r\xE9servations du site dont l'acompte demand\xE9 \xE0 l'avance n'est pas re\xE7u) : au client avant la date limite et une relance apr\xE8s, l'\xE9tablissement est pr\xE9venu ; r\xE9glables dans l'application. Les photos du livret et de la carte ne sont plus limit\xE9es \xE0 40 (stockage de l'appareil). Aucune nouvelle autorisation.
 // V29 : e-mails au client plus complets (confirmation, accus\xE9 de r\xE9ception, refus) : modalit\xE9s de r\xE8glement choisies dans l'application (acompte \xE0 l'avance et/ou paiement sur place), lien du livret d'accueil (petits-d\xE9jeuners et repas), coordonn\xE9es de l'\xE9tablissement en signature. Aucune nouvelle autorisation.
@@ -14704,7 +14705,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 31;
+var CONNECTOR_VERSION = 32;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Domaine Sylvaria - Photos m\xE9nage";
@@ -14821,6 +14822,8 @@ function diagnostic_() {
   add("appUrl", !!saved, saved || "");
   var settings = (store && store.appStores && store.appStores.settings) || {};
   add("email", !!establishmentEmail_(settings), establishmentEmail_(settings));
+  var cgvErr = PropertiesService.getScriptProperties().getProperty("CGV_ERREUR");
+  add("cgv", !!termsHtml_(store) && !cgvErr, !termsHtml_(store) ? "CGV pas encore re\xE7ues de l'application : enregistrez-les puis cliquez sur \xAB Enregistrer \xBB." : (cgvErr ? "PDF impossible : " + cgvErr : "CGV re\xE7ues"));
   return { status: "success", version: CONNECTOR_VERSION, checks: checks };
 }
 
@@ -17566,12 +17569,11 @@ function requestSummaryTable_(d) {
 // ===== V31 : conditions g\xE9n\xE9rales de vente jointes \xE0 la confirmation =====
 // L'application envoie ses CGV enregistr\xE9es (jeu \xAB termsPublished \xBB) ; le connecteur les met en page et les joint en PDF.
 // Retourne null si les CGV n'ont pas \xE9t\xE9 enregistr\xE9es ou si le PDF ne peut pas \xEAtre fabriqu\xE9 (l'e-mail part alors sans pi\xE8ce jointe).
-function termsPdf_(store) {
-  try {
-    var entry = store && store.appStores && store.appStores.termsPublished;
-    var t = entry && entry.value;
-    if (!isObject_(t) || listOf_(t.articles).length === 0) return null;
-    var html = "<html><body style=\\"font-family:Georgia,serif;font-size:11pt;color:#1f2937;line-height:1.45\\">" +
+function termsHtml_(store) {
+  var entry = store && store.appStores && store.appStores.termsPublished;
+  var t = entry && entry.value;
+  if (!isObject_(t) || listOf_(t.articles).length === 0) return "";
+  var html = "<html><body style=\\"font-family:Georgia,serif;font-size:11pt;color:#1f2937;line-height:1.45\\">" +
       "<div style=\\"text-align:center;border-bottom:2px solid #325032;padding-bottom:8px;margin-bottom:14px\\">" +
       "<div style=\\"font-size:16pt;font-weight:bold;color:#325032;text-transform:uppercase\\">" + esc_(textOf_(t.title) || "Conditions g\xE9n\xE9rales de vente") + "</div>" +
       (textOf_(t.establishment) ? "<div style=\\"font-size:11pt\\">" + esc_(t.establishment) + "</div>" : "") +
@@ -17584,11 +17586,34 @@ function termsPdf_(store) {
         html += "<p style=\\"margin:0 0 4px;text-align:justify;white-space:pre-line\\">" + esc_(p) + "</p>";
       });
     });
-    html += "</body></html>";
-    return Utilities.newBlob(html, "text/html", "cgv.html").getAs("application/pdf").setName("Conditions g\xE9n\xE9rales de vente.pdf");
+  html += "</body></html>";
+  return html;
+}
+
+// PDF des CGV, ou null (l'erreur est gard\xE9e dans la propri\xE9t\xE9 CGV_ERREUR, visible dans \xAB V\xE9rifier le connecteur \xBB)
+function termsPdf_(store) {
+  var props = PropertiesService.getScriptProperties();
+  try {
+    var html = termsHtml_(store);
+    if (!html) return null;
+    var blob = Utilities.newBlob(html, "text/html", "cgv.html").getAs("application/pdf").setName("Conditions g\xE9n\xE9rales de vente.pdf");
+    props.deleteProperty("CGV_ERREUR");
+    return blob;
   } catch(errPdf) {
+    props.setProperty("CGV_ERREUR", String(errPdf).slice(0, 300));
     return null;
   }
+}
+
+// \xC0 lancer \xE0 la main : dit si les CGV sont arriv\xE9es de l'application et si le PDF se fabrique
+function essaiCgv() {
+  var store = loadAppData_(getTargetSpreadsheet());
+  if (!termsHtml_(store)) {
+    Logger.log("\u274C Les CGV ne sont pas dans le Google Sheet : dans l'application, enregistrez les CGV (Facturation > Conditions g\xE9n\xE9rales de vente) puis cliquez sur \xAB Enregistrer \xBB.");
+    return;
+  }
+  var pdf = termsPdf_(store);
+  Logger.log(pdf ? "\u2705 CGV re\xE7ues, PDF fabriqu\xE9 (" + pdf.getBytes().length + " octets)." : "\u274C CGV re\xE7ues mais PDF impossible : " + PropertiesService.getScriptProperties().getProperty("CGV_ERREUR"));
 }
 
 // kind : "received" (demande re\xE7ue), "confirmed" (r\xE9servation confirm\xE9e), "refused" (demande refus\xE9e)
@@ -17604,6 +17629,7 @@ function sendRequestMail_(ss, store, settings, d, kind, note) {
     if (kind === "confirmed") {
       var cgv = termsPdf_(store);
       if (cgv) attachments.push(cgv);
+      var cgvHtml = cgv ? "" : termsHtml_(store);
       subject = "votre r\xE9servation est confirm\xE9e";
       body = greeting +
         "<p style=\\"margin:0 0 12px\\">Nous avons le plaisir de vous confirmer votre r\xE9servation au <b>" + esc_(estName) + "</b>. Merci de votre confiance : nous sommes heureux de vous accueillir tr\xE8s prochainement.</p>" +
@@ -17620,6 +17646,11 @@ function sendRequestMail_(ss, store, settings, d, kind, note) {
       }
       if (cgv) {
         body += "<p style=\\"margin:20px 0 0\\">Vous trouverez en <b>pi\xE8ce jointe</b> nos conditions g\xE9n\xE9rales de vente (PDF), qui s'appliquent \xE0 votre r\xE9servation : merci d'en prendre connaissance.</p>";
+      }
+      if (cgvHtml) {
+        // PDF impossible : les CGV sont \xE9crites dans l'e-mail lui-m\xEAme
+        body += "<h3 style=\\"font-family:Georgia,serif;color:#325032;font-size:16px;margin:20px 0 8px\\">Conditions g\xE9n\xE9rales de vente</h3>" +
+          cgvHtml.replace(/^<html><body[^>]*>/, "").replace(/<\\/body><\\/html>$/, "");
       }
       body += "<p style=\\"margin:20px 0 0\\">Pour toute question, r\xE9pondez simplement \xE0 cet e-mail ou appelez-nous : nous restons \xE0 votre disposition.</p>";
     } else if (kind === "depositBefore" || kind === "depositLate") {
@@ -17758,7 +17789,7 @@ function purgeRequestPolice_(ss, todayIso) {
   });
   return purged;
 }
-// ===== FIN DU CONNECTEUR (V31) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== FIN DU CONNECTEUR (V32) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
 
