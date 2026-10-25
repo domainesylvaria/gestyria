@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v200</title>
-  <meta name="application-name" content="Gestyria v200" />
+  <title>Gestyria v201</title>
+  <meta name="application-name" content="Gestyria v201" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1087,7 +1087,8 @@ var DomaineAppBundle = (() => {
   }
   var EXTRA_ING = "ing:";
   var EXTRA_FREE = "cost:";
-  var isExtraLine = (itemId) => itemId.startsWith(EXTRA_ING) || itemId.startsWith(EXTRA_FREE);
+  var EXTRA_USE = "use:";
+  var isExtraLine = (itemId) => itemId.startsWith(EXTRA_ING) || itemId.startsWith(EXTRA_FREE) || itemId.startsWith(EXTRA_USE);
   function extraUnitCost(itemId, ingredients) {
     if (itemId.startsWith(EXTRA_FREE)) {
       const n = parseFloat(itemId.slice(EXTRA_FREE.length));
@@ -1104,8 +1105,9 @@ var DomaineAppBundle = (() => {
       out.count++;
       out.amount += o.total;
       o.lines.forEach((l) => {
-        const item2 = content.items.find((i) => i.id === l.itemId);
-        const unit = isExtraLine(l.itemId) ? extraUnitCost(l.itemId, ingredients) : item2 ? itemUnitCost(item2, dishes, ingredients) : null;
+        const used = l.itemId.startsWith(EXTRA_USE);
+        const item2 = content.items.find((i) => i.id === (used ? l.itemId.slice(EXTRA_USE.length) : l.itemId));
+        const unit = isExtraLine(l.itemId) && !used ? extraUnitCost(l.itemId, ingredients) : item2 ? itemUnitCost(item2, dishes, ingredients) : null;
         if (unit === null) {
           if (!out.unknownCosts.includes(l.name)) out.unknownCosts.push(l.name);
           return;
@@ -6650,7 +6652,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "200";
+  var APP_VERSION = "201";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -19543,7 +19545,8 @@ function purgeRequestPolice_(ss, todayIso) {
       id: i.id,
       name: i.name,
       category: i.category || "",
-      portionCost: Math.round((i.unit === "u" ? i.unitPrice : i.unitPrice * (i.weightGrams || 0) / 1e3) * 100) / 100
+      portionCost: Math.round((i.unit === "u" ? i.unitPrice : i.unitPrice * (i.weightGrams || 0) / 1e3) * 100) / 100,
+      unitLabel: i.unit === "u" ? "pi\xE8ce" : i.weightGrams ? `portion de ${i.weightGrams} g` : "portion"
     }));
   }
   function getMeals(settings = getSettings()) {
@@ -26583,7 +26586,19 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
     const moment2 = moments.find((m) => m.id === momentId);
     const stays = fixedReservation ? [fixedReservation] : reservations.filter((r) => !r.isBlocked && r.checkIn <= date && r.checkOut >= date);
     const stay = reservations.find((r) => r.id === reservationId);
-    const items = (moment2?.groups || []).flatMap((g) => g.items.map((i) => ({ ...i, category: g.category })));
+    const dishes = (0, import_react44.useMemo)(() => getLinkedDishes(), []);
+    const content = (0, import_react44.useMemo)(() => getMeals(), []);
+    const allIngredients = (0, import_react44.useMemo)(() => getLinkedIngredients(), []);
+    const ingById = (0, import_react44.useMemo)(() => new Map(allIngredients.map((i) => [i.id, i])), [allIngredients]);
+    const items = (moment2?.groups || []).flatMap(
+      (g) => g.items.map((i) => {
+        const m = content.items.find((x) => x.id === i.id);
+        const ing = m?.ingredientId ? ingById.get(m.ingredientId) : void 0;
+        return { ...i, category: g.category, unit: ing ? ing.unitLabel : "portion", cost: m ? itemUnitCost(m, dishes, allIngredients) : null };
+      })
+    );
+    const ordered = items.filter((i) => i.orderable);
+    const selfService = items.filter((i) => !i.orderable);
     const pickStay = (id) => {
       setReservationId(id);
       const r = reservations.find((x) => x.id === id);
@@ -26601,7 +26616,11 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
       const c = Math.round(toNum(children));
       if (a + c < 1) return setError("Indiquez le nombre de personnes.");
       if (!reservationId && !name.trim()) return setError("Indiquez un nom ou choisissez un s\xE9jour.");
-      const lines2 = items.map((i) => ({ itemId: i.id, name: i.name, qty: toNum(qty[i.id] || ""), childQty: toNum(childQty[i.id] || ""), price: i.price, unitPrice: i.unitPrice, childUnitPrice: i.childUnitPrice })).filter((l) => l.qty + l.childQty > 0);
+      const lines2 = ordered.map((i) => ({ itemId: i.id, name: i.name, qty: toNum(qty[i.id] || ""), childQty: toNum(childQty[i.id] || ""), price: i.price, unitPrice: i.unitPrice, childUnitPrice: i.childUnitPrice })).filter((l) => l.qty + l.childQty > 0);
+      selfService.forEach((i) => {
+        const q = toNum(qty[i.id] || "");
+        if (q > 0) lines2.push({ itemId: EXTRA_USE + i.id, name: i.name, qty: q, childQty: 0, price: "", unitPrice: 0, childUnitPrice: 0 });
+      });
       for (const x of extras) {
         const q = toNum(x.qty);
         if (q <= 0) continue;
@@ -26624,6 +26643,20 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
         setBusy(false);
       }
     };
+    const lineCost2 = (cost, n) => cost === null ? 0 : cost * n;
+    const orderedCost = ordered.reduce((s, i) => s + lineCost2(i.cost, toNum(qty[i.id] || "") + toNum(childQty[i.id] || "")), 0);
+    const orderedSale = ordered.reduce((s, i) => s + toNum(qty[i.id] || "") * i.unitPrice + toNum(childQty[i.id] || "") * i.childUnitPrice, 0);
+    const selfCost = selfService.reduce((s, i) => s + lineCost2(i.cost, toNum(qty[i.id] || "")), 0);
+    const extrasCost = extras.reduce((s, x) => {
+      const n = toNum(x.qty);
+      const unit = x.ing === "" ? toNum(x.unitCost) : ingredients.find((i) => i.id === x.ing)?.portionCost || 0;
+      return s + n * unit;
+    }, 0);
+    const totalCost = orderedCost + selfCost + extrasCost;
+    const unknown = [...ordered, ...selfService].filter((i) => i.cost === null && toNum(qty[i.id] || "") + toNum(childQty[i.id] || "") > 0).map((i) => i.name);
+    const th3 = "px-2 py-1.5 text-[10px] font-semibold text-neutral-500 text-left whitespace-nowrap";
+    const td3 = "px-2 py-1.5 text-xs align-middle";
+    const money3 = (n) => euros(Math.round(n * 100) / 100);
     return /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "bg-white rounded-2xl border border-sy-cad7cd p-3.5 sm:p-4 space-y-3", "data-admin-order": true, children: [
       /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "flex items-center gap-2", children: [
         /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900 flex-1", children: "Saisir une commande (aussi apr\xE8s coup)" }),
@@ -26678,23 +26711,77 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
             /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("input", { value: name, onChange: (e) => setName(e.target.value), className: `${field} mt-1` })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-1", children: "Produits consomm\xE9s" }),
-          items.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucun plat pour ce repas." }) : /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "divide-y divide-neutral-100 border border-neutral-200 rounded-xl", children: items.map((i) => /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "flex items-center gap-2 px-2.5 py-1.5", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("span", { className: "flex-1 min-w-0 text-xs text-neutral-800 leading-tight", children: [
-              i.name,
-              i.price ? /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("span", { className: "text-neutral-400", children: [
-                " \xB7 ",
-                i.price
-              ] }) : null
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "w-14 shrink-0", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(Num, { value: qty[i.id] || "", onChange: (v) => setQty((q) => ({ ...q, [i.id]: v })), label: `Quantit\xE9 ${i.name}` }) }),
-            i.childUnitPrice > 0 && /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "w-14 shrink-0", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(Num, { value: childQty[i.id] || "", onChange: (v) => setChildQty((q) => ({ ...q, [i.id]: v })), label: `Portions enfant ${i.name}` }) })
-          ] }, i.id)) }),
-          /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("p", { className: "text-[10px] text-neutral-400 mt-1", children: "Quantit\xE9s : la 1re case pour les adultes, la 2e (si elle existe) pour les portions enfant." })
+        items.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucun plat pour ce repas." }),
+        ordered.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700", children: "Produits command\xE9s (quantit\xE9 demand\xE9e)" }),
+          /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("p", { className: "text-[10px] text-neutral-400 mb-1", children: "Ces quantit\xE9s sont envoy\xE9es dans les commandes de repas et de petits-d\xE9jeuners (\xE0 pr\xE9parer) et compt\xE9es dans le co\xFBt." }),
+          /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "overflow-x-auto border border-neutral-200 rounded-xl", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("table", { className: "w-full min-w-[34rem]", "data-ordered-table": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("thead", { className: "bg-neutral-50", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("tr", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("th", { className: th3, children: "Produit" }),
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("th", { className: th3, children: "Unit\xE9" }),
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("th", { className: `${th3} text-right`, children: "Co\xFBt unit." }),
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("th", { className: th3, children: "Adultes" }),
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("th", { className: th3, children: "Enfants" }),
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("th", { className: `${th3} text-right`, children: "Co\xFBt" })
+            ] }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("tbody", { className: "divide-y divide-neutral-100", children: ordered.map((i) => {
+              const n = toNum(qty[i.id] || "") + toNum(childQty[i.id] || "");
+              return /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("td", { className: `${td3} text-neutral-800`, children: [
+                  i.name,
+                  i.price ? /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("span", { className: "text-neutral-400", children: [
+                    " \xB7 ",
+                    i.price
+                  ] }) : null
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-neutral-500 whitespace-nowrap`, children: i.unit }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-right font-mono tabular-nums`, children: i.cost === null ? /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "text-amber-700", title: "Co\xFBt inconnu", children: "?" }) : money3(i.cost) }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: td3, children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "w-14", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(Num, { value: qty[i.id] || "", onChange: (v) => setQty((q) => ({ ...q, [i.id]: v })), label: `Quantit\xE9 ${i.name}` }) }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: td3, children: i.childUnitPrice > 0 ? /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "w-14", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(Num, { value: childQty[i.id] || "", onChange: (v) => setChildQty((q) => ({ ...q, [i.id]: v })), label: `Portions enfant ${i.name}` }) }) : /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "text-neutral-300", children: "\u2013" }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-right font-mono tabular-nums`, children: n > 0 && i.cost !== null ? money3(i.cost * n) : "" })
+              ] }, i.id);
+            }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("tfoot", { className: "bg-neutral-50 font-semibold text-xs", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: td3, colSpan: 5, children: "Total des produits command\xE9s (co\xFBt)" }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-right font-mono tabular-nums`, children: money3(orderedCost) })
+              ] }),
+              orderedSale > 0 && /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-neutral-500 font-normal`, colSpan: 5, children: "Total indicatif de la commande (prix de vente)" }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-right font-mono tabular-nums font-normal`, children: money3(orderedSale) })
+              ] })
+            ] })
+          ] }) })
+        ] }),
+        selfService.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700", children: "Produits en libre-service (pour le calcul du co\xFBt)" }),
+          /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("p", { className: "text-[10px] text-neutral-400 mb-1", children: "Quantit\xE9s consomm\xE9es, compt\xE9es dans le co\xFBt seulement : elles ne sont pas envoy\xE9es dans les commandes." }),
+          /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "overflow-x-auto border border-neutral-200 rounded-xl", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("table", { className: "w-full min-w-[28rem]", "data-selfservice-table": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("thead", { className: "bg-neutral-50", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("tr", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("th", { className: th3, children: "Produit" }),
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("th", { className: th3, children: "Unit\xE9" }),
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("th", { className: `${th3} text-right`, children: "Co\xFBt unit." }),
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("th", { className: th3, children: "Quantit\xE9" }),
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("th", { className: `${th3} text-right`, children: "Co\xFBt" })
+            ] }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("tbody", { className: "divide-y divide-neutral-100", children: selfService.map((i) => {
+              const n = toNum(qty[i.id] || "");
+              return /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-neutral-800`, children: i.name }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-neutral-500 whitespace-nowrap`, children: i.unit }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-right font-mono tabular-nums`, children: i.cost === null ? /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "text-amber-700", title: "Co\xFBt inconnu", children: "?" }) : money3(i.cost) }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: td3, children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "w-14", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(Num, { value: qty[i.id] || "", onChange: (v) => setQty((q) => ({ ...q, [i.id]: v })), label: `Quantit\xE9 ${i.name}` }) }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-right font-mono tabular-nums`, children: n > 0 && i.cost !== null ? money3(i.cost * n) : "" })
+              ] }, i.id);
+            }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("tfoot", { className: "bg-neutral-50 font-semibold text-xs", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("tr", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: td3, colSpan: 4, children: "Total libre-service (co\xFBt)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-right font-mono tabular-nums`, children: money3(selfCost) })
+            ] }) })
+          ] }) })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-1", children: "Autres consommations (libre-service, non command\xE9es par le voyageur)" }),
+          /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-1", children: "Autres consommations (hors carte, pour le calcul du co\xFBt)" }),
           extras.map((x) => /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "flex flex-wrap items-center gap-1.5 mb-1.5", "data-extra-row": true, children: [
             /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("select", { value: x.ing, onChange: (e) => setExtra(x.key, { ing: e.target.value }), className: `${field} flex-1 min-w-[9rem]`, "aria-label": "Consommation", children: [
               ingredients.map((i) => /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("option", { value: i.id, children: [
@@ -26718,7 +26805,21 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("p", { className: "text-[10px] text-neutral-400 mt-1", children: "Compt\xE9es dans le co\xFBt seulement (jamais vendues). Le co\xFBt d'une portion vient de la grille des ingr\xE9dients." })
         ] }),
-        "          ",
+        /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "rounded-xl border border-sy-cad7cd bg-neutral-50 px-3 py-2 text-xs", "data-order-total": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "flex items-center justify-between font-bold text-neutral-900", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { children: "Co\xFBt total du repas" }),
+            /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "font-mono tabular-nums", children: money3(totalCost) })
+          ] }),
+          extrasCost > 0 && /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "flex justify-between text-neutral-500 mt-0.5", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { children: "dont autres consommations" }),
+            /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "font-mono tabular-nums", children: money3(extrasCost) })
+          ] }),
+          unknown.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("p", { className: "text-[10px] text-amber-700 mt-1", children: [
+            "Co\xFBt inconnu, non compt\xE9 : ",
+            unknown.join(", "),
+            "."
+          ] })
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "grid sm:grid-cols-3 gap-2.5", children: [
           /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("label", { className: "block text-[11px] font-semibold text-neutral-700", children: [
             "Heure (facultatif)",
@@ -26766,7 +26867,7 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
   var isEmail = (s) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s.trim());
   var isPhone = (s) => /^[+0-9 ().-]{6,}$/.test(s.trim());
   function linesText(o) {
-    return o.lines.map((l) => `${l.qty ? `${l.qty} \xD7 ` : ""}${l.name}${l.childQty ? ` (+ ${l.childQty} portion${l.childQty > 1 ? "s" : ""} enfant)` : ""}`).join(", ");
+    return o.lines.filter((l) => !l.itemId.startsWith(EXTRA_USE)).map((l) => `${l.qty ? `${l.qty} \xD7 ` : ""}${l.name}${l.childQty ? ` (+ ${l.childQty} portion${l.childQty > 1 ? "s" : ""} enfant)` : ""}`).join(", ");
   }
   function peopleText(o) {
     return `${o.adults} adulte${o.adults > 1 ? "s" : ""}${o.children ? `, ${o.children} enfant${o.children > 1 ? "s" : ""}` : ""}`;
@@ -27482,7 +27583,7 @@ ${establishmentName}`;
       used++;
       o.lines.forEach((l) => {
         const portions = (l.qty || 0) + (l.childQty || 0);
-        if (portions <= 0) return;
+        if (portions <= 0 || /^(use|ing|cost):/.test(l.itemId || "")) return;
         const dishId = itemToDish[l.itemId];
         if (dishId && dishes.some((d) => d.id === dishId)) qty.set(dishId, (qty.get(dishId) || 0) + portions);
         else unmatched.set(l.name || l.itemId, (unmatched.get(l.name || l.itemId) || 0) + portions);
@@ -59612,7 +59713,6 @@ ${establishment}`;
     const [breakfastCostStr, setBreakfastCostStr] = (0, import_react138.useState)("");
     const [isBreakfastCalculatorOpen, setIsBreakfastCalculatorOpen] = (0, import_react138.useState)(false);
     const [isMealsCalculatorOpen, setIsMealsCalculatorOpen] = (0, import_react138.useState)(false);
-    const [orderDialog, setOrderDialog] = (0, import_react138.useState)(null);
     const mealsOn = isModuleEnabled("meals", settings);
     const [mealsCostStr, setMealsCostStr] = (0, import_react138.useState)("");
     const [drinksCostStr, setDrinksCostStr] = (0, import_react138.useState)("");
@@ -61964,18 +62064,6 @@ ${establishment}`;
                 /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("span", { className: "text-[11px] text-neutral-500", children: "Saisie facultative avec virgule ou point" })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(StayOrdersHint, { reservation: initialData || void 0, onApply: applyOrderAmounts }),
-              orderDialog && initialData && /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(
-                StayOrderDialog,
-                {
-                  reservation: initialData,
-                  momentId: orderDialog.momentId,
-                  onClose: () => setOrderDialog(null),
-                  onSaved: () => {
-                    const a = stayAmountsNow(initialData.id);
-                    if (a) applyOrderAmounts(a);
-                  }
-                }
-              ),
               /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("div", { className: "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5", children: costFieldList.filter((f) => f.visible).map((f) => {
                 const label2 = `${f.label} (\u20AC)`;
                 const plainInput = "w-full py-1 px-2 text-xs font-mono font-semibold bg-neutral-50 border border-neutral-200 rounded focus:bg-white focus:outline-hidden focus:ring-1";
@@ -62040,15 +62128,11 @@ ${establishment}`;
                   else if (f.builtin === "other") setOtherCostStr(v);
                   else setExtraCost(f.id, v);
                 };
-                const calculator = (f.builtin === "breakfast" || f.builtin === "meals") && mealsOn ? {
-                  open: () => initialData?.id ? setOrderDialog({ momentId: f.builtin === "breakfast" ? "breakfast" : void 0 }) : window.alert("Enregistrez d'abord la r\xE9servation : une commande se rattache \xE0 un s\xE9jour enregistr\xE9."),
-                  title: "Saisir une commande de repas pour ce s\xE9jour (aussi apr\xE8s coup)",
-                  order: true
-                } : f.builtin === "breakfast" ? { open: () => setIsBreakfastCalculatorOpen(true), title: "Calculer le co\xFBt avec la grille d'ingr\xE9dients", order: false } : f.builtin === "meals" ? { open: () => setIsMealsCalculatorOpen(true), title: "Calculer les repas avec la carte des plats", order: false } : null;
+                const calculator = (f.builtin === "breakfast" || f.builtin === "meals") && mealsOn ? null : f.builtin === "breakfast" ? { open: () => setIsBreakfastCalculatorOpen(true), title: "Calculer le co\xFBt avec la grille d'ingr\xE9dients" } : f.builtin === "meals" ? { open: () => setIsMealsCalculatorOpen(true), title: "Calculer les repas avec la carte des plats" } : null;
                 return /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: "bg-white p-2.5 rounded-lg border border-neutral-200", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: calculator ? "flex items-center justify-between mb-1" : void 0, children: [
                     /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("label", { className: `block text-[10px] font-semibold text-neutral-700${calculator ? "" : " mb-1"}`, children: label2 }),
-                    calculator && (calculator.order || ingredientsEnabled) && /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)(
+                    calculator && ingredientsEnabled && /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)(
                       "button",
                       {
                         type: "button",
@@ -62057,7 +62141,7 @@ ${establishment}`;
                         title: calculator.title,
                         children: [
                           /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(UtensilsCrossed, { className: "w-2.5 h-2.5 text-amber-800" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("span", { children: calculator.order ? "Commander" : "Calculateur" })
+                          /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("span", { children: "Calculateur" })
                         ]
                       }
                     )
