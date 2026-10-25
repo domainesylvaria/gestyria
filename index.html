@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v193</title>
-  <meta name="application-name" content="Gestyria v193" />
+  <title>Gestyria v194</title>
+  <meta name="application-name" content="Gestyria v194" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3104,7 +3104,7 @@ footer{background:#111}
       reviews: { show: true, showAverage: true, ids: [] },
       guestbook: { show: true },
       form: { contact: true, request: true },
-      booking: { mode: "validation" },
+      booking: { mode: "validation", payment: { advance: false, percent: 30, days: 7, onsite: true, instructions: "" } },
       style: "classique",
       lastGeneratedAt: ""
     };
@@ -3149,6 +3149,17 @@ footer{background:#111}
       metaDescription: str(raw.metaDescription),
       blocks: (Array.isArray(raw.blocks) ? raw.blocks : []).map(normalizeBlock).filter((b) => !!b),
       options
+    };
+  }
+  function normalizeBooking(raw) {
+    const b = isObj(raw) ? raw : {};
+    const p = isObj(b.payment) ? b.payment : {};
+    const num6 = (v, d, min, max) => typeof v === "number" && isFinite(v) && v >= min && v <= max ? Math.round(v) : d;
+    const advance = bool(p.advance, false);
+    const onsite = bool(p.onsite, true) || !advance;
+    return {
+      mode: b.mode === "auto" ? "auto" : "validation",
+      payment: { advance, percent: num6(p.percent, 30, 1, 100), days: num6(p.days, 7, 1, 90), onsite, instructions: str(p.instructions) }
     };
   }
   function normalizeSite(raw) {
@@ -3203,7 +3214,7 @@ footer{background:#111}
       reviews: { show: bool(reviews.show, true), showAverage: bool(reviews.showAverage, true), ids: strList(reviews.ids) },
       guestbook: { show: isObj(raw.guestbook) ? bool(raw.guestbook.show, true) : true },
       form: { contact: bool(form.contact, true), request: bool(form.request, true) },
-      booking: { mode: isObj(raw.booking) && raw.booking.mode === "auto" ? "auto" : "validation" },
+      booking: normalizeBooking(raw.booking),
       style: isSiteStyleId(raw.style) ? raw.style : "classique",
       lastGeneratedAt: str(raw.lastGeneratedAt)
     };
@@ -12881,7 +12892,7 @@ footer{background:#111}
   }
   function getAppsScriptCode() {
     return `\uFEFF// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V28)
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V29)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -12961,6 +12972,7 @@ footer{background:#111}
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
 // V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Domaine Sylvaria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V29 : e-mails au client plus complets (confirmation, accus\xE9 de r\xE9ception, refus) : modalit\xE9s de r\xE8glement choisies dans l'application (acompte \xE0 l'avance et/ou paiement sur place), lien du livret d'accueil (petits-d\xE9jeuners et repas), coordonn\xE9es de l'\xE9tablissement en signature. Aucune nouvelle autorisation.
 // V28 : nationalit\xE9 du client et fiche individuelle de police (voyageurs \xE9trangers) jointes \xE0 la demande du site, rang\xE9es avec la demande et effac\xE9es six mois apr\xE8s le d\xE9part ; l'outil RGPD compte et supprime aussi les demandes du site. Aucune nouvelle autorisation.
 // V27 : demandes de r\xE9servation du site web (actions "siteRequest", "siteRequests", "siteRequestDecision") rang\xE9es dans l'onglet Site_Demandes ; mode automatique ou apr\xE8s validation choisi dans l'application ; e-mails au client et \xE0 l'administratrice ; les nuits des demandes comptent comme prises. Aucune nouvelle autorisation.
 // V26 : la r\xE9ponse \xAB siteAvailability \xBB transmet aussi les prix, remises, services et taxe de s\xE9jour calcul\xE9s par l'application (jeu \xAB siteLive \xBB), pour que le site suive les tarifs de l'application sans \xEAtre r\xE9g\xE9n\xE9r\xE9. Aucune nouvelle autorisation.
@@ -13659,7 +13671,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 28;
+var CONNECTOR_VERSION = 29;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Domaine Sylvaria - Photos m\xE9nage";
@@ -16372,10 +16384,8 @@ function receiveSiteRequest_(data) {
       MailApp.sendEmail(mail);
     } catch(errAdmin) {}
   }
-  guestMail_(settings, contact,
-    mode === "auto" ? "votre r\xE9servation est confirm\xE9e" : "nous avons bien re\xE7u votre demande",
-    mode === "auto" ? "Bonjour " + name + ", votre r\xE9servation est confirm\xE9e." : "Bonjour " + name + ", nous avons bien re\xE7u votre demande de r\xE9servation. Elle sera effective apr\xE8s validation de notre part : nous vous r\xE9pondons tr\xE8s vite.",
-    requestRecapHtml_(d));
+  d.id = id;
+  sendRequestMail_(ctx.ss, ctx.store, settings, d, mode === "auto" ? "confirmed" : "received", "");
   return { status: "success", version: CONNECTOR_VERSION, id: id, mode: mode };
 }
 
@@ -16403,12 +16413,153 @@ function siteRequestDecision_(data) {
   var store = loadAppData_(ss);
   var settings = (store && store.appStores && store.appStores.settings) || {};
   var note = cleanText_(data.message, 1000);
-  if (decision === "accepted") {
-    guestMail_(settings, found.contact, "votre r\xE9servation est confirm\xE9e", "Bonjour " + textOf_(found.name) + ", votre r\xE9servation est confirm\xE9e.", requestRecapHtml_(found).concat([note ? esc_(note) : ""]));
-  } else {
-    guestMail_(settings, found.contact, "votre demande de r\xE9servation", "Bonjour " + textOf_(found.name) + ", nous ne pouvons malheureusement pas donner suite \xE0 votre demande.", [note ? esc_(note) : "", "N'h\xE9sitez pas \xE0 nous \xE9crire pour trouver d'autres dates."]);
-  }
+  sendRequestMail_(ss, store, settings, found, decision === "accepted" ? "confirmed" : "refused", note);
   return { status: "success", version: CONNECTOR_VERSION };
+}
+
+// ===== V29 : e-mails au client (accus\xE9 de r\xE9ception, confirmation, refus) =====
+// Mise en forme soign\xE9e, modalit\xE9s de paiement choisies dans l'application (Site web > R\xE9glages), lien du livret d'accueil
+// (r\xE9servation des petits-d\xE9jeuners et commande des repas) et coordonn\xE9es de l'\xE9tablissement en signature.
+
+// Modalit\xE9s de paiement choisies par l'\xE9tablissement (jeu \xAB siteContent \xBB, r\xE9glages \xAB R\xE9servations depuis le site \xBB)
+function sitePaymentSettings_(store) {
+  var entry = store && store.appStores && store.appStores.siteContent;
+  var v = entry && entry.value;
+  var p = isObject_(v) && isObject_(v.booking) && isObject_(v.booking.payment) ? v.booking.payment : {};
+  var percent = Number(p.percent);
+  var days = Number(p.days);
+  var out = {
+    advance: p.advance === true,
+    onsite: p.onsite !== false,
+    percent: isFinite(percent) && percent > 0 && percent <= 100 ? Math.round(percent) : 30,
+    days: isFinite(days) && days >= 1 && days <= 90 ? Math.round(days) : 7,
+    instructions: cleanText_(p.instructions, 1200)
+  };
+  if (!out.advance && !out.onsite) out.onsite = true;
+  return out;
+}
+
+function euroText_(n) {
+  return String(Math.round(Number(n) * 100) / 100).replace(".", ",") + " \u20AC";
+}
+
+// Bloc \xAB R\xE8glement \xBB : paiement \xE0 l'avance demand\xE9, paiement sur place, ou au choix du client
+function paymentHtml_(pay, d, todayIso) {
+  var total = Number(d.total) || 0;
+  var advanceAmount = total > 0 ? Math.round(total * pay.percent) / 100 : 0;
+  var deadline = frDate_(isoShift_(todayIso, pay.days));
+  var instructions = pay.instructions ? "<p style=\\"margin:6px 0 0;white-space:pre-line\\">" + esc_(pay.instructions) + "</p>" : "";
+  var advance = "<p style=\\"margin:0 0 6px\\">Pour garantir votre r\xE9servation, nous vous demandons un <b>acompte de " + pay.percent + " %" +
+    (advanceAmount > 0 ? " (" + esc_(euroText_(advanceAmount)) + ")" : "") + "</b>, \xE0 r\xE9gler <b>avant le " + esc_(deadline) + "</b>." +
+    (pay.onsite ? " Le solde sera \xE0 r\xE9gler sur place, \xE0 votre arriv\xE9e." : " Le solde est \xE0 r\xE9gler avant votre arriv\xE9e.") + "</p>" + instructions;
+  var onsite = "<p style=\\"margin:0\\">Le r\xE8glement s'effectue <b>sur place, \xE0 votre arriv\xE9e</b> ; aucun paiement n'est demand\xE9 \xE0 l'avance.</p>";
+  if (pay.advance && pay.onsite) {
+    return "<p style=\\"margin:0 0 8px\\">Vous avez le choix :</p>" +
+      "<p style=\\"margin:0 0 4px\\"><b>1. R\xE9gler \xE0 l'avance</b> (recommand\xE9 pour s\xE9curiser votre s\xE9jour)</p>" + advance +
+      "<p style=\\"margin:10px 0 0\\"><b>2. R\xE9gler sur place</b> : vous pouvez aussi r\xE9gler la totalit\xE9 \xE0 votre arriv\xE9e, sans acompte.</p>";
+  }
+  return pay.advance ? advance : onsite;
+}
+
+// Signature : coordonn\xE9es de l'\xE9tablissement
+function establishmentSignatureHtml_(settings) {
+  var est = settings && settings.establishment || {};
+  var address = [textOf_(est.address), [textOf_(est.postalCode), textOf_(est.city)].filter(function(x) { return x; }).join(" ")].filter(function(x) { return x; }).join(", ");
+  var site = textOf_(est.website).trim();
+  var siteUrl = /^https?:\\/\\//i.test(site) ? site : (site ? "https://" + site : "");
+  var lines = [];
+  if (address) lines.push(esc_(address));
+  if (textOf_(est.phone)) lines.push("T\xE9l. : <a href=\\"tel:" + esc_(textOf_(est.phone).replace(/[^\\d+]/g, "")) + "\\" style=\\"color:#325032;text-decoration:none\\">" + esc_(est.phone) + "</a>");
+  if (validEmail_(est.email)) lines.push("E-mail : <a href=\\"mailto:" + esc_(String(est.email).trim()) + "\\" style=\\"color:#325032\\">" + esc_(String(est.email).trim()) + "</a>");
+  if (siteUrl && /^https?:\\/\\/[^\\s"<>]+$/.test(siteUrl)) lines.push("Site web : <a href=\\"" + esc_(siteUrl) + "\\" style=\\"color:#325032\\">" + esc_(site.replace(/^https?:\\/\\//i, "").replace(/\\/$/, "")) + "</a>");
+  return "<table role=\\"presentation\\" style=\\"margin-top:22px;border-top:2px solid #325032;padding-top:12px;width:100%\\"><tr><td style=\\"font-size:13px;color:#404040;line-height:1.6\\">" +
+    "<b style=\\"font-family:Georgia,serif;font-size:15px;color:#325032\\">" + esc_(textOf_(est.name) || "Domaine Sylvaria") + "</b>" +
+    (textOf_(est.subtitle) ? "<br><i>" + esc_(est.subtitle) + "</i>" : "") +
+    (lines.length ? "<br>" + lines.join("<br>") : "") + "</td></tr></table>";
+}
+
+// Lien du livret d'accueil de ce s\xE9jour (acc\xE8s voyageurs et commande des repas) ; "" si le livret n'est pas publi\xE9
+function requestBookLink_(ss, store, settings, requestId) {
+  try {
+    if (!store || !store.appStores) return "";
+    var link = stayBookLink_(store.appStores, settings, "site_" + requestId, new Date().toISOString());
+    if (link) saveAppData_(ss, store);
+    return link;
+  } catch(errLink) {
+    return "";
+  }
+}
+
+function mealsOrderingOn_(settings) {
+  var mod = settings && settings.modules && settings.modules.meals;
+  var ordering = mod && mod.settings && mod.settings.ordering;
+  return !!(mod && mod.enabled && !(isObject_(ordering) && ordering.enabled === false));
+}
+
+function requestSummaryTable_(d) {
+  var row = function(label, value) {
+    return "<tr><td style=\\"padding:6px 10px;color:#525252;border-bottom:1px solid #e5e5e5;white-space:nowrap\\">" + esc_(label) + "</td><td style=\\"padding:6px 10px;border-bottom:1px solid #e5e5e5\\"><b>" + value + "</b></td></tr>";
+  };
+  var when = d.arrival === d.departure ? esc_(frDate_(d.arrival)) : esc_(frDate_(d.arrival)) + " \u2192 " + esc_(frDate_(d.departure));
+  return "<table role=\\"presentation\\" style=\\"border-collapse:collapse;width:100%;background:#f6f8f6;border:1px solid #dfe6df;margin:14px 0\\">" +
+    row(d.kind === "alone" ? "Service ou espace" : "H\xE9bergement", esc_(d.roomName)) +
+    row(d.kind === "alone" ? "Date" : "Dates", when) +
+    (d.kind === "stay" ? row("Voyageurs", d.adults + " adulte" + (d.adults > 1 ? "s" : "") + (d.children ? ", " + d.children + " enfant" + (d.children > 1 ? "s" : "") : "")) : "") +
+    (d.total ? row("Total estim\xE9", esc_(euroText_(d.total))) : "") + "</table>";
+}
+
+// kind : "received" (demande re\xE7ue), "confirmed" (r\xE9servation confirm\xE9e), "refused" (demande refus\xE9e)
+function sendRequestMail_(ss, store, settings, d, kind, note) {
+  if (!validEmail_(d.contact)) return;
+  try {
+    var estName = textOf_(settings.establishment && settings.establishment.name) || "Domaine Sylvaria";
+    var today = parisNow_().date;
+    var greeting = "<p style=\\"margin:0 0 12px\\">Bonjour " + esc_(textOf_(d.name)) + ",</p>";
+    var body = "";
+    var subject = "";
+    if (kind === "confirmed") {
+      subject = "votre r\xE9servation est confirm\xE9e";
+      body = greeting +
+        "<p style=\\"margin:0 0 12px\\">Nous avons le plaisir de vous confirmer votre r\xE9servation au <b>" + esc_(estName) + "</b>. Merci de votre confiance : nous sommes heureux de vous accueillir tr\xE8s prochainement.</p>" +
+        requestSummaryTable_(d) +
+        (note ? "<p style=\\"margin:0 0 12px\\">" + esc_(note) + "</p>" : "") +
+        "<h3 style=\\"font-family:Georgia,serif;color:#325032;font-size:16px;margin:20px 0 8px\\">R\xE8glement</h3>" + paymentHtml_(sitePaymentSettings_(store), d, today);
+      var link = requestBookLink_(ss, store, settings, d.id);
+      if (link) {
+        body += "<h3 style=\\"font-family:Georgia,serif;color:#325032;font-size:16px;margin:20px 0 8px\\">Pr\xE9parez votre s\xE9jour : votre livret d'accueil</h3>" +
+          "<p style=\\"margin:0 0 12px\\">Votre livret d'accueil en ligne rassemble toutes les informations utiles avant votre s\xE9jour : acc\xE8s et horaires d'arriv\xE9e, Wi-Fi, r\xE8gles de la maison, bonnes adresses des environs\u2026" +
+          (mealsOrderingOn_(settings) ? " Il vous permet aussi de <b>r\xE9server vos petits-d\xE9jeuners</b> et de <b>commander des repas</b> (\xE0 commander au moins la veille du repas)." : "") + "</p>" +
+          "<p style=\\"margin:0 0 6px\\"><a href=\\"" + esc_(link) + "\\" style=\\"background:#325032;color:#ffffff;padding:11px 20px;border-radius:10px;text-decoration:none;font-weight:bold;display:inline-block\\">Ouvrir mon livret d'accueil</a></p>" +
+          "<p style=\\"margin:6px 0 0;font-size:12px;color:#737373\\">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur : " + esc_(link) + "</p>";
+      }
+      body += "<p style=\\"margin:20px 0 0\\">Pour toute question, r\xE9pondez simplement \xE0 cet e-mail ou appelez-nous : nous restons \xE0 votre disposition.</p>";
+    } else if (kind === "refused") {
+      subject = "votre demande de r\xE9servation";
+      body = greeting +
+        "<p style=\\"margin:0 0 12px\\">Nous vous remercions de l'int\xE9r\xEAt que vous portez au <b>" + esc_(estName) + "</b>. Malheureusement, nous ne pouvons pas donner suite \xE0 votre demande pour les dates suivantes :</p>" +
+        requestSummaryTable_(d) +
+        (note ? "<p style=\\"margin:0 0 12px\\">" + esc_(note) + "</p>" : "") +
+        "<p style=\\"margin:0\\">N'h\xE9sitez pas \xE0 nous \xE9crire ou \xE0 nous appeler pour trouver d'autres dates : nous serons ravis de vous accueillir \xE0 une autre p\xE9riode.</p>";
+    } else {
+      subject = "nous avons bien re\xE7u votre demande";
+      body = greeting +
+        "<p style=\\"margin:0 0 12px\\">Nous avons bien re\xE7u votre demande de r\xE9servation au <b>" + esc_(estName) + "</b>, et nous vous en remercions.</p>" +
+        requestSummaryTable_(d) +
+        "<p style=\\"margin:0 0 12px\\">Votre r\xE9servation sera <b>effective apr\xE8s validation de notre part</b> : nous \xE9tudions votre demande et vous r\xE9pondons tr\xE8s rapidement par e-mail. Les modalit\xE9s de r\xE8glement vous seront pr\xE9cis\xE9es dans le message de confirmation.</p>" +
+        "<p style=\\"margin:0\\">Pour toute question, r\xE9pondez simplement \xE0 cet e-mail.</p>";
+    }
+    var mail = {
+      to: String(d.contact).trim(),
+      subject: estName + " : " + subject,
+      htmlBody: "<div style=\\"font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#171717;max-width:600px\\">" +
+        "<div style=\\"background:#325032;color:#ffffff;padding:16px 20px;border-radius:10px 10px 0 0\\"><span style=\\"font-family:Georgia,serif;font-size:20px\\">" + esc_(estName) + "</span></div>" +
+        "<div style=\\"border:1px solid #dfe6df;border-top:0;padding:20px;border-radius:0 0 10px 10px\\">" + body + establishmentSignatureHtml_(settings) + "</div></div>",
+      name: estName
+    };
+    var reply = establishmentEmail_(settings);
+    if (reply) mail.replyTo = reply;
+    MailApp.sendEmail(mail);
+  } catch(errMail) {}
 }
 
 // ===== V28 : nationalit\xE9 et fiche de police =====
@@ -16438,7 +16589,7 @@ function purgeRequestPolice_(ss, todayIso) {
   });
   return purged;
 }
-// ===== FIN DU CONNECTEUR (V28) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== FIN DU CONNECTEUR (V29) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
 
@@ -17199,7 +17350,7 @@ function purgeRequestPolice_(ss, todayIso) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "193";
+  var APP_VERSION = "194";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -54166,7 +54317,7 @@ Sitemap: ${base}sitemap.xml
           CheckboxRow,
           {
             checked: site.booking.mode === "validation",
-            onChange: () => set({ booking: { mode: "validation" } }),
+            onChange: () => set({ booking: { ...site.booking, mode: "validation" } }),
             label: "Effective apr\xE8s validation de l'\xE9tablissement",
             hint: "La demande arrive dans l'application (banni\xE8re \xAB Demandes du site \xBB) : vous l'acceptez ou la refusez, le client est pr\xE9venu par e-mail."
           }
@@ -54175,12 +54326,40 @@ Sitemap: ${base}sitemap.xml
           CheckboxRow,
           {
             checked: site.booking.mode === "auto",
-            onChange: () => set({ booking: { mode: "auto" } }),
+            onChange: () => set({ booking: { ...site.booking, mode: "auto" } }),
             label: "R\xE9servation automatique",
             hint: "Si les dates sont libres, la r\xE9servation est confirm\xE9e tout de suite et le client re\xE7oit un e-mail de confirmation. Elle entre dans le planning \xE0 la prochaine ouverture de l'application."
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(InfoNote, { children: "Dans les deux cas, les nuits demand\xE9es sont bloqu\xE9es dans le calendrier du site d\xE8s l'envoi. Il faut le connecteur Google \xE0 jour (V27) et le livret d'accueil publi\xE9 ; sinon la demande part par la messagerie du visiteur. Le mode choisi est lu par le connecteur : il s'applique sans r\xE9g\xE9n\xE9rer le site, apr\xE8s un enregistrement de l'application." })
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "pt-2 space-y-2 border-t border-neutral-100", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("h5", { className: "text-xs font-bold text-neutral-800", children: "R\xE8glement indiqu\xE9 au client dans l'e-mail de confirmation" }),
+          /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
+            CheckboxRow,
+            {
+              checked: site.booking.payment.advance,
+              onChange: (v) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, advance: v, onsite: v ? site.booking.payment.onsite : true } } }),
+              label: "Demander un acompte \xE0 l'avance",
+              hint: "Le client re\xE7oit le montant, la date limite et la fa\xE7on de payer."
+            }
+          ),
+          site.booking.payment.advance && /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "pl-6 space-y-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "grid sm:grid-cols-2 gap-3", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Field, { label: "Acompte (% du total)", children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("input", { type: "number", min: 1, max: 100, value: site.booking.payment.percent, onChange: (e) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, percent: Math.max(1, Math.min(100, Math.round(Number(e.target.value) || 1))) } } }), className: "w-full py-2 px-3 text-xs bg-white border border-neutral-200 rounded-lg" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Field, { label: "\xC0 r\xE9gler dans les (jours)", children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("input", { type: "number", min: 1, max: 90, value: site.booking.payment.days, onChange: (e) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, days: Math.max(1, Math.min(90, Math.round(Number(e.target.value) || 1))) } } }), className: "w-full py-2 px-3 text-xs bg-white border border-neutral-200 rounded-lg" }) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Field, { label: "Comment payer \xE0 l'avance", hint: "Recopi\xE9 tel quel dans l'e-mail : IBAN du virement, lien de paiement, ordre du ch\xE8que et adresse d'envoi\u2026", children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(TextArea, { value: site.booking.payment.instructions, onChange: (v) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, instructions: v } } }), rows: 3 }) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
+            CheckboxRow,
+            {
+              checked: site.booking.payment.onsite,
+              onChange: (v) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, onsite: v || !site.booking.payment.advance } } }),
+              label: "Paiement sur place possible",
+              hint: site.booking.payment.advance ? "Propos\xE9 au client en plus de l'acompte : il choisit de payer \xE0 l'avance ou \xE0 son arriv\xE9e." : "Aucun paiement \xE0 l'avance : le client r\xE8gle \xE0 son arriv\xE9e."
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(InfoNote, { children: "Dans les deux cas, les nuits demand\xE9es sont bloqu\xE9es dans le calendrier du site d\xE8s l'envoi. Il faut le connecteur Google \xE0 jour (V29 pour les e-mails complets) et le livret d'accueil publi\xE9 ; sinon la demande part par la messagerie du visiteur. Le mode et le r\xE8glement choisis sont lus par le connecteur : ils s'appliquent sans r\xE9g\xE9n\xE9rer le site, apr\xE8s un enregistrement de l'application. L'e-mail de confirmation reprend aussi vos coordonn\xE9es (adresse, t\xE9l\xE9phone, site web : Param\xE9trage > \xC9tablissement) et le lien du livret d'accueil, avec les petits-d\xE9jeuners et repas \xE0 r\xE9server." })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)(Card3, { title: "Avis et livre d'or", children: [
         /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(CheckboxRow, { checked: site.reviews.show, onChange: (v) => set({ reviews: { ...site.reviews, show: v } }), label: "Afficher des avis de voyageurs" }),
