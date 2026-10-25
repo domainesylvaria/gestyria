@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v201</title>
-  <meta name="application-name" content="Gestyria v201" />
+  <title>Gestyria v202</title>
+  <meta name="application-name" content="Gestyria v202" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1107,7 +1107,8 @@ var DomaineAppBundle = (() => {
       o.lines.forEach((l) => {
         const used = l.itemId.startsWith(EXTRA_USE);
         const item2 = content.items.find((i) => i.id === (used ? l.itemId.slice(EXTRA_USE.length) : l.itemId));
-        const unit = isExtraLine(l.itemId) && !used ? extraUnitCost(l.itemId, ingredients) : item2 ? itemUnitCost(item2, dishes, ingredients) : null;
+        const weighed = used && item2?.ingredientId ? ingredients.find((x) => x.id === item2.ingredientId && x.unit === "kg" && x.unitPrice > 0) : void 0;
+        const unit = weighed ? weighed.unitPrice / 1e3 : isExtraLine(l.itemId) && !used ? extraUnitCost(l.itemId, ingredients) : item2 ? itemUnitCost(item2, dishes, ingredients) : null;
         if (unit === null) {
           if (!out.unknownCosts.includes(l.name)) out.unknownCosts.push(l.name);
           return;
@@ -6652,7 +6653,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "201";
+  var APP_VERSION = "202";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -19546,6 +19547,8 @@ function purgeRequestPolice_(ss, todayIso) {
       name: i.name,
       category: i.category || "",
       portionCost: Math.round((i.unit === "u" ? i.unitPrice : i.unitPrice * (i.weightGrams || 0) / 1e3) * 100) / 100,
+      unit: i.unit === "u" ? "u" : "kg",
+      unitPrice: i.unitPrice || 0,
       unitLabel: i.unit === "u" ? "pi\xE8ce" : i.weightGrams ? `portion de ${i.weightGrams} g` : "portion"
     }));
   }
@@ -26594,7 +26597,10 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
       (g) => g.items.map((i) => {
         const m = content.items.find((x) => x.id === i.id);
         const ing = m?.ingredientId ? ingById.get(m.ingredientId) : void 0;
-        return { ...i, category: g.category, unit: ing ? ing.unitLabel : "portion", cost: m ? itemUnitCost(m, dishes, allIngredients) : null };
+        if (!i.orderable && ing && ing.unit === "kg" && ing.unitPrice > 0) {
+          return { ...i, category: g.category, unit: "g", cost: ing.unitPrice / 1e3, costText: `${euros(ing.unitPrice)} / kg` };
+        }
+        return { ...i, category: g.category, unit: ing ? ing.unitLabel : "portion", cost: m ? itemUnitCost(m, dishes, allIngredients) : null, costText: "" };
       })
     );
     const ordered = items.filter((i) => i.orderable);
@@ -26769,7 +26775,7 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
               return /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("tr", { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-neutral-800`, children: i.name }),
                 /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-neutral-500 whitespace-nowrap`, children: i.unit }),
-                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-right font-mono tabular-nums`, children: i.cost === null ? /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "text-amber-700", title: "Co\xFBt inconnu", children: "?" }) : money3(i.cost) }),
+                /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-right font-mono tabular-nums whitespace-nowrap`, children: i.cost === null ? /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("span", { className: "text-amber-700", title: "Co\xFBt inconnu : renseignez le prix dans Ingr\xE9dients", children: "?" }) : i.costText || money3(i.cost) }),
                 /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: td3, children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "w-14", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(Num, { value: qty[i.id] || "", onChange: (v) => setQty((q) => ({ ...q, [i.id]: v })), label: `Quantit\xE9 ${i.name}` }) }) }),
                 /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("td", { className: `${td3} text-right font-mono tabular-nums`, children: n > 0 && i.cost !== null ? money3(i.cost * n) : "" })
               ] }, i.id);
