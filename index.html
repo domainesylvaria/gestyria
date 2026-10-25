@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v195</title>
-  <meta name="application-name" content="Gestyria v195" />
+  <title>Gestyria v196</title>
+  <meta name="application-name" content="Gestyria v196" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3195,7 +3195,7 @@ footer{background:#111}
     const extras = {};
     if (isObj(raw.extras)) {
       Object.entries(raw.extras).forEach(([id, v]) => {
-        if (isObj(v)) extras[id] = { description: str(v.description), photos: strList(v.photos), keywords: str(v.keywords) };
+        if (isObj(v)) extras[id] = { description: str(v.description), photos: strList(v.photos), keywords: str(v.keywords), ...v.hidden === true ? { hidden: true } : {} };
       });
     }
     const reviews = isObj(raw.reviews) ? raw.reviews : {};
@@ -6643,7 +6643,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "195";
+  var APP_VERSION = "196";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -11292,6 +11292,9 @@ footer{background:#111}
     notify13();
   }
 
+  // src/modules/siteweb/types.ts
+  var hiddenItemIds = (site) => Object.entries(site.extras).filter(([, e]) => e.hidden === true).map(([id]) => id);
+
   // src/core/pricing/openingCalendar.ts
   var WEEKDAY_LABELS = ["Dim.", "Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam."];
   var WEEKEND_DAYS = [5, 6];
@@ -11343,7 +11346,7 @@ footer{background:#111}
   var BOOKING_DATA_VERSION = 2;
   var BOOKING_DAYS = 540;
   var byOrder = (a, b) => (a.order || 0) - (b.order || 0);
-  function buildBookingData(settings, start = todayIso4(), mode = "validation") {
+  function buildBookingData(settings, start = todayIso4(), mode = "validation", hiddenIds = []) {
     const accommodations = settings.accommodations.filter((a) => a.active).sort(byOrder);
     const services = settings.services.filter((s) => s.active).sort(byOrder);
     const useRates = ratesEnabled(settings);
@@ -11379,7 +11382,7 @@ footer{background:#111}
       });
       return { id: s.id, n: s.name, u: s.unit, l: supplementUnitLabel(s), mx: s.maxQuantity && s.maxQuantity > 0 ? s.maxQuantity : 10, pr };
     }).filter((s) => Object.keys(s.pr).length > 0);
-    const resources = settings.resources.filter((r) => r.active && r.bookableAlone === true).sort(byOrder);
+    const resources = settings.resources.filter((r) => r.active && r.bookableAlone === true && !hiddenIds.includes(r.id)).sort(byOrder);
     const alone = [
       ...resources.map((r) => ({
         k: "r",
@@ -11394,7 +11397,7 @@ footer{background:#111}
         mx: r.capacity > 0 ? r.capacity : 20,
         c: [r.openingHours, r.accessConditions].filter(Boolean).join(" \xB7 ")
       })),
-      ...services.filter((s) => isStandaloneService(s) && s.bookableAlone === true).map((s) => ({
+      ...services.filter((s) => isStandaloneService(s) && s.bookableAlone === true && !hiddenIds.includes(s.id)).map((s) => ({
         k: "s",
         id: s.id,
         n: s.name,
@@ -11542,7 +11545,7 @@ footer{background:#111}
       id: "siteLive",
       label: "Prix du site web (calcul\xE9s)",
       kind: "replace",
-      read: () => isModuleEnabled("website") ? buildBookingData(getSettings(), void 0, getSite().booking.mode) : void 0,
+      read: () => isModuleEnabled("website") ? buildBookingData(getSettings(), void 0, getSite().booking.mode, hiddenItemIds(getSite())) : void 0,
       write: () => {
       }
     },
@@ -34520,7 +34523,7 @@ Cordialement`
       guestResidence: q.nationality || void 0,
       policeSheet: q.police ? { ...q.police, children: parseChildren(q.police.childrenText || ""), source: "site", collectedAt: q.at || (/* @__PURE__ */ new Date()).toISOString() } : void 0,
       guestEmail: email || void 0,
-      guestPhone: email ? void 0 : q.contact,
+      guestPhone: email ? (q.recap || "").match(/^Téléphone : (.+)$/m)?.[1].trim() || void 0 : q.contact,
       notes,
       createdAt: q.at || (/* @__PURE__ */ new Date()).toISOString()
     };
@@ -52693,7 +52696,7 @@ ${r.current.trim()}` : ""
       facts: [a.maxGuests ? `jusqu'\xE0 ${a.maxGuests} personnes` : "", a.equipments.filter(Boolean).length ? `\xE9quipements : ${a.equipments.filter(Boolean).join(", ")}` : "", a.subtitle].filter(Boolean).join(" ; ")
     })) : page.kind === "services" ? [
       ...settings.resources.filter((r) => r.active).map((r) => ({ id: r.id, name: r.name, text: r.description, kind: "description d'un \xE9quipement de d\xE9tente", facts: [r.openingHours && `horaires : ${r.openingHours}`, r.accessConditions].filter(Boolean).join(" ; ") })),
-      ...settings.services.filter((s) => s.active).map((s) => ({ id: s.id, name: s.name, text: s.description, kind: "description d'un service", facts: [s.availability, s.conditions].filter(Boolean).join(" ; ") }))
+      ...settings.services.filter((s) => s.active && isStandaloneService(s)).map((s) => ({ id: s.id, name: s.name, text: s.description, kind: "description d'un service", facts: [s.availability, s.conditions].filter(Boolean).join(" ; ") }))
     ] : [];
     return /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { className: "grid md:grid-cols-[230px_1fr] gap-4", "data-site-pages": true, children: [
       /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { className: "space-y-1.5", children: [
@@ -52757,7 +52760,11 @@ ${r.current.trim()}` : ""
           items.map((it) => {
             const ex = site.extras[it.id] || { description: "", photos: [], keywords: "" };
             return /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { className: "p-3 rounded-xl border border-neutral-200 space-y-2.5", "data-site-item": it.id, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("div", { className: "font-serif font-bold text-sm text-neutral-900", children: it.name }),
+              /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { className: "flex items-center gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("div", { className: "font-serif font-bold text-sm text-neutral-900 flex-1", children: it.name }),
+                page.kind === "services" && /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(CheckboxRow, { checked: ex.hidden !== true, onChange: (v) => setExtra(it.id, { hidden: v ? void 0 : true }), label: "Afficher sur le site" })
+              ] }),
+              ex.hidden === true && /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("p", { className: "text-[11px] text-amber-700", children: "Masqu\xE9 : n'appara\xEEt ni dans les pages du site, ni dans la r\xE9servation d'un service seul." }),
               /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(Field, { label: "Description du site", hint: ex.description.trim() ? "Remplace celle de la fiche pour le site" : it.text.trim() ? "Vide : la description de la fiche du Param\xE9trage est reprise" : "Aucune description dans la fiche : \xE9crivez-en une", children: /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(TextArea, { value: ex.description, onChange: (v) => setExtra(it.id, { description: v }), rows: 4, placeholder: it.text }) }),
               /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(AiWriter, { establishment: est, kind: it.kind, name: it.name, facts: it.facts, current: ex.description || it.text, keywords: ex.keywords, onKeywords: (k) => setExtra(it.id, { keywords: k }), onUse: (t) => setExtra(it.id, { description: t }), onToast }),
               /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(PhotoField, { label: "Photos", ids: ex.photos, onChange: (ids) => setExtra(it.id, { photos: ids }), onToast })
@@ -53246,7 +53253,7 @@ function showDone(mode,contact,recap,hasPolice){
  box.appendChild(h);
  var p=document.createElement('p');
  if(mode==='auto')p.textContent=mail?'Un e-mail de confirmation vient de vous \xEAtre envoy\xE9 \xE0 '+contact+'. Pensez \xE0 v\xE9rifier vos courriers ind\xE9sirables.':'Nous vous contacterons au '+contact+' pour confirmer les d\xE9tails.';
- else p.textContent='Elle sera effective apr\xE8s validation de l\u2019\xE9tablissement, qui vous r\xE9pond tr\xE8s vite. '+(mail?'Vous recevrez un e-mail \xE0 '+contact+' d\xE8s qu\u2019elle sera accept\xE9e (ou si nous ne pouvons pas y donner suite). Pensez \xE0 v\xE9rifier vos courriers ind\xE9sirables.':'Nous vous contacterons au '+contact+'.');
+ else p.textContent='Elle sera effective apr\xE8s validation de l\u2019\xE9tablissement. '+(mail?'Vous recevrez un e-mail \xE0 '+contact+' d\xE8s qu\u2019elle sera accept\xE9e (ou si nous ne pouvons pas y donner suite). Pensez \xE0 v\xE9rifier vos courriers ind\xE9sirables.':'Nous vous contacterons au '+contact+'.');
  box.appendChild(p);
  if(hasPolice){var pp=document.createElement('p');pp.textContent='Votre fiche de police est bien enregistr\xE9e : il ne vous reste qu\u2019\xE0 la signer \xE0 votre arriv\xE9e.';box.appendChild(pp);}
  if(recap){
@@ -53271,10 +53278,13 @@ function showDone(mode,contact,recap,hasPolice){
    var a=val(f,'arrival'),d=val(f,'departure');
    if(!a||!d||d<a){say(f,'Choisissez vos dates dans le calendrier ou le formulaire.',false);return;}
    rc=val(f,'recap');
+   if(!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(contact)){say(f,'Indiquez une adresse e-mail valide : c\u2019est l\xE0 que nous vous envoyons la confirmation.',false);return;}
+   var phone=val(f,'phone');
    nat=val(f,'nationality');
+   if(phone)rc=(rc?rc+String.fromCharCode(10):'')+'T\xE9l\xE9phone : '+phone;
    if(isForeign(nat)){
-    police={lastName:val(f,'pl_last'),firstNames:val(f,'pl_first'),birthDate:val(f,'pl_birth'),birthPlace:val(f,'pl_place'),nationality:nat,address:val(f,'pl_addr'),phone:val(f,'pl_phone'),email:val(f,'pl_email')||(contact.indexOf('@')>0?contact:''),childrenText:val(f,'pl_kids')};
-    if(!police.lastName||!police.firstNames||!police.birthDate||!police.birthPlace||!police.address||!police.phone||!police.email){say(f,'Pour les voyageurs de nationalit\xE9 \xE9trang\xE8re, merci de compl\xE9ter la fiche de police (tous les champs sont obligatoires, sauf les enfants).',false);return;}
+    police={lastName:val(f,'pl_last'),firstNames:val(f,'pl_first'),birthDate:val(f,'pl_birth'),birthPlace:val(f,'pl_place'),nationality:nat,address:val(f,'pl_addr'),phone:phone||'non renseign\xE9',email:contact,childrenText:val(f,'pl_kids')};
+    if(!police.lastName||!police.firstNames||!police.birthDate||!police.birthPlace||!police.address){say(f,'Pour les voyageurs de nationalit\xE9 \xE9trang\xE8re, merci de compl\xE9ter la fiche de police (tous les champs sont obligatoires, sauf les enfants).',false);return;}
    }
    if(nat)rc=(rc?rc+String.fromCharCode(10):'')+'Nationalit\xE9 : '+nat+(police?' (fiche de police remplie)':'');
    var lines=rc?rc.split(String.fromCharCode(10)):['Demande de r\xE9servation','H\xE9bergement : '+(val(f,'room')||'peu importe'),'Du '+fr(a)+' au '+fr(d),'Personnes : '+(val(f,'adults')||'1')+' adulte(s)'+(Number(val(f,'children'))>0?', '+val(f,'children')+' enfant(s)':'')];
@@ -53422,8 +53432,10 @@ if(C.preview){
       return url && b.text.trim() ? `<div class="wrap narrow" style="padding:16px 20px"><a class="btn" href="${esc3(url)}" rel="noopener">${esc3(b.text)}</a></div>` : "";
     }).join("");
     const accommodations = settings.accommodations.filter((a) => a.active).sort(byOrder3);
-    const services = settings.services.filter((s) => s.active).sort(byOrder3);
-    const resources = settings.resources.filter((r) => r.active).sort(byOrder3);
+    const hidden = hiddenItemIds(site);
+    const services = settings.services.filter((s) => s.active && !hidden.includes(s.id)).sort(byOrder3);
+    const showcaseServices = services.filter(isStandaloneService);
+    const resources = settings.resources.filter((r) => r.active && !hidden.includes(r.id)).sort(byOrder3);
     const extraOf = (id) => site.extras[id] || { description: "", photos: [], keywords: "" };
     const roomText = (a) => extraOf(a.id).description.trim() || a.description.trim();
     const capacity = (a) => a.maxGuests > 0 ? a.minGuests > 0 && a.minGuests < a.maxGuests ? `${a.minGuests} \xE0 ${a.maxGuests} personnes` : `Jusqu'\xE0 ${a.maxGuests} personne${a.maxGuests > 1 ? "s" : ""}` : "";
@@ -53468,10 +53480,10 @@ if(C.preview){
       const items = discounts.map((d) => `<li>${d.percent.toLocaleString("fr-FR")} % de remise \xE0 partir de ${d.minNights} nuits</li>`).join("");
       return compact ? `<p class="bk-disc"><strong>S\xE9jours longs :</strong></p><ul class="clean">${items}</ul>` : `<h2>S\xE9jours longs</h2><ul class="clean">${items}</ul>`;
     };
-    const bookingData = () => buildBookingData(settings, void 0, site.booking.mode);
+    const bookingData = () => buildBookingData(settings, void 0, site.booking.mode, hidden);
     const formHtml = (kind) => {
       const hp = `<div class="hp" aria-hidden="true"><label>Ne pas remplir<input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>`;
-      const who = `<div class="row"><div><label for="${kind}-name">Votre nom</label><input id="${kind}-name" name="name" required autocomplete="name"></div><div><label for="${kind}-contact">E-mail ou t\xE9l\xE9phone</label><input id="${kind}-contact" name="contact" required autocomplete="email"></div></div>`;
+      const who = `<div class="row"><div><label for="${kind}-name">Votre nom</label><input id="${kind}-name" name="name" required autocomplete="name"></div><div><label for="${kind}-contact">${kind === "request" ? "E-mail (pour recevoir la confirmation)" : "E-mail ou t\xE9l\xE9phone"}</label><input id="${kind}-contact" name="contact" required autocomplete="email"></div></div>${kind === "request" ? `<div class="row"><div><label for="request-phone">T\xE9l\xE9phone (facultatif)</label><input id="request-phone" type="tel" name="phone" autocomplete="tel"></div><div></div></div>` : ""}`;
       const end = `<p class="muted small">Les informations saisies servent uniquement \xE0 r\xE9pondre \xE0 votre demande${ctx.connectorUrl ? "" : " ; elles sont envoy\xE9es depuis votre messagerie"}.</p><button class="btn" type="submit">Envoyer</button><p class="status" role="status" aria-live="polite"></p>`;
       if (kind === "request") {
         const options = accommodations.map((a) => `<option value="${esc3(a.id)}">${esc3(a.name)}</option>`).join("");
@@ -53505,7 +53517,6 @@ ${who}<div class="row"><div><label for="r-nat">Nationalit\xE9</label><input id="
 <div class="row"><div><label for="pl-last">Nom</label><input id="pl-last" name="pl_last" autocomplete="family-name"></div><div><label for="pl-first">Pr\xE9nom(s)</label><input id="pl-first" name="pl_first" autocomplete="given-name"></div></div>
 <div class="row"><div><label for="pl-birth">Date de naissance</label><input id="pl-birth" type="date" name="pl_birth" data-past autocomplete="bday"></div><div><label for="pl-place">Lieu de naissance (ville, pays)</label><input id="pl-place" name="pl_place"></div></div>
 <div><label for="pl-addr">Adresse du domicile habituel (rue, code postal, ville, pays)</label><input id="pl-addr" name="pl_addr" autocomplete="street-address"></div>
-<div class="row"><div><label for="pl-phone">T\xE9l\xE9phone</label><input id="pl-phone" type="tel" name="pl_phone" autocomplete="tel"></div><div><label for="pl-email">Adresse \xE9lectronique</label><input id="pl-email" type="email" name="pl_email" autocomplete="email"></div></div>
 <div><label for="pl-kids">Enfants de moins de 15 ans qui vous accompagnent (facultatif : un par ligne, avec la date de naissance)</label><textarea id="pl-kids" name="pl_kids" style="min-height:70px"></textarea></div></div>
 <p class="muted small" id="bk-mode-note">${site.booking.mode === "auto" ? "Si les dates sont libres, votre r\xE9servation est confirm\xE9e tout de suite." : "Votre demande sera effective apr\xE8s validation de l\u2019\xE9tablissement."}</p><div><label for="r-message">Pr\xE9cisions (facultatif)</label><textarea id="r-message" name="message"></textarea></div>${hp}${end}</div></form>`;
       }
@@ -53534,8 +53545,8 @@ ${who}<div class="row"><div><label for="r-nat">Nationalit\xE9</label><input id="
               return `<article class="card">${pic ? `<div class="pic">${pic}</div>` : ""}<div class="body"><h3>${esc3(a.name)}</h3>${a.subtitle ? `<p class="muted small">${esc3(a.subtitle)}</p>` : ""}${desc ? `<p>${esc3(desc.length > 150 ? desc.slice(0, 147).replace(/\s+\S*$/, "") + "\u2026" : desc)}</p>` : ""}${price > 0 ? `<p class="price">\xC0 partir de ${euro4(price)} la nuit</p>` : ""}</div></article>`;
             }).join("")}</div><p style="margin-top:22px">${linkTo(pageByKind("rooms"), "D\xE9couvrir les h\xE9bergements", "btn ghost")}</p></div></section>`;
           }
-          if (on("services") && (services.length > 0 || resources.length > 0)) {
-            const names2 = [...resources.map((r) => r.name), ...services.filter((s) => s.billing !== "inclus" || s.price > 0 || s.description).map((s) => s.name)].slice(0, 8);
+          if (on("services") && (showcaseServices.length > 0 || resources.length > 0)) {
+            const names2 = [...resources.map((r) => r.name), ...showcaseServices.filter((s) => s.billing !== "inclus" || s.price > 0 || s.description).map((s) => s.name)].slice(0, 8);
             if (names2.length > 0) h2 += `<section class="block"><div class="wrap"><h2>Sur place</h2><ul class="tags">${names2.map((n) => `<li>${esc3(n)}</li>`).join("")}</ul><p>${linkTo(pageByKind("services"), "Voir les services", "btn ghost")}</p></div></section>`;
           }
           if (on("reviews") && site.reviews.show && ctx.reviews.length > 0) {
@@ -53610,7 +53621,7 @@ ${who}<div class="row"><div><label for="r-nat">Nationalit\xE9</label><input id="
             return `<article class="card">${pic ? `<div class="pic">${pic}</div>` : ""}<div class="body"><h3>${esc3(name)}</h3>${text ? `<p>${esc3(text)}</p>` : ""}${extra ? `<p class="muted small">${esc3(extra)}</p>` : ""}${on("prices") && price ? `<p class="price">${esc3(price)}</p>` : ""}</div></article>`;
           };
           if (on("resources")) resources.forEach((r) => h2 += card3(r.id, r.name, r.description, resourcePrice2(r), [r.openingHours, r.accessConditions].filter(Boolean).join(" \xB7 ")));
-          if (on("services")) services.forEach((s) => h2 += card3(s.id, s.name, s.description, servicePrice2(s), [s.availability, s.conditions].filter(Boolean).join(" \xB7 ")));
+          if (on("services")) showcaseServices.forEach((s) => h2 += card3(s.id, s.name, s.description, servicePrice2(s), [s.availability, s.conditions].filter(Boolean).join(" \xB7 ")));
           return h2 + "</div></div></section>";
         }
         case "meals": {
