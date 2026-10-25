@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v199</title>
-  <meta name="application-name" content="Gestyria v199" />
+  <title>Gestyria v200</title>
+  <meta name="application-name" content="Gestyria v200" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6650,7 +6650,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "199";
+  var APP_VERSION = "200";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -13923,7 +13923,7 @@ ${body}
   }
   function getAppsScriptCode() {
     return `// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V32)
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V33)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -14003,6 +14003,7 @@ ${body}
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
 // V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Domaine Sylvaria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V33 : une r\xE9servation du site annul\xE9e ou supprim\xE9e dans l'application lib\xE8re ses nuits sur le site (d\xE9cision \xAB released \xBB, sans e-mail au client). Aucune nouvelle autorisation.
 // V32 : si le PDF des CGV ne peut pas \xEAtre fabriqu\xE9, elles sont \xE9crites dans l'e-mail ; fonction essaiCgv() et point \xAB cgv \xBB dans \xAB V\xE9rifier le connecteur \xBB. Aucune nouvelle autorisation.
 // V31 : les conditions g\xE9n\xE9rales de vente (enregistr\xE9es dans l'application) sont jointes en PDF \xE0 l'e-mail de confirmation de r\xE9servation envoy\xE9 au client ; dans le livret, les services li\xE9s aux chambres (suppl\xE9ment chien, m\xE9nage\u2026) sont pr\xE9sent\xE9s avec chaque chambre et non plus seuls. Aucune nouvelle autorisation.
 // V30 : rappels automatiques d'acompte (r\xE9servations du site dont l'acompte demand\xE9 \xE0 l'avance n'est pas re\xE7u) : au client avant la date limite et une relance apr\xE8s, l'\xE9tablissement est pr\xE9venu ; r\xE9glables dans l'application. Les photos du livret et de la carte ne sont plus limit\xE9es \xE0 40 (stockage de l'appareil). Aucune nouvelle autorisation.
@@ -14705,7 +14706,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 32;
+var CONNECTOR_VERSION = 33;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Domaine Sylvaria - Photos m\xE9nage";
@@ -17246,7 +17247,7 @@ function siteAvailability_(list, todayIso, requests) {
 // en r\xE9servation, \xE0 valider). Les nuits d'une demande en attente ou accept\xE9e comptent comme prises dans le calendrier du site.
 var REQUEST_SHEET = "Site_Demandes";
 var REQUEST_HEADERS = ["Re\xE7ue le", "Type", "H\xE9bergement ou service", "Arriv\xE9e", "D\xE9part", "Adultes", "Enfants", "Nom", "Contact", "Message", "R\xE9capitulatif", "Total estim\xE9 (\u20AC)", "Statut", "Identifiant", "Donn\xE9es"];
-var REQUEST_STATUS_TEXT = { "new": "\xC0 valider", "auto": "Confirm\xE9e automatiquement", "accepted": "Accept\xE9e", "refused": "Refus\xE9e" };
+var REQUEST_STATUS_TEXT = { "new": "\xC0 valider", "auto": "Confirm\xE9e automatiquement", "accepted": "Accept\xE9e", "refused": "Refus\xE9e", "released": "Annul\xE9e dans l'application" };
 var REQUEST_MAX_PER_HOUR = 20;
 
 function requestSheet_(ss) {
@@ -17459,12 +17460,14 @@ function siteRequestsList_() {
 
 // L'administratrice accepte ou refuse une demande : le statut est mis \xE0 jour et le client est pr\xE9venu par e-mail
 function siteRequestDecision_(data) {
-  var decision = textOf_(data.decision) === "refused" ? "refused" : "accepted";
+  var decision = textOf_(data.decision) === "refused" ? "refused" : textOf_(data.decision) === "released" ? "released" : "accepted";
   var ss = getTargetSpreadsheet();
   var found = null;
   readRequests_(ss).forEach(function(r) { if (r.id === textOf_(data.id)) found = r; });
   if (!found) return { status: "error", message: "Demande introuvable." };
   requestSheet_(ss).getRange(found.row, 13).setValue(REQUEST_STATUS_TEXT[decision]);
+  // V33 : r\xE9servation annul\xE9e ou supprim\xE9e dans l'application : les nuits sont lib\xE9r\xE9es sur le site, sans e-mail au client
+  if (decision === "released") return { status: "success", version: CONNECTOR_VERSION };
   var store = loadAppData_(ss);
   var settings = (store && store.appStores && store.appStores.settings) || {};
   var note = cleanText_(data.message, 1000);
@@ -17789,7 +17792,7 @@ function purgeRequestPolice_(ss, todayIso) {
   });
   return purged;
 }
-// ===== FIN DU CONNECTEUR (V32) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== FIN DU CONNECTEUR (V33) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
 
@@ -34683,6 +34686,16 @@ Cordialement`
       if (!r) return;
       if (r.reservationStatus === "confirmed") out.push({ id: q.id, decision: "accepted" });
       else if (r.reservationStatus === "cancelled") out.push({ id: q.id, decision: "refused" });
+    });
+    return out;
+  }
+  function pendingReleases(reservations, requests) {
+    const imported = loadImported();
+    const out = [];
+    requests.forEach((q) => {
+      if (q.status !== "accepted" && q.status !== "auto") return;
+      const r = reservations.find((x) => x.id === `\\`);
+      if (r ? r.reservationStatus === "cancelled" : reservations.length > 0 && imported.includes(q.id)) out.push(q.id);
     });
     return out;
   }
@@ -54765,7 +54778,8 @@ Sitemap: ${base}sitemap.xml
     new: { label: "\xC0 valider", cls: "bg-amber-100 text-amber-900" },
     auto: { label: "Confirm\xE9e automatiquement", cls: "bg-emerald-100 text-emerald-900" },
     accepted: { label: "Accept\xE9e", cls: "bg-emerald-100 text-emerald-900" },
-    refused: { label: "Refus\xE9e", cls: "bg-red-100 text-red-900" }
+    refused: { label: "Refus\xE9e", cls: "bg-red-100 text-red-900" },
+    released: { label: "Annul\xE9e", cls: "bg-neutral-200 text-neutral-700" }
   };
   var frDate10 = (iso) => iso.split("-").reverse().join("/");
   var RequestsPanel2 = ({ reservations, onDecide, onToast }) => {
@@ -63305,6 +63319,12 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
           showToast(d.decision === "accepted" ? "R\xE9servation du site confirm\xE9e : le client est pr\xE9venu par e-mail." : "Demande du site refus\xE9e : le client est pr\xE9venu par e-mail.");
         } catch (err) {
           showToast(`Le client n'a pas pu \xEAtre pr\xE9venu : ${err?.message || "connecteur injoignable"}.`);
+        }
+      }
+      for (const id of pendingReleases(reservationsRef.current, requests)) {
+        try {
+          await decideSiteRequest(id, "released", "");
+        } catch {
         }
       }
       const pay = getSite().booking.payment;
