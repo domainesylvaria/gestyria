@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v190</title>
-  <meta name="application-name" content="Gestyria v190" />
+  <title>Gestyria v191</title>
+  <meta name="application-name" content="Gestyria v191" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17149,7 +17149,7 @@ function siteRequestDecision_(data) {
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "190";
+  var APP_VERSION = "191";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -52450,6 +52450,9 @@ form.bk,form.bk>*,.bk-m,.bk-step>*{min-width:0}
 .bk-ck{display:flex;gap:10px;align-items:flex-start;font-weight:400;margin:0;cursor:pointer}.bk-ck input{width:auto;margin-top:5px}
 .bk-q{width:76px}
 .bk-modes{display:flex;flex-wrap:wrap;gap:8px 22px}
+.bk-done{background:var(--cs);border:2px solid var(--c);border-radius:var(--r);padding:20px 22px;margin-bottom:18px}
+.bk-done-h{font-weight:700;font-size:1.15rem;margin:0 0 8px;color:var(--cd)}
+.bk-done[hidden]{display:none}
 form.bk{gap:18px}
 @media(max-width:820px){
  .bk-cal,form.f .row3{grid-template-columns:minmax(0,1fr)}
@@ -52738,7 +52741,29 @@ document.querySelectorAll('input[type=date]').forEach(function(d){d.min=t;});
 function val(f,k){var e=f.elements[k];return e?String(e.value||'').trim():'';}
 function say(f,msg,ok){var s=f.querySelector('.status');if(s){s.textContent=msg;s.className='status '+(ok?'ok':'err');}}
 function fr(d){var p=d.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:d;}
-document.querySelectorAll('form[data-site-form]').forEach(function(f){
+function showDone(mode,contact,recap){
+ var box=document.getElementById('bk-done');
+ if(!box)return;
+ var mail=contact.indexOf('@')>0;
+ box.innerHTML='';
+ var h=document.createElement('p');h.className='bk-done-h';
+ h.textContent=mode==='auto'?'\u2713 Votre r\xE9servation est enregistr\xE9e et confirm\xE9e.':'\u2713 Votre demande a bien \xE9t\xE9 envoy\xE9e.';
+ box.appendChild(h);
+ var p=document.createElement('p');
+ if(mode==='auto')p.textContent=mail?'Un e-mail de confirmation vient de vous \xEAtre envoy\xE9 \xE0 '+contact+'. Pensez \xE0 v\xE9rifier vos courriers ind\xE9sirables.':'Nous vous contacterons au '+contact+' pour confirmer les d\xE9tails.';
+ else p.textContent='Elle sera effective apr\xE8s validation de l\u2019\xE9tablissement, qui vous r\xE9pond tr\xE8s vite. '+(mail?'Vous recevrez un e-mail \xE0 '+contact+' d\xE8s qu\u2019elle sera accept\xE9e (ou si nous ne pouvons pas y donner suite). Pensez \xE0 v\xE9rifier vos courriers ind\xE9sirables.':'Nous vous contacterons au '+contact+'.');
+ box.appendChild(p);
+ if(recap){
+  var ul=document.createElement('ul');ul.className='clean';
+  recap.split(String.fromCharCode(10)).forEach(function(l){if(l){var li=document.createElement('li');li.textContent=l;ul.appendChild(li);}});
+  box.appendChild(ul);
+ }
+ var b=document.createElement('button');b.type='button';b.className='btn ghost';b.textContent='Faire une autre demande';
+ b.addEventListener('click',function(){box.hidden=true;var fm=document.getElementById('bk-form');if(fm&&fm.scrollIntoView)fm.scrollIntoView({behavior:'smooth',block:'start'});});
+ box.appendChild(b);
+ box.hidden=false;
+ if(box.scrollIntoView)box.scrollIntoView({behavior:'smooth',block:'center'});
+}document.querySelectorAll('form[data-site-form]').forEach(function(f){
  f.addEventListener('submit',function(e){
   e.preventDefault();
   var kind=f.getAttribute('data-site-form');
@@ -52759,7 +52784,7 @@ document.querySelectorAll('form[data-site-form]').forEach(function(f){
   if(C.connector&&C.id){
    fetch(C.connector,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(kind==='request'?siteBody():{action:'livretMessage',id:C.id,kind:'contact',name:name,contact:contact,subject:subject.slice(0,60),message:message,website:val(f,'website')})})
    .then(function(r){return r.text();}).then(function(t){var j={};try{j=JSON.parse(t);}catch(x){}
-     if(j.status==='success'){say(f,kind==='request'?(j.mode==='auto'?'Merci, votre r\xE9servation est confirm\xE9e : un e-mail de confirmation vous est envoy\xE9.':'Merci, votre demande est bien re\xE7ue. La r\xE9servation sera effective apr\xE8s validation de l\u2019\xE9tablissement, qui vous r\xE9pond tr\xE8s vite.'):'Merci, votre message est bien parti. Nous vous r\xE9pondons rapidement.',true);f.reset();}
+     if(j.status==='success'){if(kind==='request'){showDone(j.mode,contact,rc);}else{say(f,'Merci, votre message est bien parti. Nous vous r\xE9pondons rapidement.',true);}f.reset();}
      else{say(f,j.message||'Envoi impossible pour le moment : \xE9crivez-nous directement par e-mail.',false);}})
    .catch(function(){say(f,'Envoi impossible pour le moment : \xE9crivez-nous directement par e-mail.',false);})
    .then(function(){if(btn)btn.disabled=false;});
@@ -52952,6 +52977,7 @@ if(C.preview){
         const data = JSON.stringify(bk).replace(/</g, "\\u003c");
         const aloneOn = bk.alone.length > 0;
         return `<form class="f bk" id="bk-form" data-site-form="request" novalidate>
+<div id="bk-done" class="bk-done" role="status" aria-live="polite" hidden></div>
 <script type="application/json" id="bk-data">${data}<\/script>
 ${aloneOn ? `<div class="bk-step"><h3>Que souhaitez-vous r\xE9server ?</h3><div class="bk-modes"><label class="bk-ck"><input type="radio" name="bk-mode" id="bk-mode-stay" value="stay" checked> <span>Un s\xE9jour avec h\xE9bergement</span></label><label class="bk-ck"><input type="radio" name="bk-mode" id="bk-mode-alone" value="alone"> <span>Seulement un service ou un espace (${esc2(bk.alone.map((a) => a.n).join(", "))})</span></label></div></div>` : ""}
 <div id="bk-stay"><div class="bk-step"><h3><span class="bk-n">1</span> Votre logement et vos voyageurs</h3>
