@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v204</title>
-  <meta name="application-name" content="Gestyria v204" />
+  <title>Gestyria v205</title>
+  <meta name="application-name" content="Gestyria v205" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -4267,6 +4267,175 @@ footer{background:#111}
     return isModuleEnabled(def.id, settings) && !hostTabFor(tabId, settings);
   }
 
+  // src/core/pricing/rateCalendar.ts
+  var import_react2 = __require("react");
+  var RATE_OVERRIDES_STORAGE_KEY = "domaine_sylvaria_rate_overrides_v1";
+  var MANUAL_PRICE_COLOR = "#7C3AED";
+  function readStoredOverrides() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(RATE_OVERRIDES_STORAGE_KEY) || "{}");
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+  var overrides = readStoredOverrides();
+  var listeners4 = /* @__PURE__ */ new Set();
+  function notify3() {
+    listeners4.forEach((l) => {
+      try {
+        l();
+      } catch {
+      }
+    });
+  }
+  try {
+    window.addEventListener("storage", (e) => {
+      if (e.key !== RATE_OVERRIDES_STORAGE_KEY) return;
+      overrides = readStoredOverrides();
+      notify3();
+    });
+  } catch {
+  }
+  var overrideKey = (date, roomId) => `${date}|${roomId}`;
+  function getRateOverrides() {
+    return overrides;
+  }
+  function writeRateOverrides(next) {
+    overrides = next && typeof next === "object" ? next : {};
+    try {
+      if (Object.keys(overrides).length === 0) localStorage.removeItem(RATE_OVERRIDES_STORAGE_KEY);
+      else localStorage.setItem(RATE_OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
+    } catch {
+    }
+    notify3();
+  }
+  function readRateOverridesForSync() {
+    return localStorage.getItem(RATE_OVERRIDES_STORAGE_KEY) === null ? void 0 : readStoredOverrides();
+  }
+  function setDayRates(dates, roomIds, value) {
+    const next = { ...overrides };
+    dates.forEach(
+      (date) => roomIds.forEach((roomId) => {
+        const key = overrideKey(date, roomId);
+        if (value) next[key] = { ...value };
+        else delete next[key];
+      })
+    );
+    writeRateOverrides(next);
+  }
+  function subscribe2(cb) {
+    listeners4.add(cb);
+    return () => {
+      listeners4.delete(cb);
+    };
+  }
+  function useRateOverrides() {
+    return (0, import_react2.useSyncExternalStore)(subscribe2, getRateOverrides, getRateOverrides);
+  }
+  function addDaysIso(dateStr, days2) {
+    const [y, m, d] = dateStr.split("-").map((n) => parseInt(n, 10));
+    const date = new Date(y, m - 1, d + days2);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  }
+  function todayIso4() {
+    const d = /* @__PURE__ */ new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+  function daysBetween2(fromIso, toIso2) {
+    const [y1, m1, d1] = fromIso.split("-").map((n) => parseInt(n, 10));
+    const [y2, m2, d2] = toIso2.split("-").map((n) => parseInt(n, 10));
+    return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 864e5);
+  }
+  function periodCovers(p, date) {
+    if (!p.start || !p.end) return false;
+    if (!p.everyYear) return p.start <= date && date <= p.end;
+    const md = date.slice(5);
+    const s = p.start.slice(5);
+    const e = p.end.slice(5);
+    return s <= e ? s <= md && md <= e : md >= s || md <= e;
+  }
+  var round22 = (n) => Math.round(n * 100) / 100;
+  function ratesEnabled(settings = getSettings()) {
+    return isModuleEnabled("rates", settings) && isModuleEnabled("pricing", settings);
+  }
+  function hasCalendarRates(roomId, settings = getSettings()) {
+    return settings.accommodations.some((a) => a.id === roomId);
+  }
+  function findTier(tierId, settings = getSettings()) {
+    return tierId ? settings.rates.tiers.find((t) => t.id === tierId) : void 0;
+  }
+  function tierAppliesTo(tier, roomId) {
+    return !tier.roomIds || tier.roomIds.includes(roomId);
+  }
+  function tierNightPrice(tier, roomId, basePrice) {
+    if (!tierAppliesTo(tier, roomId)) return basePrice;
+    if (tier.mode === "percent") return round22(basePrice * (1 + (tier.percent || 0) / 100));
+    if (tier.mode === "prices") {
+      const p = tier.prices?.[roomId];
+      return typeof p === "number" && !isNaN(p) ? p : basePrice;
+    }
+    return basePrice;
+  }
+  function periodTierFor(date, settings = getSettings(), roomId) {
+    const tiers = settings.rates.tiers;
+    let found = tiers[0];
+    tiers.slice(1).forEach((t) => {
+      if (roomId && !tierAppliesTo(t, roomId)) return;
+      if (t.periods.some((p) => periodCovers(p, date))) found = t;
+    });
+    return found;
+  }
+  function nightRate(roomId, date, basePrice, settings = getSettings(), dayOverrides = overrides) {
+    const ov = dayOverrides[overrideKey(date, roomId)];
+    if (ov && typeof ov.price === "number" && !isNaN(ov.price)) {
+      return { date, price: ov.price, tier: null, manual: true };
+    }
+    const chosen = ov ? findTier(ov.tierId, settings) : void 0;
+    if (chosen) return { date, price: tierNightPrice(chosen, roomId, basePrice), tier: chosen, manual: true };
+    const tier = periodTierFor(date, settings, roomId);
+    return { date, price: tierNightPrice(tier, roomId, basePrice), tier, manual: false };
+  }
+  function stayNightRates(roomId, checkIn, nights, basePrice) {
+    const settings = getSettings();
+    return Array.from({ length: Math.max(0, nights) }, (_, i) => nightRate(roomId, addDaysIso(checkIn, i), basePrice, settings));
+  }
+  function isLastMinute(checkIn, today5 = todayIso4(), settings = getSettings()) {
+    const lm = settings.rates.lastMinute;
+    if (!lm.enabled || !ratesEnabled(settings) || !checkIn) return false;
+    const days2 = daysBetween2(today5, checkIn);
+    return days2 >= 0 && days2 <= lm.daysBefore;
+  }
+
+  // src/core/pricing/openingCalendar.ts
+  var WEEKDAY_LABELS = ["Dim.", "Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam."];
+  var WEEKEND_DAYS = [5, 6];
+  function weekdayOf(date) {
+    const [y, m, d] = date.split("-").map((n) => parseInt(n, 10));
+    return new Date(y, m - 1, d).getDay();
+  }
+  function openingPeriodFor(date, settings = getSettings()) {
+    let found = null;
+    settings.opening.periods.forEach((p) => {
+      if (periodCovers(p, date)) found = p;
+    });
+    return found;
+  }
+  function isOpenNight(date, settings = getSettings()) {
+    const p = openingPeriodFor(date, settings);
+    if (!p) return settings.opening.defaultOpen;
+    if (p.mode === "closed") return false;
+    if (p.mode === "days") return p.weekdays.includes(weekdayOf(date));
+    return true;
+  }
+  function hasOpeningRules(settings = getSettings()) {
+    return !settings.opening.defaultOpen || settings.opening.periods.length > 0;
+  }
+  function closedNightsOfStay(checkIn, nights, settings = getSettings()) {
+    if (!checkIn || !hasOpeningRules(settings)) return [];
+    return Array.from({ length: Math.max(0, nights) }, (_, i) => addDaysIso(checkIn, i)).filter((d) => !isOpenNight(d, settings));
+  }
+
   // src/core/planning/kind.ts
   var LEGACY_KINDS = {
     figuier: "accommodation",
@@ -4568,146 +4737,6 @@ footer{background:#111}
       demiJournee: price("demi_journee", 5),
       nuit: price("nuit", 5)
     };
-  }
-
-  // src/core/pricing/rateCalendar.ts
-  var import_react2 = __require("react");
-  var RATE_OVERRIDES_STORAGE_KEY = "domaine_sylvaria_rate_overrides_v1";
-  var MANUAL_PRICE_COLOR = "#7C3AED";
-  function readStoredOverrides() {
-    try {
-      const parsed = JSON.parse(localStorage.getItem(RATE_OVERRIDES_STORAGE_KEY) || "{}");
-      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
-    } catch {
-      return {};
-    }
-  }
-  var overrides = readStoredOverrides();
-  var listeners4 = /* @__PURE__ */ new Set();
-  function notify3() {
-    listeners4.forEach((l) => {
-      try {
-        l();
-      } catch {
-      }
-    });
-  }
-  try {
-    window.addEventListener("storage", (e) => {
-      if (e.key !== RATE_OVERRIDES_STORAGE_KEY) return;
-      overrides = readStoredOverrides();
-      notify3();
-    });
-  } catch {
-  }
-  var overrideKey = (date, roomId) => `${date}|${roomId}`;
-  function getRateOverrides() {
-    return overrides;
-  }
-  function writeRateOverrides(next) {
-    overrides = next && typeof next === "object" ? next : {};
-    try {
-      if (Object.keys(overrides).length === 0) localStorage.removeItem(RATE_OVERRIDES_STORAGE_KEY);
-      else localStorage.setItem(RATE_OVERRIDES_STORAGE_KEY, JSON.stringify(overrides));
-    } catch {
-    }
-    notify3();
-  }
-  function readRateOverridesForSync() {
-    return localStorage.getItem(RATE_OVERRIDES_STORAGE_KEY) === null ? void 0 : readStoredOverrides();
-  }
-  function setDayRates(dates, roomIds, value) {
-    const next = { ...overrides };
-    dates.forEach(
-      (date) => roomIds.forEach((roomId) => {
-        const key = overrideKey(date, roomId);
-        if (value) next[key] = { ...value };
-        else delete next[key];
-      })
-    );
-    writeRateOverrides(next);
-  }
-  function subscribe2(cb) {
-    listeners4.add(cb);
-    return () => {
-      listeners4.delete(cb);
-    };
-  }
-  function useRateOverrides() {
-    return (0, import_react2.useSyncExternalStore)(subscribe2, getRateOverrides, getRateOverrides);
-  }
-  function addDaysIso(dateStr, days2) {
-    const [y, m, d] = dateStr.split("-").map((n) => parseInt(n, 10));
-    const date = new Date(y, m - 1, d + days2);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  }
-  function todayIso4() {
-    const d = /* @__PURE__ */ new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  }
-  function daysBetween2(fromIso, toIso2) {
-    const [y1, m1, d1] = fromIso.split("-").map((n) => parseInt(n, 10));
-    const [y2, m2, d2] = toIso2.split("-").map((n) => parseInt(n, 10));
-    return Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 864e5);
-  }
-  function periodCovers(p, date) {
-    if (!p.start || !p.end) return false;
-    if (!p.everyYear) return p.start <= date && date <= p.end;
-    const md = date.slice(5);
-    const s = p.start.slice(5);
-    const e = p.end.slice(5);
-    return s <= e ? s <= md && md <= e : md >= s || md <= e;
-  }
-  var round22 = (n) => Math.round(n * 100) / 100;
-  function ratesEnabled(settings = getSettings()) {
-    return isModuleEnabled("rates", settings) && isModuleEnabled("pricing", settings);
-  }
-  function hasCalendarRates(roomId, settings = getSettings()) {
-    return settings.accommodations.some((a) => a.id === roomId);
-  }
-  function findTier(tierId, settings = getSettings()) {
-    return tierId ? settings.rates.tiers.find((t) => t.id === tierId) : void 0;
-  }
-  function tierAppliesTo(tier, roomId) {
-    return !tier.roomIds || tier.roomIds.includes(roomId);
-  }
-  function tierNightPrice(tier, roomId, basePrice) {
-    if (!tierAppliesTo(tier, roomId)) return basePrice;
-    if (tier.mode === "percent") return round22(basePrice * (1 + (tier.percent || 0) / 100));
-    if (tier.mode === "prices") {
-      const p = tier.prices?.[roomId];
-      return typeof p === "number" && !isNaN(p) ? p : basePrice;
-    }
-    return basePrice;
-  }
-  function periodTierFor(date, settings = getSettings(), roomId) {
-    const tiers = settings.rates.tiers;
-    let found = tiers[0];
-    tiers.slice(1).forEach((t) => {
-      if (roomId && !tierAppliesTo(t, roomId)) return;
-      if (t.periods.some((p) => periodCovers(p, date))) found = t;
-    });
-    return found;
-  }
-  function nightRate(roomId, date, basePrice, settings = getSettings(), dayOverrides = overrides) {
-    const ov = dayOverrides[overrideKey(date, roomId)];
-    if (ov && typeof ov.price === "number" && !isNaN(ov.price)) {
-      return { date, price: ov.price, tier: null, manual: true };
-    }
-    const chosen = ov ? findTier(ov.tierId, settings) : void 0;
-    if (chosen) return { date, price: tierNightPrice(chosen, roomId, basePrice), tier: chosen, manual: true };
-    const tier = periodTierFor(date, settings, roomId);
-    return { date, price: tierNightPrice(tier, roomId, basePrice), tier, manual: false };
-  }
-  function stayNightRates(roomId, checkIn, nights, basePrice) {
-    const settings = getSettings();
-    return Array.from({ length: Math.max(0, nights) }, (_, i) => nightRate(roomId, addDaysIso(checkIn, i), basePrice, settings));
-  }
-  function isLastMinute(checkIn, today5 = todayIso4(), settings = getSettings()) {
-    const lm = settings.rates.lastMinute;
-    if (!lm.enabled || !ratesEnabled(settings) || !checkIn) return false;
-    const days2 = daysBetween2(today5, checkIn);
-    return days2 >= 0 && days2 <= lm.daysBefore;
   }
 
   // src/utils/bookingUtils.ts
@@ -5401,6 +5430,9 @@ footer{background:#111}
     const roomBookedWeekendDays = zeroByRoom();
     const blockedResList = reservations.filter((r) => isReservationBlocked(r));
     const validResList = reservations.filter((r) => !isReservationBlocked(r));
+    const openingSettings = getSettings();
+    const closedRules = hasOpeningRules(openingSettings);
+    const dateIsoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     for (let day = 1; day <= daysInMonth; day++) {
       const currentDate = new Date(year, month, day);
       const dayOfWeek = currentDate.getDay();
@@ -5412,7 +5444,8 @@ footer{background:#111}
           const bOut = parseLocalDate(br.checkOut);
           return currentDate >= bIn && currentDate < bOut;
         });
-        if (isBlockedOnDate) {
+        const closedNight = closedRules && !isOpenNight(dateIsoOf(currentDate), openingSettings) && !validResList.some((vr) => vr.roomId === rId && currentDate >= parseLocalDate(vr.checkIn) && currentDate < parseLocalDate(vr.checkOut));
+        if (isBlockedOnDate || closedNight) {
           roomBlockedDays[rId]++;
         } else {
           roomAvailableDays[rId]++;
@@ -6653,7 +6686,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "204";
+  var APP_VERSION = "205";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -11310,35 +11343,6 @@ footer{background:#111}
   // src/modules/siteweb/types.ts
   var hiddenItemIds = (site) => Object.entries(site.extras).filter(([, e]) => e.hidden === true).map(([id]) => id);
 
-  // src/core/pricing/openingCalendar.ts
-  var WEEKDAY_LABELS = ["Dim.", "Lun.", "Mar.", "Mer.", "Jeu.", "Ven.", "Sam."];
-  var WEEKEND_DAYS = [5, 6];
-  function weekdayOf(date) {
-    const [y, m, d] = date.split("-").map((n) => parseInt(n, 10));
-    return new Date(y, m - 1, d).getDay();
-  }
-  function openingPeriodFor(date, settings = getSettings()) {
-    let found = null;
-    settings.opening.periods.forEach((p) => {
-      if (periodCovers(p, date)) found = p;
-    });
-    return found;
-  }
-  function isOpenNight(date, settings = getSettings()) {
-    const p = openingPeriodFor(date, settings);
-    if (!p) return settings.opening.defaultOpen;
-    if (p.mode === "closed") return false;
-    if (p.mode === "days") return p.weekdays.includes(weekdayOf(date));
-    return true;
-  }
-  function hasOpeningRules(settings = getSettings()) {
-    return !settings.opening.defaultOpen || settings.opening.periods.length > 0;
-  }
-  function closedNightsOfStay(checkIn, nights, settings = getSettings()) {
-    if (!checkIn || !hasOpeningRules(settings)) return [];
-    return Array.from({ length: Math.max(0, nights) }, (_, i) => addDaysIso(checkIn, i)).filter((d) => !isOpenNight(d, settings));
-  }
-
   // src/core/pricing/touristTax.ts
   var DEFAULT_TOURIST_TAX = { mode: "person", value: 0, exemptChildren: false };
   function touristTaxRule(settings = getSettings()) {
@@ -13931,7 +13935,7 @@ ${body}
   }
   function getAppsScriptCode() {
     return `// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V34)
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V35)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -14011,6 +14015,7 @@ ${body}
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
 // V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Domaine Sylvaria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V35 : les nuits o\xF9 l'\xE9tablissement est ferm\xE9 (Param\xE9trage > Ouverture et fermetures) sont ajout\xE9es au calendrier iCal d'export : Airbnb, Booking et les autres plateformes les voient indisponibles. Aucune nouvelle autorisation.
 // V34 : modification et suppression d'une commande de repas par l'administratrice (actions "mealOrderAdmin" avec orderId, et "mealOrderDelete"). Aucune nouvelle autorisation.
 // V33 : une r\xE9servation du site annul\xE9e ou supprim\xE9e dans l'application lib\xE8re ses nuits sur le site (d\xE9cision \xAB released \xBB, sans e-mail au client). Aucune nouvelle autorisation.
 // V32 : si le PDF des CGV ne peut pas \xEAtre fabriqu\xE9, elles sont \xE9crites dans l'e-mail ; fonction essaiCgv() et point \xAB cgv \xBB dans \xAB V\xE9rifier le connecteur \xBB. Aucune nouvelle autorisation.
@@ -14715,7 +14720,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 34;
+var CONNECTOR_VERSION = 35;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Domaine Sylvaria - Photos m\xE9nage";
@@ -17203,8 +17208,55 @@ function icalStamp_(date) {
   return Utilities.formatDate(date, "UTC", "yyyyMMdd'T'HHmmss'Z'");
 }
 
+// V35 : nuits ferm\xE9es d'apr\xE8s le Param\xE9trage (m\xEAme r\xE8gle que l'application : la p\xE9riode la plus basse de la liste l'emporte)
+function periodCoversIso_(p, date) {
+  var start = textOf_(p.start);
+  var end = textOf_(p.end);
+  if (!start || !end) return false;
+  if (!p.everyYear) return start <= date && date <= end;
+  var md = date.slice(5);
+  var s = start.slice(5);
+  var e = end.slice(5);
+  return s <= e ? (s <= md && md <= e) : (md >= s || md <= e);
+}
+
+function isOpenNightIso_(opening, iso) {
+  var o = isObject_(opening) ? opening : {};
+  var found = null;
+  listOf_(o.periods).forEach(function(p) { if (isObject_(p) && periodCoversIso_(p, iso)) found = p; });
+  if (!found) return o.defaultOpen !== false;
+  if (found.mode === "closed") return false;
+  if (found.mode === "days") return listOf_(found.weekdays).indexOf(weekDay_(iso)) >= 0;
+  return true;
+}
+
+function isoPlus_(iso, n) {
+  var p = String(iso).split("-");
+  return new Date(Date.UTC(Number(p[0]), Number(p[1]) - 1, Number(p[2]) + n)).toISOString().slice(0, 10);
+}
+
+// P\xE9riodes [premi\xE8re nuit, lendemain de la derni\xE8re nuit] o\xF9 l'\xE9tablissement est ferm\xE9, \xE0 partir de fromIso sur \xAB days \xBB nuits
+function closedRanges_(opening, fromIso, days) {
+  var o = isObject_(opening) ? opening : {};
+  if (o.defaultOpen !== false && listOf_(o.periods).length === 0) return [];
+  var ranges = [];
+  var cur = null;
+  for (var i = 0; i < days; i++) {
+    var d = isoPlus_(fromIso, i);
+    if (!isOpenNightIso_(o, d)) {
+      if (cur) cur[1] = isoPlus_(d, 1);
+      else cur = [d, isoPlus_(d, 1)];
+    } else if (cur) {
+      ranges.push(cur);
+      cur = null;
+    }
+  }
+  if (cur) ranges.push(cur);
+  return ranges;
+}
+
 // Texte du calendrier (fonction pure : r\xE9servations, h\xE9bergement, plateforme destinataire, date du jour AAAA-MM-JJ)
-function buildIcal_(list, room, forPlatform, todayIso, stamp) {
+function buildIcal_(list, room, forPlatform, todayIso, stamp, opening) {
   var lines = [
     "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Domaine Sylvaria//Export iCal//FR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
     "X-WR-CALNAME:Domaine Sylvaria " + room
@@ -17230,6 +17282,19 @@ function buildIcal_(list, room, forPlatform, todayIso, stamp) {
       "END:VEVENT"
     );
   });
+  // V35 : les nuits o\xF9 l'\xE9tablissement est ferm\xE9 (Param\xE9trage > Ouverture et fermetures) sont aussi indisponibles pour les plateformes
+  closedRanges_(opening, cutoff, 800).forEach(function(range) {
+    lines.push(
+      "BEGIN:VEVENT",
+      "UID:closed-" + room.replace(/[^A-Za-z0-9_-]/g, "") + "-" + icalDay_(range[0]) + "@domaine-sylvaria",
+      "DTSTAMP:" + stamp,
+      "DTSTART;VALUE=DATE:" + icalDay_(range[0]),
+      "DTEND;VALUE=DATE:" + icalDay_(range[1]),
+      "SUMMARY:Indisponible",
+      "TRANSP:OPAQUE",
+      "END:VEVENT"
+    );
+  });
   lines.push("END:VCALENDAR");
   return lines.join("\\r\\n") + "\\r\\n";
 }
@@ -17244,7 +17309,7 @@ function icalExportOutput_(e) {
   }
   var store = loadAppData_(getTargetSpreadsheet());
   var now = new Date();
-  var text = buildIcal_(store && store.reservationsList, room, forPlatform, now.toISOString().slice(0, 10), icalStamp_(now));
+  var text = buildIcal_(store && store.reservationsList, room, forPlatform, now.toISOString().slice(0, 10), icalStamp_(now), store && store.appStores && store.appStores.settings && store.appStores.settings.opening);
   return ContentService.createTextOutput(text).setMimeType(ContentService.MimeType.ICAL);
 }
 
@@ -17826,7 +17891,7 @@ function purgeRequestPolice_(ss, todayIso) {
   });
   return purged;
 }
-// ===== FIN DU CONNECTEUR (V34) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== FIN DU CONNECTEUR (V35) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
 
