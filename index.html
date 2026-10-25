@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v196</title>
-  <meta name="application-name" content="Gestyria v196" />
+  <title>Gestyria v197</title>
+  <meta name="application-name" content="Gestyria v197" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6643,7 +6643,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "196";
+  var APP_VERSION = "197";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -23970,8 +23970,9 @@ Cette op\xE9ration est d\xE9finitive.`
     const [website, setWebsite] = (0, import_react37.useState)("");
     const [state2, setState] = (0, import_react37.useState)("idle");
     const [error, setError] = (0, import_react37.useState)("");
+    const chosen = dates.length === 1 ? dates : picked;
     const perDay = orderable.reduce((n, i) => n + (qty[i.id]?.qty || 0) * i.unitPrice + (qty[i.id]?.childQty || 0) * i.childUnitPrice, 0);
-    const total = Math.round(perDay * Math.max(1, picked.length) * 100) / 100;
+    const total = Math.round(perDay * Math.max(1, chosen.length) * 100) / 100;
     const bound = (n, max) => Math.max(0, Math.min(max, n));
     const stepLine = (id, key, delta) => setQty((q) => {
       const cur = { qty: q[id]?.qty || 0, childQty: q[id]?.childQty || 0 };
@@ -23980,7 +23981,7 @@ Cette op\xE9ration est d\xE9finitive.`
     const submit = async (e) => {
       e.preventDefault();
       setError("");
-      if (picked.length === 0) return setError("Choisissez le ou les jours.");
+      if (chosen.length === 0) return setError("Choisissez le ou les jours.");
       if (adults + children < 1) return setError("Indiquez le nombre de personnes.");
       const lines2 = orderable.map((i) => ({ itemId: i.id, qty: qty[i.id]?.qty || 0, childQty: qty[i.id]?.childQty || 0 })).filter((l) => l.qty + l.childQty > 0);
       if (orderable.length > 0 && lines2.length === 0) return setError("Choisissez au moins un produit \xE0 commander.");
@@ -23988,7 +23989,7 @@ Cette op\xE9ration est d\xE9finitive.`
       if (!ordering.onOrder) return setError("Aper\xE7u : la commande fonctionnera dans le livret publi\xE9.");
       setState("sending");
       try {
-        const created = await ordering.onOrder({ momentId: moment2.id, dates: [...picked].sort(), time, adults, children, lines: lines2, name, contact, message, website });
+        const created = await ordering.onOrder({ momentId: moment2.id, dates: [...chosen].sort(), time, adults, children, lines: lines2, name, contact, message, website });
         onOrdered(created);
         setState("sent");
       } catch (err) {
@@ -24042,14 +24043,14 @@ Cette op\xE9ration est d\xE9finitive.`
         /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { type: "button", onClick: () => setOpen(false), className: "p-1 text-neutral-400 cursor-pointer", "aria-label": "Fermer", children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(X, { className: "w-4 h-4" }) })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "text-[11px] font-semibold text-neutral-600 mb-1.5", children: stay ? "Pour quel(s) jour(s) de votre s\xE9jour ?" : "Pour quel(s) jour(s) ?" }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "text-[11px] font-semibold text-neutral-600 mb-1.5", children: dates.length === 1 ? "Jour de la commande" : stay ? "Pour quel(s) jour(s) de votre s\xE9jour ?" : "Pour quel(s) jour(s) ?" }),
         dates.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("p", { className: "text-[12px] text-neutral-500", children: [
           "Plus aucun jour ne peut \xEAtre command\xE9",
           stay ? " pour votre s\xE9jour" : "",
           " (heure limite pass\xE9e",
           stay ? moment2.id === "breakfast" ? " ; le petit-d\xE9jeuner se sert le matin, \xE0 partir du lendemain de votre arriv\xE9e" : moment2.id === "lunch" ? " ; le d\xE9jeuner se sert du jour de votre arriv\xE9e au jour de votre d\xE9part" : " ; ce repas se sert du jour de votre arriv\xE9e \xE0 la veille de votre d\xE9part" : "",
           ")."
-        ] }) : /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "flex flex-wrap gap-1.5", children: dates.map((d) => {
+        ] }) : dates.length === 1 ? /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { className: "text-[13px] font-bold text-neutral-900", "data-order-day": dates[0], children: dayLabel(dates[0]) }) : /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "flex flex-wrap gap-1.5", children: dates.map((d) => {
           const on = picked.includes(d);
           return /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(
             "button",
@@ -24118,7 +24119,7 @@ Cette op\xE9ration est d\xE9finitive.`
       total > 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "flex items-center justify-between px-3 py-2 rounded-xl", style: { background: tint(color, 0.07) }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { className: "text-[12px] text-neutral-700", children: [
           "Total indicatif",
-          picked.length > 1 ? ` (${picked.length} jours)` : ""
+          chosen.length > 1 ? ` (${chosen.length} jours)` : ""
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-[14px] font-bold", style: { color }, "data-order-total": true, children: euros2(total) })
       ] }),
