@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v194</title>
-  <meta name="application-name" content="Gestyria v194" />
+  <title>Gestyria v195</title>
+  <meta name="application-name" content="Gestyria v195" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3104,7 +3104,7 @@ footer{background:#111}
       reviews: { show: true, showAverage: true, ids: [] },
       guestbook: { show: true },
       form: { contact: true, request: true },
-      booking: { mode: "validation", payment: { advance: false, percent: 30, days: 7, onsite: true, instructions: "" } },
+      booking: { mode: "validation", payment: { advance: false, percent: 30, days: 7, onsite: true, instructions: "", remindApp: true, remindEmail: true, remindBefore: 2, remindAfter: true } },
       style: "classique",
       lastGeneratedAt: ""
     };
@@ -3159,7 +3159,17 @@ footer{background:#111}
     const onsite = bool(p.onsite, true) || !advance;
     return {
       mode: b.mode === "auto" ? "auto" : "validation",
-      payment: { advance, percent: num6(p.percent, 30, 1, 100), days: num6(p.days, 7, 1, 90), onsite, instructions: str(p.instructions) }
+      payment: {
+        advance,
+        percent: num6(p.percent, 30, 1, 100),
+        days: num6(p.days, 7, 1, 90),
+        onsite,
+        instructions: str(p.instructions),
+        remindApp: bool(p.remindApp, true),
+        remindEmail: bool(p.remindEmail, true),
+        remindBefore: num6(p.remindBefore, 2, 0, 30),
+        remindAfter: bool(p.remindAfter, true)
+      }
     };
   }
   function normalizeSite(raw) {
@@ -6631,6 +6641,108 @@ footer{background:#111}
     return (0, import_react3.useSyncExternalStore)(subscribe3, getStoredTasks, getStoredTasks);
   }
 
+  // src/core/app.ts
+  var APP_NAME = "Gestyria";
+  var APP_VERSION = "195";
+  var APP_VERSION_LABEL = `v${APP_VERSION}`;
+  var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
+
+  // src/core/backup/backup.ts
+  var BACKUP_FORMAT = "domaine-sylvaria-sauvegarde";
+  var LAST_BACKUP_KEY = "domaine_sylvaria_last_backup_v1";
+  var isAppKey = (k) => (k.startsWith("domaine_sylvaria") || k.startsWith("sylvaria_")) && k !== LAST_BACKUP_KEY && !/sheet_pulled|sheet_pending|cloud_backup/.test(k);
+  var backupExtras = {};
+  function registerBackupExtra(key, read4) {
+    backupExtras[key] = read4;
+  }
+  function collectEntries(storage = localStorage) {
+    const out = {};
+    if (storage === localStorage) {
+      Object.entries(backupExtras).forEach(([k, read4]) => {
+        try {
+          const v = read4();
+          if (v !== void 0) out[k] = v;
+        } catch {
+        }
+      });
+    }
+    for (let i = 0; i < storage.length; i++) {
+      const k = storage.key(i);
+      if (k && isAppKey(k)) {
+        const v = storage.getItem(k);
+        if (v !== null) out[k] = v;
+      }
+    }
+    return out;
+  }
+  function buildBackup(entries = collectEntries(), now = /* @__PURE__ */ new Date()) {
+    return { format: BACKUP_FORMAT, version: 1, createdAt: now.toISOString(), app: APP_FULL_NAME, entries };
+  }
+  var backupFileName = (now = /* @__PURE__ */ new Date()) => `sauvegarde-gestyria-v${APP_VERSION}-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}h${String(now.getMinutes()).padStart(2, "0")}.json`;
+  function downloadBackup() {
+    const file = buildBackup();
+    const text = JSON.stringify(file);
+    const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = backupFileName();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2e3);
+    try {
+      localStorage.setItem(LAST_BACKUP_KEY, file.createdAt);
+    } catch {
+    }
+    return { count: Object.keys(file.entries).length, bytes: text.length };
+  }
+  function lastBackupAt() {
+    try {
+      return localStorage.getItem(LAST_BACKUP_KEY) || "";
+    } catch {
+      return "";
+    }
+  }
+  function backupAgeDays(now = /* @__PURE__ */ new Date(), last = lastBackupAt()) {
+    if (!last) return null;
+    const t = new Date(last).getTime();
+    return isNaN(t) ? null : Math.floor((now.getTime() - t) / 864e5);
+  }
+  function parseBackup(text) {
+    let raw;
+    try {
+      raw = JSON.parse(text);
+    } catch {
+      return { ok: false, error: "Ce fichier n'est pas une sauvegarde valide (JSON illisible)." };
+    }
+    const f = raw;
+    if (!f || f.format !== BACKUP_FORMAT) return { ok: false, error: "Ce fichier n'est pas une sauvegarde de cette application." };
+    if (f.version !== 1) return { ok: false, error: `Version de sauvegarde inconnue (${String(f.version)}) : mettez l'application \xE0 jour.` };
+    if (!f.entries || typeof f.entries !== "object" || Array.isArray(f.entries)) return { ok: false, error: "La sauvegarde est vide ou ab\xEEm\xE9e." };
+    const entries = {};
+    for (const [k, v] of Object.entries(f.entries)) {
+      if (!isAppKey(k) || typeof v !== "string") return { ok: false, error: `La sauvegarde contient une entr\xE9e inattendue (${k.slice(0, 40)}) : restauration refus\xE9e par s\xE9curit\xE9.` };
+      entries[k] = v;
+    }
+    return { ok: true, file: { ...f, entries }, keys: Object.keys(entries).length };
+  }
+  function applyBackup(file, storage = localStorage) {
+    const current2 = collectEntries(storage);
+    let removed = 0;
+    Object.keys(current2).forEach((k) => {
+      if (!(k in file.entries)) {
+        storage.removeItem(k);
+        removed++;
+      }
+    });
+    let written = 0;
+    for (const [k, v] of Object.entries(file.entries)) {
+      storage.setItem(k, v);
+      written++;
+    }
+    return { written, removed };
+  }
+
   // src/modules/livret/store.ts
   var import_react7 = __require("react");
 
@@ -9339,7 +9451,7 @@ footer{background:#111}
   var PHOTOS_STORAGE_KEY = "domaine_sylvaria_welcome_photos_v1";
   var BOOK_PHOTO_TARGET_BYTES = 9e4;
   var DISH_PHOTO_TARGET_BYTES = 45e3;
-  var MAX_BOOK_PHOTOS = 40;
+  var MAX_BOOK_PHOTOS = 150;
   function getWelcomeBook(settings = getSettings()) {
     return readWelcomeBook(settings);
   }
@@ -9365,18 +9477,80 @@ footer{background:#111}
       return {};
     }
   }
-  var photos = readPhotos();
+  var IDB_NAME = "gestyria_photos_v1";
+  var IDB_STORE = "kv";
+  var IDB_KEY = "welcomeBookPhotos";
+  var useIdb = typeof indexedDB !== "undefined";
+  var loaded = !useIdb;
+  function idbOpen() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbGet() {
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const req = db.transaction(IDB_STORE, "readonly").objectStore(IDB_STORE).get(IDB_KEY);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbSet(map) {
+    const db = await idbOpen();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).put(map, IDB_KEY);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+  }
+  var photos = useIdb ? {} : readPhotos();
   var listeners6 = /* @__PURE__ */ new Set();
   var notify5 = () => listeners6.forEach((l) => l());
+  var arePhotosLoaded = () => loaded;
+  async function loadFromIdb() {
+    try {
+      let map = await idbGet() || {};
+      const legacy = localStorage.getItem(PHOTOS_STORAGE_KEY);
+      if (legacy) {
+        try {
+          const parsed = JSON.parse(legacy);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) map = { ...map, ...parsed };
+        } catch {
+        }
+        await idbSet(map);
+        localStorage.removeItem(PHOTOS_STORAGE_KEY);
+      }
+      photos = map;
+    } catch {
+      useIdb = false;
+      photos = readPhotos();
+    }
+    loaded = true;
+    notify5();
+  }
+  var photosReady = useIdb ? loadFromIdb() : Promise.resolve();
   try {
     window.addEventListener("storage", (e) => {
-      if (e.key !== PHOTOS_STORAGE_KEY) return;
+      if (e.key !== PHOTOS_STORAGE_KEY || useIdb) return;
       photos = readPhotos();
       notify5();
     });
   } catch {
   }
   function persistPhotos(next) {
+    if (useIdb) {
+      photos = next;
+      notify5();
+      idbSet(next).catch(() => {
+        logEvent("error", "Les photos n'ont pas pu \xEAtre enregistr\xE9es dans la base de l'appareil.");
+      });
+      return;
+    }
     setItemOrThrow(PHOTOS_STORAGE_KEY, JSON.stringify(next));
     photos = next;
     notify5();
@@ -9419,13 +9593,23 @@ footer{background:#111}
     return removed;
   }
   function readPhotosForSync() {
+    if (useIdb) return Object.keys(photos).length > 0 || loaded ? photos : void 0;
     return localStorage.getItem(PHOTOS_STORAGE_KEY) === null ? void 0 : readPhotos();
   }
   function writePhotosFromSync(value) {
+    if (useIdb) {
+      photos = value || {};
+      notify5();
+      idbSet(photos).catch(() => logEvent("error", "Les photos re\xE7ues n'ont pas pu \xEAtre enregistr\xE9es dans la base de l'appareil."));
+      return;
+    }
     if (value) localStorage.setItem(PHOTOS_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(PHOTOS_STORAGE_KEY);
     photos = readPhotos();
     notify5();
+  }
+  function photosForBackup() {
+    return useIdb && loaded && Object.keys(photos).length > 0 ? JSON.stringify(photos) : void 0;
   }
   function photosWeightKb(map = photos) {
     return Math.round(Object.values(map).reduce((n, p) => n + (p.data?.length || 0) * 0.75, 0) / 1024);
@@ -9446,6 +9630,7 @@ footer{background:#111}
     if (changed > 0) persistPhotos(next);
     return { beforeKb, afterKb: photosWeightKb(next), changed };
   }
+  registerBackupExtra(PHOTOS_STORAGE_KEY, () => photosForBackup());
 
   // src/modules/rentabilite/store.ts
   var import_react8 = __require("react");
@@ -11373,6 +11558,7 @@ footer{background:#111}
       label: "Photos du livret d'accueil",
       kind: "map",
       read: readPhotosForSync,
+      ready: arePhotosLoaded,
       write: (value) => writePhotosFromSync(isPlainObject(value) ? value : null)
     },
     {
@@ -11526,6 +11712,7 @@ footer{background:#111}
     const meta = loadMeta();
     const out = {};
     SYNCED_STORES.forEach((def) => {
+      if (def.ready && !def.ready()) return;
       const v = def.read();
       const m = meta[def.id];
       if (v === void 0 && !m) return;
@@ -11544,6 +11731,7 @@ footer{background:#111}
     SYNCED_STORES.forEach((def) => {
       const remote = remoteStores[def.id];
       if (!isEntry(remote)) return;
+      if (def.ready && !def.ready()) return;
       const v = def.read();
       const m = meta[def.id];
       const local = buildLocalEntry(def, v, m, now);
@@ -12892,7 +13080,7 @@ footer{background:#111}
   }
   function getAppsScriptCode() {
     return `\uFEFF// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V29)
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V30)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -12972,6 +13160,7 @@ footer{background:#111}
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
 // V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Domaine Sylvaria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V30 : rappels automatiques d'acompte (r\xE9servations du site dont l'acompte demand\xE9 \xE0 l'avance n'est pas re\xE7u) : au client avant la date limite et une relance apr\xE8s, l'\xE9tablissement est pr\xE9venu ; r\xE9glables dans l'application. Les photos du livret et de la carte ne sont plus limit\xE9es \xE0 40 (stockage de l'appareil). Aucune nouvelle autorisation.
 // V29 : e-mails au client plus complets (confirmation, accus\xE9 de r\xE9ception, refus) : modalit\xE9s de r\xE8glement choisies dans l'application (acompte \xE0 l'avance et/ou paiement sur place), lien du livret d'accueil (petits-d\xE9jeuners et repas), coordonn\xE9es de l'\xE9tablissement en signature. Aucune nouvelle autorisation.
 // V28 : nationalit\xE9 du client et fiche individuelle de police (voyageurs \xE9trangers) jointes \xE0 la demande du site, rang\xE9es avec la demande et effac\xE9es six mois apr\xE8s le d\xE9part ; l'outil RGPD compte et supprime aussi les demandes du site. Aucune nouvelle autorisation.
 // V27 : demandes de r\xE9servation du site web (actions "siteRequest", "siteRequests", "siteRequestDecision") rang\xE9es dans l'onglet Site_Demandes ; mode automatique ou apr\xE8s validation choisi dans l'application ; e-mails au client et \xE0 l'administratrice ; les nuits des demandes comptent comme prises. Aucune nouvelle autorisation.
@@ -13671,7 +13860,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 29;
+var CONNECTOR_VERSION = 30;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Domaine Sylvaria - Photos m\xE9nage";
@@ -13711,6 +13900,12 @@ function envoyerRappelsMenage() {
     Logger.log(JSON.stringify(sendDocReminders_(false)));
   } catch(errDoc) {
     Logger.log("Rappels des documents : " + errDoc);
+  }
+  // V30 : rappels d'acompte (r\xE9servations du site)
+  try {
+    Logger.log(JSON.stringify(sendDepositReminders_(false)));
+  } catch(errDeposit) {
+    Logger.log("Rappels d'acompte : " + errDeposit);
   }
   // V28 : fiches de police des demandes du site, effac\xE9es six mois apr\xE8s le d\xE9part
   try {
@@ -16433,7 +16628,10 @@ function sitePaymentSettings_(store) {
     onsite: p.onsite !== false,
     percent: isFinite(percent) && percent > 0 && percent <= 100 ? Math.round(percent) : 30,
     days: isFinite(days) && days >= 1 && days <= 90 ? Math.round(days) : 7,
-    instructions: cleanText_(p.instructions, 1200)
+    instructions: cleanText_(p.instructions, 1200),
+    remindEmail: p.remindEmail !== false,
+    remindBefore: isFinite(Number(p.remindBefore)) && Number(p.remindBefore) >= 0 && Number(p.remindBefore) <= 30 ? Math.round(Number(p.remindBefore)) : 2,
+    remindAfter: p.remindAfter !== false
   };
   if (!out.advance && !out.onsite) out.onsite = true;
   return out;
@@ -16533,6 +16731,19 @@ function sendRequestMail_(ss, store, settings, d, kind, note) {
           "<p style=\\"margin:6px 0 0;font-size:12px;color:#737373\\">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur : " + esc_(link) + "</p>";
       }
       body += "<p style=\\"margin:20px 0 0\\">Pour toute question, r\xE9pondez simplement \xE0 cet e-mail ou appelez-nous : nous restons \xE0 votre disposition.</p>";
+    } else if (kind === "depositBefore" || kind === "depositLate") {
+      var pay = sitePaymentSettings_(store);
+      var dueText = frDate_(d.depositDue);
+      var amountText = d.depositAmount > 0 ? " de <b>" + esc_(euroText_(d.depositAmount)) + "</b>" : "";
+      subject = kind === "depositBefore" ? "rappel : acompte \xE0 r\xE9gler avant le " + dueText : "votre acompte n'a pas encore \xE9t\xE9 re\xE7u";
+      body = greeting +
+        (kind === "depositBefore"
+          ? "<p style=\\"margin:0 0 12px\\">Nous vous rappelons que l'acompte" + amountText + " pour votre r\xE9servation au <b>" + esc_(estName) + "</b> est \xE0 r\xE9gler <b>avant le " + esc_(dueText) + "</b>.</p>"
+          : "<p style=\\"margin:0 0 12px\\">Sauf erreur de notre part, nous n'avons pas encore re\xE7u l'acompte" + amountText + " pour votre r\xE9servation au <b>" + esc_(estName) + "</b>, dont la date limite \xE9tait le <b>" + esc_(dueText) + "</b>. Merci de le r\xE9gler d\xE8s que possible, ou de nous contacter si vous rencontrez une difficult\xE9.</p>") +
+        requestSummaryTable_(d) +
+        (pay.instructions ? "<h3 style=\\"font-family:Georgia,serif;color:#325032;font-size:16px;margin:16px 0 8px\\">Comment r\xE9gler</h3><p style=\\"margin:0;white-space:pre-line\\">" + esc_(pay.instructions) + "</p>" : "") +
+        (pay.onsite ? "<p style=\\"margin:12px 0 0\\">Vous pouvez aussi r\xE9gler la totalit\xE9 sur place, \xE0 votre arriv\xE9e.</p>" : "") +
+        "<p style=\\"margin:12px 0 0;color:#525252\\">Si vous avez d\xE9j\xE0 effectu\xE9 ce r\xE8glement, merci d'ignorer ce message.</p>";
     } else if (kind === "refused") {
       subject = "votre demande de r\xE9servation";
       body = greeting +
@@ -16562,6 +16773,72 @@ function sendRequestMail_(ss, store, settings, d, kind, note) {
   } catch(errMail) {}
 }
 
+// ===== V30 : rappels d'acompte =====
+// Pour une r\xE9servation du site avec acompte demand\xE9 \xE0 l'avance, tant que son paiement est \xAB en attente \xBB dans l'application :
+// un rappel au client quelques jours avant la date limite, puis une relance apr\xE8s la date limite (l'\xE9tablissement est pr\xE9venu).
+// Chaque rappel n'est envoy\xE9 qu'une fois (suivi dans la demande, onglet Site_Demandes). La date limite et le montant sont fix\xE9s par l'application
+// \xE0 la confirmation (champs depositDueDate et depositExpected de la r\xE9servation \xAB site_<identifiant de la demande> \xBB).
+function sendDepositReminders_(test) {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(25000)) return { status: "success", sent: 0, skipped: "Une synchronisation est en cours." };
+  try {
+    var ss = getTargetSpreadsheet();
+    var store = loadAppData_(ss);
+    var settings = (store && store.appStores && store.appStores.settings) || {};
+    var pay = sitePaymentSettings_(store);
+    if (!pay.advance || !pay.remindEmail) return { status: "success", sent: 0, skipped: "Rappels d'acompte par e-mail d\xE9sactiv\xE9s." };
+    var now = parisNow_();
+    if (!test && Number(now.time.slice(0, 2)) < 9) return { status: "success", sent: 0, skipped: "Pas encore l'heure." };
+    var byId = {};
+    listOf_(store && store.reservationsList).forEach(function(r) { if (r && r.id) byId[String(r.id)] = r; });
+    var sheet = requestSheet_(ss);
+    var sent = 0;
+    var late = [];
+    readRequests_(ss).forEach(function(q) {
+      if (q.status !== "accepted" && q.status !== "auto") return;
+      var res = byId["site_" + q.id];
+      if (!res || res.reservationStatus === "cancelled" || res.isBlocked) return;
+      if (res.paymentStatus !== "pending") return; // acompte re\xE7u (ou pay\xE9) : plus de rappel
+      var due = textOf_(res.depositDueDate);
+      if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(due)) return;
+      var reminders = isObject_(q.reminders) ? q.reminders : {};
+      var days = daysBetweenIso_(now.date, due);
+      var kind = "";
+      if (pay.remindBefore > 0 && !reminders.before && days >= 0 && days <= pay.remindBefore) kind = "before";
+      else if (pay.remindAfter && !reminders.after && days < 0 && days >= -30) kind = "after";
+      if (!kind) return;
+      var amount = Number(res.depositExpected) || 0;
+      var info = { id: q.id, name: q.name, contact: q.contact, kind: q.kind, roomName: q.roomName, arrival: q.arrival, departure: q.departure, adults: q.adults, children: q.children, total: q.total, depositDue: due, depositAmount: amount };
+      sendRequestMail_(ss, store, settings, info, kind === "before" ? "depositBefore" : "depositLate", "");
+      reminders[kind] = now.date;
+      q.reminders = reminders;
+      var data = {};
+      for (var qk in q) { if (qk !== "id" && qk !== "status" && qk !== "row") data[qk] = q[qk]; }
+      data.reminders = reminders;
+      sheet.getRange(q.row, 15).setNumberFormat("@").setValue(JSON.stringify(data));
+      sent++;
+      if (kind === "after") late.push(q.name + " (" + (amount ? euroText_(amount) + ", " : "") + "limite " + frShort_(due) + ")");
+    });
+    if (late.length > 0) {
+      try {
+        var estName = textOf_(settings.establishment && settings.establishment.name) || "Domaine Sylvaria";
+        MailApp.sendEmail({
+          to: adminRecipient_("", settings),
+          subject: "Acompte non re\xE7u : " + late.length + " r\xE9servation" + (late.length > 1 ? "s" : "") + " du site",
+          htmlBody: "<div style=\\"font-family:Arial,sans-serif;font-size:14px;color:#171717;max-width:560px\\"><h2 style=\\"font-family:Georgia,serif;color:#325032;margin:0 0 10px\\">Acomptes non re\xE7us \xE0 la date limite</h2>" +
+            "<p>Une relance a \xE9t\xE9 envoy\xE9e au client pour :</p><ul>" + late.map(function(l) { return "<li>" + esc_(l) + "</li>"; }).join("") + "</ul>" +
+            "<p style=\\"color:#525252\\">D\xE8s que vous marquez la r\xE9servation \xAB Acompte \xBB ou \xAB Pay\xE9 \xBB dans l'application, les rappels s'arr\xEAtent.</p>" +
+            "<p style=\\"color:#a3a3a3;font-size:12px;margin-top:18px\\">" + esc_(estName) + " \xB7 rappel automatique des r\xE9servations du site.</p></div>",
+          name: estName
+        });
+      } catch(errAdminMail) {}
+    }
+    return { status: "success", version: CONNECTOR_VERSION, sent: sent };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // ===== V28 : nationalit\xE9 et fiche de police =====
 // M\xEAme r\xE8gle que l'application : vide ou \xAB France\u2026 \xBB = pas de fiche ; tout autre texte = voyageur \xE9tranger
 function isForeignNationality_(v) {
@@ -16589,7 +16866,7 @@ function purgeRequestPolice_(ss, todayIso) {
   });
   return purged;
 }
-// ===== FIN DU CONNECTEUR (V29) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== FIN DU CONNECTEUR (V30) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
 
@@ -17347,12 +17624,6 @@ function purgeRequestPolice_(ss, todayIso) {
       ] })
     ] });
   };
-
-  // src/core/app.ts
-  var APP_NAME = "Gestyria";
-  var APP_VERSION = "194";
-  var APP_VERSION_LABEL = `v${APP_VERSION}`;
-  var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
   // src/components/Header.tsx
   var import_jsx_runtime4 = __require("react/jsx-runtime");
@@ -22102,89 +22373,6 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
 
   // src/modules/parametrage/PrivacySection.tsx
   var import_react33 = __require("react");
-
-  // src/core/backup/backup.ts
-  var BACKUP_FORMAT = "domaine-sylvaria-sauvegarde";
-  var LAST_BACKUP_KEY = "domaine_sylvaria_last_backup_v1";
-  var isAppKey = (k) => (k.startsWith("domaine_sylvaria") || k.startsWith("sylvaria_")) && k !== LAST_BACKUP_KEY && !/sheet_pulled|sheet_pending|cloud_backup/.test(k);
-  function collectEntries(storage = localStorage) {
-    const out = {};
-    for (let i = 0; i < storage.length; i++) {
-      const k = storage.key(i);
-      if (k && isAppKey(k)) {
-        const v = storage.getItem(k);
-        if (v !== null) out[k] = v;
-      }
-    }
-    return out;
-  }
-  function buildBackup(entries = collectEntries(), now = /* @__PURE__ */ new Date()) {
-    return { format: BACKUP_FORMAT, version: 1, createdAt: now.toISOString(), app: APP_FULL_NAME, entries };
-  }
-  var backupFileName = (now = /* @__PURE__ */ new Date()) => `sauvegarde-gestyria-v${APP_VERSION}-${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}-${String(now.getHours()).padStart(2, "0")}h${String(now.getMinutes()).padStart(2, "0")}.json`;
-  function downloadBackup() {
-    const file = buildBackup();
-    const text = JSON.stringify(file);
-    const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = backupFileName();
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 2e3);
-    try {
-      localStorage.setItem(LAST_BACKUP_KEY, file.createdAt);
-    } catch {
-    }
-    return { count: Object.keys(file.entries).length, bytes: text.length };
-  }
-  function lastBackupAt() {
-    try {
-      return localStorage.getItem(LAST_BACKUP_KEY) || "";
-    } catch {
-      return "";
-    }
-  }
-  function backupAgeDays(now = /* @__PURE__ */ new Date(), last = lastBackupAt()) {
-    if (!last) return null;
-    const t = new Date(last).getTime();
-    return isNaN(t) ? null : Math.floor((now.getTime() - t) / 864e5);
-  }
-  function parseBackup(text) {
-    let raw;
-    try {
-      raw = JSON.parse(text);
-    } catch {
-      return { ok: false, error: "Ce fichier n'est pas une sauvegarde valide (JSON illisible)." };
-    }
-    const f = raw;
-    if (!f || f.format !== BACKUP_FORMAT) return { ok: false, error: "Ce fichier n'est pas une sauvegarde de cette application." };
-    if (f.version !== 1) return { ok: false, error: `Version de sauvegarde inconnue (${String(f.version)}) : mettez l'application \xE0 jour.` };
-    if (!f.entries || typeof f.entries !== "object" || Array.isArray(f.entries)) return { ok: false, error: "La sauvegarde est vide ou ab\xEEm\xE9e." };
-    const entries = {};
-    for (const [k, v] of Object.entries(f.entries)) {
-      if (!isAppKey(k) || typeof v !== "string") return { ok: false, error: `La sauvegarde contient une entr\xE9e inattendue (${k.slice(0, 40)}) : restauration refus\xE9e par s\xE9curit\xE9.` };
-      entries[k] = v;
-    }
-    return { ok: true, file: { ...f, entries }, keys: Object.keys(entries).length };
-  }
-  function applyBackup(file, storage = localStorage) {
-    const current2 = collectEntries(storage);
-    let removed = 0;
-    Object.keys(current2).forEach((k) => {
-      if (!(k in file.entries)) {
-        storage.removeItem(k);
-        removed++;
-      }
-    });
-    let written = 0;
-    for (const [k, v] of Object.entries(file.entries)) {
-      storage.setItem(k, v);
-      written++;
-    }
-    return { written, removed };
-  }
 
   // src/core/privacy/privacy.ts
   var PRIVACY_KEY = "domaine_sylvaria_privacy_v1";
@@ -34337,7 +34525,15 @@ Cordialement`
       createdAt: q.at || (/* @__PURE__ */ new Date()).toISOString()
     };
   }
-  function mergeSiteRequests(reservations, requests) {
+  function withDepositTerms(r, pay, today5 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)) {
+    if (!isSiteReservation(r) || !pay.advance || r.depositDueDate) return r;
+    const total = (r.totalAmount || 0) + (r.touristTaxAmount || 0);
+    const expected = Math.round(total * pay.percent) / 100;
+    const due = /* @__PURE__ */ new Date(`${today5}T12:00:00Z`);
+    due.setUTCDate(due.getUTCDate() + pay.days);
+    return { ...r, depositDueDate: due.toISOString().slice(0, 10), depositExpected: expected > 0 ? expected : void 0 };
+  }
+  function mergeSiteRequests(reservations, requests, payment) {
     const imported = loadImported();
     const known = new Set(reservations.map((r) => r.id));
     const list3 = [...reservations];
@@ -34347,7 +34543,8 @@ Cordialement`
       if (q.status !== "new" && q.status !== "auto") return;
       if (known.has(`${SITE_RESERVATION_PREFIX}${q.id}`) || q.status === "auto" && imported.includes(q.id)) return;
       if (!/^\d{4}-\d{2}-\d{2}$/.test(q.arrival) || !/^\d{4}-\d{2}-\d{2}$/.test(q.departure) || !q.roomId) return;
-      list3.push(reservationFromRequest(q));
+      const created = reservationFromRequest(q);
+      list3.push(q.status === "auto" && payment ? withDepositTerms(created, payment) : created);
       done.push(q.id);
       added++;
     });
@@ -54347,7 +54544,40 @@ Sitemap: ${base}sitemap.xml
               /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Field, { label: "Acompte (% du total)", children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("input", { type: "number", min: 1, max: 100, value: site.booking.payment.percent, onChange: (e) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, percent: Math.max(1, Math.min(100, Math.round(Number(e.target.value) || 1))) } } }), className: "w-full py-2 px-3 text-xs bg-white border border-neutral-200 rounded-lg" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Field, { label: "\xC0 r\xE9gler dans les (jours)", children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("input", { type: "number", min: 1, max: 90, value: site.booking.payment.days, onChange: (e) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, days: Math.max(1, Math.min(90, Math.round(Number(e.target.value) || 1))) } } }), className: "w-full py-2 px-3 text-xs bg-white border border-neutral-200 rounded-lg" }) })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Field, { label: "Comment payer \xE0 l'avance", hint: "Recopi\xE9 tel quel dans l'e-mail : IBAN du virement, lien de paiement, ordre du ch\xE8que et adresse d'envoi\u2026", children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(TextArea, { value: site.booking.payment.instructions, onChange: (v) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, instructions: v } } }), rows: 3 }) })
+            /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Field, { label: "Comment payer \xE0 l'avance", hint: "Recopi\xE9 tel quel dans l'e-mail : IBAN du virement, lien de paiement, ordre du ch\xE8que et adresse d'envoi\u2026", children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(TextArea, { value: site.booking.payment.instructions, onChange: (v) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, instructions: v } } }), rows: 3 }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "space-y-1.5 pt-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700", children: "Rappels si l'acompte n'est pas re\xE7u" }),
+              /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
+                CheckboxRow,
+                {
+                  checked: site.booking.payment.remindApp,
+                  onChange: (v) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, remindApp: v } } }),
+                  label: "Alerte dans \xAB Aujourd'hui \xBB (acompte \xE0 relancer / en retard)",
+                  hint: "Elle dispara\xEEt d\xE8s que le paiement de la r\xE9servation n'est plus \xAB en attente \xBB (acompte re\xE7u ou pay\xE9)."
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
+                CheckboxRow,
+                {
+                  checked: site.booking.payment.remindEmail,
+                  onChange: (v) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, remindEmail: v } } }),
+                  label: "Rappel automatique par e-mail au client",
+                  hint: "Envoy\xE9 par le connecteur Google (V30), une seule fois par rappel."
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "grid sm:grid-cols-2 gap-3 items-end", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Field, { label: "Rappeler combien de jours avant la date limite", hint: "0 = aucun rappel avant ; l'alerte de l'application appara\xEEt aussi ce jour-l\xE0", children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("input", { type: "number", min: 0, max: 30, value: site.booking.payment.remindBefore, onChange: (e) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, remindBefore: Math.max(0, Math.min(30, Math.round(Number(e.target.value) || 0))) } } }), className: "w-full py-2 px-3 text-xs bg-white border border-neutral-200 rounded-lg" }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
+                  CheckboxRow,
+                  {
+                    checked: site.booking.payment.remindAfter,
+                    onChange: (v) => set({ booking: { ...site.booking, payment: { ...site.booking.payment, remindAfter: v } } }),
+                    label: "Relancer une fois apr\xE8s la date limite",
+                    hint: "Le client re\xE7oit une relance et vous \xEAtes pr\xE9venu par e-mail."
+                  }
+                )
+              ] })
+            ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
             CheckboxRow,
@@ -55031,6 +55261,25 @@ Sitemap: ${base}sitemap.xml
       inHouse: real.filter((r) => r.checkIn <= today5 && r.checkOut > today5).map(toStay)
     };
   }
+  function depositAlerts(reservations, today5, daysBefore) {
+    const dayNum = (iso) => Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5);
+    const out = [];
+    reservations.forEach((r) => {
+      if (!r.depositDueDate || r.isBlocked || r.reservationStatus !== "confirmed" || r.paymentStatus !== "pending") return;
+      const days2 = dayNum(r.depositDueDate) - dayNum(today5);
+      if (days2 > Math.max(0, daysBefore)) return;
+      const amount = r.depositExpected ? ` (${r.depositExpected.toLocaleString("fr-FR")} \u20AC)` : "";
+      const when2 = r.depositDueDate.split("-").reverse().join("/");
+      out.push({
+        id: `dep${r.id}`,
+        label: `${days2 < 0 ? "Acompte en retard" : "Acompte \xE0 relancer"} : ${r.guestName || "Sans nom"}${amount}`,
+        detail: days2 < 0 ? `Date limite d\xE9pass\xE9e de ${-days2} jour${days2 < -1 ? "s" : ""} (${when2})` : days2 === 0 ? `\xC0 r\xE9gler aujourd'hui (${when2})` : `\xC0 r\xE9gler avant le ${when2}`,
+        tone: days2 < 0 ? "red" : "amber",
+        tab: "timeline"
+      });
+    });
+    return out;
+  }
   var normalize = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/œ/g, "oe").replace(/[^a-z0-9]+/g, " ").trim();
   function searchDocs(docs3, query, limit = 40) {
     const words = normalize(query).split(" ").filter(Boolean);
@@ -55125,6 +55374,8 @@ Sitemap: ${base}sitemap.xml
       const out = [];
       housekeeping.late.forEach((t) => out.push({ id: `hl${t.id}`, label: `M\xE9nage en retard : ${t.title}`, detail: `${t.zoneName} \xB7 pr\xE9vu le ${frDate2(t.dueDate || t.date)}`, tone: "red", tab: "housekeeping" }));
       housekeeping.todo.forEach((t) => out.push({ id: `ht${t.id}`, label: `M\xE9nage \xE0 faire aujourd'hui : ${t.title}`, detail: `${t.zoneName}${t.time ? ` \xB7 ${t.time}` : ""}`, tone: "amber", tab: "housekeeping" }));
+      const pay = getSite(settings).booking.payment;
+      if (pay.advance && pay.remindApp) depositAlerts(reservations, today5, pay.remindBefore).forEach((a) => out.push(a));
       if (mealOrders.toConfirm.length > 0) out.push({ id: "meals-new", label: `${mealOrders.toConfirm.length} commande(s) de repas \xE0 confirmer`, detail: "Voyageurs en attente de r\xE9ponse", tone: "red", tab: "meals", section: "orders" });
       if (hyOn) {
         cleanOpList(records3).filter((o) => !o.archived && (cleanOpDays(o, today5) ?? 0) < 0).forEach((o) => out.push({ id: o.id, label: `Nettoyage en retard : ${o.zone}`, detail: o.operation, tone: "red", tab: "hygiene", section: "cleaning" }));
@@ -55146,7 +55397,7 @@ Sitemap: ${base}sitemap.xml
         dues(staffList(staffMap), readStaffSettings(settings), today5).filter((d) => d.state !== "valid").slice(0, 10).forEach((d, i) => out.push({ id: `s${d.member.id}${i}`, label: `${d.member.name} : ${d.title}`, detail: STATE_LABEL[d.state] + (d.validUntil ? ` (${frDate2(d.validUntil)})` : ""), tone: d.state === "soon" ? "amber" : "red", tab: "staff" }));
       }
       return out.sort((a, b) => (a.tone === "red" ? 0 : 1) - (b.tone === "red" ? 0 : 1));
-    }, [records3, staffMap, settings, today5, hyOn, staffOn, housekeeping, mealOrders, openConnector, expiredCount]);
+    }, [records3, staffMap, settings, today5, hyOn, staffOn, housekeeping, mealOrders, openConnector, expiredCount, reservations]);
     const hits = (0, import_react128.useMemo)(() => {
       if (!query.trim()) return [];
       const docs3 = [];
@@ -62842,7 +63093,7 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
         let siteAdded = 0;
         const siteRequests = await fetchSiteRequests();
         if (siteRequests) {
-          const siteMerged = mergeSiteRequests(nextReservations, siteRequests);
+          const siteMerged = mergeSiteRequests(nextReservations, siteRequests, getSite().booking.payment);
           if (siteMerged.added > 0) {
             nextReservations = siteMerged.reservations;
             siteAdded = siteMerged.added;
@@ -62915,7 +63166,8 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       if (!getStoredAppsScriptUrl() || document.visibilityState === "hidden") return;
       const requests = await fetchSiteRequests();
       if (!requests) return;
-      for (const d of pendingDecisions(reservationsRef.current, requests)) {
+      const decisions = pendingDecisions(reservationsRef.current, requests);
+      for (const d of decisions) {
         try {
           await decideSiteRequest(d.id, d.decision, "");
           showToast(d.decision === "accepted" ? "R\xE9servation du site confirm\xE9e : le client est pr\xE9venu par e-mail." : "Demande du site refus\xE9e : le client est pr\xE9venu par e-mail.");
@@ -62923,7 +63175,19 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
           showToast(`Le client n'a pas pu \xEAtre pr\xE9venu : ${err?.message || "connecteur injoignable"}.`);
         }
       }
-      const merged = mergeSiteRequests(reservationsRef.current, requests);
+      const pay = getSite().booking.payment;
+      const confirmedIds = decisions.filter((d) => d.decision === "accepted").map((d) => `site_${d.id}`);
+      let base = reservationsRef.current;
+      if (confirmedIds.length > 0) {
+        const termed = base.map((r) => confirmedIds.includes(r.id) ? withDepositTerms(r, pay) : r);
+        if (termed.some((r, i) => r !== base[i])) {
+          base = termed;
+          setReservations(base);
+          saveReservations(base);
+          triggerBackgroundSync(base, externalReviewsRef.current);
+        }
+      }
+      const merged = mergeSiteRequests(base, requests, pay);
       if (merged.added === 0) return;
       setReservations(merged.reservations);
       saveReservations(merged.reservations);
@@ -63189,7 +63453,11 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       triggerBackgroundSync(updated, externalReviews);
     };
     const handleDecideSiteRequest = async (res2, decision, message) => {
-      const updated = reservations.map((r) => r.id === res2.id ? { ...r, reservationStatus: decision === "accepted" ? "confirmed" : "cancelled" } : r);
+      const updated = reservations.map((r) => {
+        if (r.id !== res2.id) return r;
+        const next = { ...r, reservationStatus: decision === "accepted" ? "confirmed" : "cancelled" };
+        return decision === "accepted" ? withDepositTerms(next, getSite().booking.payment) : next;
+      });
       setReservations(updated);
       saveReservations(updated);
       triggerBackgroundSync(updated, externalReviews);
