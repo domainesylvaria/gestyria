@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v197</title>
-  <meta name="application-name" content="Gestyria v197" />
+  <title>Gestyria v198</title>
+  <meta name="application-name" content="Gestyria v198" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -477,7 +477,7 @@ var DomaineAppBundle = (() => {
       section("departure", "Votre d\xE9part", "guests", { fields: { before: "" } }),
       section("wifi", "Wi-Fi", "guests", { fields: { network: "", password: "" } }),
       section("practical", "Informations pratiques", "public"),
-      section("services", "Repas et services", "public", { options: { showPrices: true, showResources: true } }),
+      section("services", "Services", "public", { options: { showPrices: true, showResources: true } }),
       section("rules", "R\xE8gles de vie", "public"),
       section("safety", "S\xE9curit\xE9 et urgences", "public", {
         fields: { emergency: "112", samu: "15", police: "17", firemen: "18" }
@@ -486,6 +486,12 @@ var DomaineAppBundle = (() => {
       section("contact", "Nous contacter", "public", { options: { phone: true, email: true, address: true, website: true } }),
       section("faq", "Questions fr\xE9quentes", "public")
     ];
+  }
+  var isStandaloneService = (s) => s.scope ? s.scope === "standalone" : !!s.showInPlanning;
+  function linkedServicesFor(services, roomId, hidden) {
+    return services.filter(
+      (s) => s.active && !isStandaloneService(s) && !hidden(s.id) && (s.billing === "inclus" ? s.includedInAccommodationIds.includes(roomId) : !s.roomIds || s.roomIds.includes(roomId))
+    ).sort((a, b) => a.order - b.order);
   }
   var DEFAULT_SURVEY_QUESTIONS = [
     { id: "accueil", label: "Accueil" },
@@ -679,7 +685,8 @@ var DomaineAppBundle = (() => {
       menu,
       id,
       kind: r.kind || base.kind,
-      title: asText(r.title),
+      // Les repas ont leur propre rubrique : l'ancien titre d'origine devient « Services »
+      title: id === "services" && asText(r.title) === "Repas et services" ? "Services" : asText(r.title),
       enabled: r.enabled !== false,
       privacy: r.privacy === "guests" ? "guests" : "public",
       text: asText(r.text),
@@ -772,7 +779,7 @@ var DomaineAppBundle = (() => {
       case "wifi":
         return !filled(s.fields.network);
       case "services":
-        return !hasText && !settings.services.some((x) => x.active) && !(s.options.showResources && settings.resources.some((x) => x.active));
+        return !hasText && !settings.services.some((x) => x.active && isStandaloneService(x)) && !(s.options.showResources && settings.resources.some((x) => x.active));
       case "meals":
         return !hasText && menuMoments(s.menu).length === 0 && sectionOwnPhotos(s).length === 0;
       case "safety":
@@ -4500,8 +4507,8 @@ footer{background:#111}
     const s = getSettings().services.find((x) => x.id === "chien_sejour");
     return s && s.active ? s.price : 0;
   }
-  var isStandaloneService = (s) => s.scope ? s.scope === "standalone" : !!s.showInPlanning;
-  var isLinkedService = (s) => !isStandaloneService(s);
+  var isStandaloneService2 = (s) => s.scope ? s.scope === "standalone" : !!s.showInPlanning;
+  var isLinkedService = (s) => !isStandaloneService2(s);
   function supplementServices(roomId) {
     return getSettings().services.filter(
       (s) => s.active && s.billing === "supplement" && isLinkedService(s) && s.id !== "chien_sejour" && (!s.roomIds || s.roomIds.includes(roomId))
@@ -6643,7 +6650,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "197";
+  var APP_VERSION = "198";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -11397,7 +11404,7 @@ footer{background:#111}
         mx: r.capacity > 0 ? r.capacity : 20,
         c: [r.openingHours, r.accessConditions].filter(Boolean).join(" \xB7 ")
       })),
-      ...services.filter((s) => isStandaloneService(s) && s.bookableAlone === true && !hiddenIds.includes(s.id)).map((s) => ({
+      ...services.filter((s) => isStandaloneService2(s) && s.bookableAlone === true && !hiddenIds.includes(s.id)).map((s) => ({
         k: "s",
         id: s.id,
         n: s.name,
@@ -11428,6 +11435,823 @@ footer{background:#111}
       },
       tax: { mode: tax.mode, value: tax.value, exChildren: !!tax.exemptChildren }
     };
+  }
+
+  // src/core/pricing/cancellation.ts
+  var emptyPolicy = () => ({ tiers: [], noShowPercent: null, note: "" });
+  function sortedTiers(p) {
+    return (p?.tiers || []).filter((t) => Number.isFinite(t.daysBefore) && t.daysBefore >= 0 && Number.isFinite(t.percent)).map((t) => ({ daysBefore: Math.floor(t.daysBefore), percent: Math.min(100, Math.max(0, t.percent)) })).sort((a, b) => b.daysBefore - a.daysBefore);
+  }
+  var hasPolicy = (p) => sortedTiers(p).length > 0;
+  function percentDue(p, daysBefore) {
+    const tiers = sortedTiers(p);
+    if (tiers.length === 0) return null;
+    const hit = tiers.filter((t) => daysBefore < t.daysBefore).pop();
+    return hit ? hit.percent : 0;
+  }
+  var feeDue = (p, daysBefore, total) => {
+    const pc = percentDue(p, daysBefore);
+    return pc === null ? null : Math.round(total * pc) / 100;
+  };
+  var days = (n) => `${n} jour${n > 1 ? "s" : ""}`;
+  var dueText = (pc) => pc === 0 ? "sans frais" : pc >= 100 ? "la totalit\xE9 du s\xE9jour reste due" : `${pc} % du prix du s\xE9jour reste d\xFB`;
+  function policySentences(p) {
+    const tiers = sortedTiers(p);
+    if (tiers.length === 0) return [];
+    const out = [`Annulation \xE0 ${days(tiers[0].daysBefore)} ou plus avant la date d'arriv\xE9e : sans frais.`];
+    tiers.forEach((t, i) => {
+      const lower = tiers[i + 1];
+      const range = lower ? `entre ${days(t.daysBefore)} et ${days(lower.daysBefore)} avant l'arriv\xE9e` : `\xE0 moins de ${days(t.daysBefore)} de la date d'arriv\xE9e`;
+      out.push(`Annulation ${range} : ${dueText(t.percent)}.`);
+    });
+    return out;
+  }
+  function noShowSentence(p) {
+    if (!p || p.noShowPercent === null || !Number.isFinite(p.noShowPercent)) return "";
+    return `Si le client ne se pr\xE9sente pas \xE0 la date pr\xE9vue sans avoir pr\xE9venu l'\xE9tablissement, ${dueText(Math.min(100, Math.max(0, p.noShowPercent)))} et l'\xE9tablissement peut disposer \xE0 nouveau de l'h\xE9bergement.`;
+  }
+  function policyShort(p) {
+    const tiers = sortedTiers(p);
+    if (tiers.length === 0) return "";
+    const parts = tiers.map((t) => `\xE0 moins de ${days(t.daysBefore)} : ${t.percent === 0 ? "sans frais" : t.percent >= 100 ? "s\xE9jour d\xFB en totalit\xE9" : `${t.percent} % d\xFB`}`);
+    return `Annulation gratuite jusqu'\xE0 ${days(tiers[0].daysBefore)} avant l'arriv\xE9e ; ensuite ${parts.join(" ; ")}.`;
+  }
+
+  // src/modules/cgv/content.ts
+  var ARTICLE_TITLES = {
+    identification: "Identification de l'\xE9tablissement",
+    scope: "Objet et champ d'application",
+    booking: "R\xE9servation",
+    prices: "Prix et taxe de s\xE9jour",
+    payment: "Arrhes, acompte et paiement",
+    cancelClient: "Annulation par le client",
+    cancelHost: "Annulation par l'\xE9tablissement",
+    withdrawal: "Absence de droit de r\xE9tractation",
+    stay: "Arriv\xE9e et d\xE9part",
+    capacity: "Capacit\xE9 des h\xE9bergements",
+    services: "Prestations compl\xE9mentaires",
+    pool: "Piscine et espaces partag\xE9s",
+    animals: "Animaux",
+    rules: "R\xE8gles de vie, d\xE9p\xF4t de garantie et responsabilit\xE9",
+    data: "Donn\xE9es personnelles",
+    mediation: "M\xE9diation de la consommation",
+    law: "Droit applicable et litiges"
+  };
+  var BUILTIN_ORDER = Object.keys(ARTICLE_TITLES);
+  var PAYMENT_METHODS2 = [
+    { value: "esp\xE8ces", label: "Esp\xE8ces" },
+    { value: "ch\xE8que", label: "Ch\xE8que" },
+    { value: "virement bancaire", label: "Virement bancaire" },
+    { value: "carte bancaire", label: "Carte bancaire" },
+    { value: "Ch\xE8ques-Vacances (ANCV)", label: "Ch\xE8ques-Vacances (ANCV)" },
+    { value: "Wero", label: "Wero" }
+  ];
+  function createDefaultFacts() {
+    return {
+      arrivalFrom: "",
+      arrivalTo: "",
+      departureBefore: "",
+      depositKind: "",
+      depositPercent: null,
+      balanceWhen: "",
+      balanceDaysBefore: null,
+      paymentMethods: [],
+      cancelFreeDays: null,
+      cancelLateRule: "",
+      cancelLatePercent: null,
+      noShowRule: "",
+      shortenedStay: "due",
+      touristTax: "",
+      touristTaxText: "",
+      securityDeposit: null,
+      animals: "",
+      animalsConditions: "",
+      nonSmoking: true,
+      poolUnsupervised: true,
+      mediatorName: "",
+      mediatorAddress: "",
+      mediatorWebsite: "",
+      court: ""
+    };
+  }
+  function builtinArticle(kind) {
+    return { id: kind, kind, title: ARTICLE_TITLES[kind], enabled: true, manual: false, text: "", extra: "" };
+  }
+  function createDefaultTerms() {
+    return {
+      title: "Conditions g\xE9n\xE9rales de vente",
+      effectiveDate: "",
+      savedAt: "",
+      facts: createDefaultFacts(),
+      articles: BUILTIN_ORDER.map(builtinArticle),
+      invoiceMention: false,
+      attachToInvoice: false,
+      bookLinks: {}
+    };
+  }
+  var asText3 = (v) => typeof v === "string" ? v : "";
+  var asNumber2 = (v) => typeof v === "number" && isFinite(v) ? v : null;
+  var oneOf = (v, list3, fallback) => list3.includes(v) ? v : fallback;
+  function normalizeFacts(raw) {
+    const d = createDefaultFacts();
+    if (!raw || typeof raw !== "object") return d;
+    const r = raw;
+    return {
+      arrivalFrom: asText3(r.arrivalFrom),
+      arrivalTo: asText3(r.arrivalTo),
+      departureBefore: asText3(r.departureBefore),
+      depositKind: oneOf(r.depositKind, ["", "arrhes", "acompte", "none"], ""),
+      depositPercent: asNumber2(r.depositPercent),
+      balanceWhen: oneOf(r.balanceWhen, ["", "arrival", "departure", "before"], ""),
+      balanceDaysBefore: asNumber2(r.balanceDaysBefore),
+      paymentMethods: Array.isArray(r.paymentMethods) ? r.paymentMethods.filter((m) => typeof m === "string" && m.trim()) : [],
+      cancelFreeDays: asNumber2(r.cancelFreeDays),
+      cancelLateRule: oneOf(r.cancelLateRule, ["", "deposit", "percent", "total"], ""),
+      cancelLatePercent: asNumber2(r.cancelLatePercent),
+      noShowRule: oneOf(r.noShowRule, ["", "deposit", "total"], ""),
+      shortenedStay: oneOf(r.shortenedStay, ["due", "refund"], "due"),
+      touristTax: oneOf(r.touristTax, ["", "included", "extra"], ""),
+      touristTaxText: asText3(r.touristTaxText),
+      securityDeposit: asNumber2(r.securityDeposit),
+      animals: oneOf(r.animals, ["", "no", "onRequest", "yes"], ""),
+      animalsConditions: asText3(r.animalsConditions),
+      nonSmoking: r.nonSmoking !== false,
+      poolUnsupervised: r.poolUnsupervised !== false,
+      mediatorName: asText3(r.mediatorName),
+      mediatorAddress: asText3(r.mediatorAddress),
+      mediatorWebsite: asText3(r.mediatorWebsite),
+      court: asText3(r.court)
+    };
+  }
+  function normalizeArticle(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    const r = raw;
+    const kind = r.kind === "custom" || r.kind && r.kind in ARTICLE_TITLES ? r.kind : null;
+    const id = asText3(r.id);
+    if (!kind || !id) return null;
+    return {
+      id,
+      kind,
+      title: asText3(r.title),
+      enabled: r.enabled !== false,
+      manual: kind === "custom" || r.manual === true,
+      text: asText3(r.text),
+      extra: asText3(r.extra)
+    };
+  }
+  function normalizeTerms(raw) {
+    const d = createDefaultTerms();
+    if (!raw || typeof raw !== "object") return d;
+    const r = raw;
+    let articles = Array.isArray(r.articles) ? r.articles.map(normalizeArticle).filter(Boolean) : d.articles;
+    articles = articles.filter((a, i) => a.kind === "custom" || articles.findIndex((b) => b.kind === a.kind) === i);
+    BUILTIN_ORDER.forEach((kind, index) => {
+      if (articles.some((a) => a.kind === kind)) return;
+      const before = BUILTIN_ORDER.slice(0, index).reverse().find((k) => articles.some((a) => a.kind === k));
+      const at = before ? articles.findIndex((a) => a.kind === before) + 1 : 0;
+      articles.splice(at, 0, builtinArticle(kind));
+    });
+    const links = {};
+    if (r.bookLinks && typeof r.bookLinks === "object") {
+      Object.entries(r.bookLinks).forEach(([k, v]) => {
+        if (v === true) links[k] = true;
+      });
+    }
+    return {
+      title: typeof r.title === "string" && r.title.trim() ? r.title : d.title,
+      effectiveDate: asText3(r.effectiveDate),
+      savedAt: asText3(r.savedAt),
+      facts: normalizeFacts(r.facts),
+      articles,
+      invoiceMention: r.invoiceMention === true,
+      attachToInvoice: r.attachToInvoice === true,
+      bookLinks: links
+    };
+  }
+  function readTerms(settings) {
+    const stored = settings.modules.invoicing?.settings;
+    return normalizeTerms(stored?.terms);
+  }
+  function termsExist(terms) {
+    return terms.savedAt !== "";
+  }
+  function bookHours(settings) {
+    const book = readWelcomeBook(settings);
+    const arrival = book.sections.find((s) => s.kind === "arrival");
+    const departure = book.sections.find((s) => s.kind === "departure");
+    return {
+      arrivalFrom: (arrival?.fields.from || "").trim(),
+      arrivalTo: (arrival?.fields.to || "").trim(),
+      departureBefore: (departure?.fields.before || "").trim()
+    };
+  }
+  function effectiveFacts(terms, settings) {
+    const hours = bookHours(settings);
+    const facts = { ...terms.facts };
+    const fromBook = [];
+    if (!facts.arrivalFrom && !facts.arrivalTo && hours.arrivalFrom) {
+      facts.arrivalFrom = hours.arrivalFrom;
+      facts.arrivalTo = hours.arrivalTo;
+      fromBook.push("arrivalFrom");
+      if (hours.arrivalTo) fromBook.push("arrivalTo");
+    }
+    if (!facts.departureBefore && hours.departureBefore) {
+      facts.departureBefore = hours.departureBefore;
+      fromBook.push("departureBefore");
+    }
+    return { facts, fromBook };
+  }
+  var TODO = "[\xE0 compl\xE9ter]";
+  var euros2 = (n) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })} \u20AC`;
+  function hourText2(hhmm) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
+    if (!m) return hhmm.trim();
+    return `${Number(m[1])} h${m[2] === "00" ? "" : ` ${m[2]}`}`;
+  }
+  function dateFr(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
+  }
+  var sentence = (s) => {
+    const t = s.trim();
+    if (!t) return "";
+    return /[.!?…]$/.test(t) ? t : `${t}.`;
+  };
+  var capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+  var plural = (n, one, many) => n > 1 ? many : one;
+  var listText = (items) => items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} et ${items[items.length - 1]}`;
+  var SERVICE_UNITS = {
+    nuit: "nuit",
+    personne: "personne",
+    animal: "animal",
+    repas: "repas",
+    creneau: "cr\xE9neau",
+    sejour: "s\xE9jour"
+  };
+  function serviceLine(s) {
+    if (!(s.price > 0)) return "";
+    const unit = s.unit === "unite" ? s.customUnitLabel : SERVICE_UNITS[s.unit];
+    const options = (s.priceOptions || []).filter((o) => o.label.trim() && o.price > 0);
+    if (options.length > 1) {
+      return `${s.name.trim()}${unit ? ` (par ${unit})` : ""} \u2013 ${options.map((o) => `${o.label.trim()} : ${euros2(o.price)}`).join(", ")}`;
+    }
+    return `${s.name.trim()} : ${unit ? `${euros2(s.price)} par ${unit}` : euros2(s.price)}`;
+  }
+  var RESOURCE_UNITS = { per_slot: "cr\xE9neau", per_person_slot: "personne et par cr\xE9neau", per_day: "jour" };
+  var byOrder2 = (list3) => [...list3].sort((a, b) => a.order - b.order);
+  var inlineConditions = (s) => s.trim().replace(/\.$/, "").replace(/\s*\(([^)]*)\)/g, ", $1").replace(/^./, (c) => c.toLowerCase());
+  function animalServices(settings) {
+    return byOrder2(settings.services.filter((s) => s.active && s.unit === "animal" && !s.showInPlanning));
+  }
+  function termsContext(terms, settings, pricingEnabled, bookEnabled) {
+    const { facts, fromBook } = effectiveFacts(terms, settings);
+    return { settings, facts, fromBook, pricingEnabled, bookEnabled };
+  }
+  var depositWords = (kind) => kind === "arrhes" ? { the: "les arrhes", kept: "les arrhes restent acquises \xE0 l'\xE9tablissement", refunded: "les arrhes sont int\xE9gralement rembours\xE9es" } : { the: "l'acompte", kept: "l'acompte reste acquis \xE0 l'\xE9tablissement", refunded: "l'acompte est int\xE9gralement rembours\xE9" };
+  function lateCancellation(f, missing) {
+    switch (f.cancelLateRule) {
+      case "deposit":
+        if (f.depositKind === "none") {
+          missing.push("R\xE8gle d'annulation (aucun versement n'est demand\xE9 \xE0 la r\xE9servation)");
+          return TODO;
+        }
+        if (!f.depositKind) return `${TODO} restent acquis \xE0 l'\xE9tablissement`;
+        return depositWords(f.depositKind).kept;
+      case "percent":
+        if (f.cancelLatePercent === null) missing.push("Pourcentage d\xFB en cas d'annulation tardive");
+        return `${f.cancelLatePercent === null ? TODO : `${f.cancelLatePercent} %`} du prix total du s\xE9jour reste d\xFB`;
+      case "total":
+        return "la totalit\xE9 du prix du s\xE9jour reste due";
+      default:
+        missing.push("Frais en cas d'annulation tardive");
+        return TODO;
+    }
+  }
+  function addressLine(settings) {
+    const e = settings.establishment;
+    return [e.address, [e.postalCode, e.city].filter(Boolean).join(" "), e.country].map((s) => s.trim()).filter(Boolean).join(", ");
+  }
+  function generatedText(kind, ctx) {
+    const { settings, facts: f } = ctx;
+    const e = settings.establishment;
+    const missing = [];
+    const sources = [];
+    const p = [];
+    const need = (value, label2) => {
+      if (value === null || value === void 0 || String(value).trim() === "") {
+        missing.push(label2);
+        return TODO;
+      }
+      return String(value).trim();
+    };
+    switch (kind) {
+      case "identification": {
+        sources.push("establishment");
+        const name = need(e.name, "Nom (Param\xE9trage > \xC9tablissement)");
+        const address = addressLine(settings);
+        if (!e.address.trim()) missing.push("Adresse (Param\xE9trage > \xC9tablissement)");
+        const contact = [e.phone.trim() && `t\xE9l\xE9phone : ${e.phone.trim()}`, e.email.trim() && `e-mail : ${e.email.trim()}`].filter(Boolean);
+        if (contact.length === 0) missing.push("T\xE9l\xE9phone ou e-mail (Param\xE9trage > \xC9tablissement)");
+        p.push(
+          sentence(
+            `Les pr\xE9sentes conditions g\xE9n\xE9rales de vente sont propos\xE9es par ${name}${e.legalStatus.trim() ? `, ${e.legalStatus.trim()}` : ""}, ${address || TODO}`
+          )
+        );
+        p.push(`SIRET : ${need(e.siret, "SIRET (Param\xE9trage > \xC9tablissement)")}.`);
+        p.push(sentence(capitalize(contact.length ? contact.join(", ") : `contact : ${TODO}`) + (e.website.trim() ? `, site : ${e.website.trim()}` : "")));
+        p.push("Ci-apr\xE8s \xAB l'\xE9tablissement \xBB.");
+        break;
+      }
+      case "scope": {
+        sources.push("platforms");
+        const otas = settings.platforms.filter((x) => x.active && settings.pricing.otaSources.includes(x.id)).map((x) => x.label);
+        p.push(
+          "Elles s'appliquent \xE0 toutes les r\xE9servations d'h\xE9bergement et de prestations conclues directement avec l'\xE9tablissement, \xE0 distance ou sur place. Elles sont port\xE9es \xE0 la connaissance du client avant la r\xE9servation ; toute r\xE9servation vaut acceptation de ces conditions."
+        );
+        p.push(
+          `Pour une r\xE9servation effectu\xE9e par l'interm\xE9diaire d'une plateforme${otas.length ? ` (${otas.join(", ")}\u2026)` : ""}, les conditions de cette plateforme (paiement, annulation) s'appliquent en priorit\xE9.`
+        );
+        break;
+      }
+      case "booking": {
+        const confirm = f.depositKind === "arrhes" ? "apr\xE8s r\xE9ception des arrhes" : f.depositKind === "acompte" ? "apr\xE8s r\xE9ception de l'acompte" : f.depositKind === "none" ? "apr\xE8s acceptation par le client de la proposition de s\xE9jour" : (missing.push("Arrhes, acompte ou aucun versement (article \xAB Arrhes, acompte et paiement \xBB)"), TODO);
+        p.push(
+          `La r\xE9servation devient ferme ${confirm} et l'envoi par l'\xE9tablissement d'une confirmation \xE9crite (courrier ou e-mail) qui r\xE9capitule les dates, le nombre de personnes et le prix du s\xE9jour.`
+        );
+        p.push("Le client doit \xEAtre majeur et capable de contracter. La r\xE9servation est personnelle et ne peut \xEAtre c\xE9d\xE9e.");
+        break;
+      }
+      case "prices": {
+        sources.push("establishment");
+        const vat = e.vatMention.trim().replace(/\.$/, "");
+        p.push(`Les prix sont indiqu\xE9s en euros, toutes taxes comprises${vat ? ` (${vat})` : ""}. Le prix du s\xE9jour est celui indiqu\xE9 dans la confirmation de r\xE9servation.`);
+        const included = byOrder2(settings.services.filter((s) => s.active && s.billing === "inclus")).map((s) => s.name.trim()).filter(Boolean);
+        if (included.length) {
+          sources.push("services");
+          p.push(`Le prix comprend : ${listText(included)}.`);
+        }
+        const discounts = ctx.pricingEnabled ? [...settings.pricing.longStayDiscounts].filter((d) => d.minNights > 0 && d.percent > 0).sort((a, b) => a.minNights - b.minNights) : [];
+        if (discounts.length) {
+          sources.push("pricing");
+          p.push(`R\xE9duction pour les longs s\xE9jours : ${discounts.map((d) => `${d.percent} % \xE0 partir de ${d.minNights} nuits`).join(", ")}.`);
+        }
+        if (f.touristTax === "included") p.push("La taxe de s\xE9jour est comprise dans le prix.");
+        else if (f.touristTax === "extra")
+          p.push(
+            `La taxe de s\xE9jour est per\xE7ue en suppl\xE9ment, pour le compte de la commune${f.touristTaxText.trim() ? ` : ${f.touristTaxText.trim().replace(/\.$/, "")}` : ", selon le tarif en vigueur"}.`
+          );
+        else {
+          missing.push("Taxe de s\xE9jour (comprise ou en suppl\xE9ment)");
+          p.push(`Taxe de s\xE9jour : ${TODO}.`);
+        }
+        break;
+      }
+      case "payment": {
+        if (f.depositKind === "arrhes" || f.depositKind === "acompte") {
+          const pct2 = f.depositPercent === null ? (missing.push("Pourcentage vers\xE9 \xE0 la r\xE9servation"), TODO) : `${f.depositPercent} %`;
+          p.push(
+            f.depositKind === "arrhes" ? `\xC0 la r\xE9servation, le client verse ${pct2} du prix du s\xE9jour \xE0 titre d'arrhes. Conform\xE9ment \xE0 l'article L214-1 du Code de la consommation, chacune des parties peut revenir sur son engagement : le client en abandonnant les arrhes, l'\xE9tablissement en les restituant au double.` : `\xC0 la r\xE9servation, le client verse un acompte de ${pct2} du prix du s\xE9jour. Le versement d'un acompte engage d\xE9finitivement les deux parties.`
+          );
+        } else if (f.depositKind === "none") {
+          p.push("Aucun versement n'est demand\xE9 \xE0 la r\xE9servation.");
+        } else {
+          missing.push("Arrhes, acompte ou aucun versement");
+          p.push(`Versement \xE0 la r\xE9servation : ${TODO}.`);
+        }
+        const what = f.depositKind === "none" ? "Le prix du s\xE9jour est r\xE9gl\xE9" : "Le solde du s\xE9jour est r\xE9gl\xE9";
+        if (f.balanceWhen === "arrival") p.push(`${what} \xE0 l'arriv\xE9e.`);
+        else if (f.balanceWhen === "departure") p.push(`${what} au d\xE9part.`);
+        else if (f.balanceWhen === "before") {
+          const n = f.balanceDaysBefore;
+          if (n === null) missing.push("Nombre de jours avant l'arriv\xE9e pour le solde");
+          p.push(`${what} au plus tard ${n === null ? TODO : `${n} ${plural(n, "jour", "jours")}`} avant l'arriv\xE9e.`);
+        } else {
+          missing.push("Moment du paiement du solde");
+          p.push(`${what} ${TODO}.`);
+        }
+        p.push("Les prestations compl\xE9mentaires sont r\xE9gl\xE9es au plus tard au d\xE9part.");
+        if (f.paymentMethods.length) p.push(`Moyens de paiement accept\xE9s : ${f.paymentMethods.join(", ")}.`);
+        else {
+          missing.push("Moyens de paiement accept\xE9s");
+          p.push(`Moyens de paiement accept\xE9s : ${TODO}.`);
+        }
+        break;
+      }
+      case "cancelClient": {
+        p.push("Toute annulation doit \xEAtre notifi\xE9e \xE0 l'\xE9tablissement par \xE9crit (courrier ou e-mail).");
+        const policy = settings.pricing.cancellation;
+        const fromPricing = hasPolicy(policy);
+        const late = fromPricing ? "" : lateCancellation(f, missing);
+        const n = f.cancelFreeDays;
+        if (fromPricing) {
+          sources.push("pricing");
+          policySentences(policy).forEach((s) => p.push(s));
+        } else if (n === null) {
+          missing.push("D\xE9lai d'annulation sans frais");
+          p.push(`Annulation plus de ${TODO} jours avant la date d'arriv\xE9e : sans frais. Au-del\xE0 : ${late}.`);
+        } else if (n > 0) {
+          const free = f.depositKind === "arrhes" || f.depositKind === "acompte" ? depositWords(f.depositKind).refunded : "aucun frais n'est d\xFB";
+          p.push(`Annulation plus de ${n} ${plural(n, "jour", "jours")} avant la date d'arriv\xE9e : ${free}.`);
+          p.push(`Annulation moins de ${n} ${plural(n, "jour", "jours")} avant la date d'arriv\xE9e : ${late}.`);
+        } else {
+          p.push(`En cas d'annulation, ${late}.`);
+        }
+        const policyNoShow = fromPricing ? noShowSentence(policy) : "";
+        const noShow = policyNoShow ? "" : f.noShowRule === "total" ? "la totalit\xE9 du prix du s\xE9jour reste due" : f.noShowRule === "deposit" ? f.depositKind === "arrhes" || f.depositKind === "acompte" ? depositWords(f.depositKind).kept : (missing.push("R\xE8gle si le client ne se pr\xE9sente pas (aucun versement \xE0 la r\xE9servation)"), TODO) : (missing.push("R\xE8gle si le client ne se pr\xE9sente pas"), TODO);
+        if (policyNoShow) p.push(policyNoShow);
+        else p.push(`Si le client ne se pr\xE9sente pas \xE0 la date pr\xE9vue sans avoir pr\xE9venu l'\xE9tablissement, ${noShow} et l'\xE9tablissement peut disposer \xE0 nouveau de l'h\xE9bergement.`);
+        if (fromPricing && policy?.note.trim()) p.push(sentence(policy.note.trim()));
+        p.push(
+          f.shortenedStay === "refund" ? "En cas d'arriv\xE9e retard\xE9e ou de d\xE9part anticip\xE9, les nuits non consomm\xE9es sont rembours\xE9es." : "En cas d'arriv\xE9e retard\xE9e ou de d\xE9part anticip\xE9, le prix du s\xE9jour reste int\xE9gralement d\xFB."
+        );
+        break;
+      }
+      case "cancelHost": {
+        if (f.depositKind === "arrhes") {
+          p.push("Si l'\xE9tablissement annule le s\xE9jour, il restitue au client le double des arrhes vers\xE9es (article L214-1 du Code de la consommation).");
+        } else if (f.depositKind === "acompte" || f.depositKind === "none") {
+          p.push("Si l'\xE9tablissement annule le s\xE9jour, il rembourse imm\xE9diatement au client l'int\xE9gralit\xE9 des sommes vers\xE9es, sans pr\xE9judice des dommages et int\xE9r\xEAts que le client pourrait obtenir.");
+        } else {
+          missing.push("Arrhes, acompte ou aucun versement (article \xAB Arrhes, acompte et paiement \xBB)");
+          p.push(`Si l'\xE9tablissement annule le s\xE9jour : ${TODO}.`);
+        }
+        p.push("Ces dispositions ne s'appliquent pas en cas de force majeure.");
+        break;
+      }
+      case "withdrawal":
+        p.push(
+          "Conform\xE9ment \xE0 l'article L221-28 12\xB0 du Code de la consommation, le client ne b\xE9n\xE9ficie pas du droit de r\xE9tractation pour les prestations d'h\xE9bergement fournies \xE0 une date ou \xE0 une p\xE9riode d\xE9termin\xE9e."
+        );
+        break;
+      case "stay": {
+        if (ctx.fromBook.length) sources.push("book");
+        else sources.push("terms");
+        const from = f.arrivalFrom ? hourText2(f.arrivalFrom) : (missing.push("Heure d'arriv\xE9e"), TODO);
+        const before = f.departureBefore ? hourText2(f.departureBefore) : (missing.push("Heure de d\xE9part"), TODO);
+        const arrival = f.arrivalTo ? `de ${from} \xE0 ${hourText2(f.arrivalTo)}` : `\xE0 partir de ${from}`;
+        p.push(`Les arriv\xE9es se font ${arrival} et les d\xE9parts avant ${before}.`);
+        p.push("En cas d'arriv\xE9e en dehors de ces horaires ou de retard, le client pr\xE9vient l'\xE9tablissement.");
+        break;
+      }
+      case "capacity": {
+        sources.push("accommodations");
+        const rooms = byOrder2(settings.accommodations.filter((a) => a.active));
+        if (rooms.length === 0) return { paragraphs: [], missing: [], sources, empty: true };
+        const lines2 = rooms.map((a) => {
+          const max = a.maxGuests || 0;
+          const min = a.minGuests || 0;
+          const range = min > 1 && min < max ? `${min} \xE0 ${max} personnes` : `${max} ${plural(max, "personne", "personnes")} au maximum`;
+          const extra = a.extraGuestPrice > 0 && a.baseGuestsCount > 0 && a.baseGuestsCount < max ? ` (suppl\xE9ment de ${euros2(a.extraGuestPrice)} par personne et par nuit au-del\xE0 de ${a.baseGuestsCount} ${plural(a.baseGuestsCount, "personne", "personnes")})` : "";
+          return `${a.name.trim()} : ${range}${extra}`;
+        });
+        p.push(`${lines2.join(" ; ")}.`);
+        p.push("Le nombre de personnes ne peut pas d\xE9passer la capacit\xE9 de l'h\xE9bergement r\xE9serv\xE9 ; l'\xE9tablissement peut refuser toute personne suppl\xE9mentaire non pr\xE9vue dans la r\xE9servation. Les mineurs restent sous la responsabilit\xE9 de leurs parents ou accompagnateurs.");
+        break;
+      }
+      case "services": {
+        const animalIds = animalServices(settings).map((s) => s.id);
+        const services = byOrder2(settings.services.filter((s) => s.active && !animalIds.includes(s.id) && s.billing !== "inclus")).map((s) => {
+          const line = serviceLine(s);
+          return line ? `${line}${s.conditions.trim() ? ` (${inlineConditions(s.conditions)})` : ""}` : "";
+        }).filter(Boolean);
+        const resources = byOrder2(settings.resources.filter((r) => r.active && r.pricingMode !== "free" && r.price > 0)).map(
+          (r) => `${r.name.trim()} : ${euros2(r.price)} par ${RESOURCE_UNITS[r.pricingMode]}${r.halfDayPrice ? `, forfait demi-journ\xE9e ${euros2(r.halfDayPrice)}` : ""}`
+        );
+        if (services.length) sources.push("services");
+        if (resources.length) sources.push("resources");
+        if (services.length + resources.length === 0) return { paragraphs: [], missing: [], sources: ["services"], empty: true };
+        p.push("Les prestations suivantes sont propos\xE9es en suppl\xE9ment, selon les disponibilit\xE9s :");
+        p.push(`${[...services, ...resources].join(" ; ")}.`);
+        break;
+      }
+      case "pool": {
+        const pools = byOrder2(settings.resources.filter((r) => r.active));
+        if (pools.length === 0) return { paragraphs: [], missing: [], sources: ["resources"], empty: true };
+        sources.push("resources");
+        pools.forEach((r) => {
+          if (!r.openingHours.trim() && !r.accessConditions.trim()) return;
+          const hours = r.openingHours.trim() ? ` : ouverture ${r.openingHours.trim()}` : "";
+          const cond = r.accessConditions.trim() ? `. ${sentence(capitalize(r.accessConditions.trim()))}` : ".";
+          p.push(`${r.name.trim()}${hours}${cond}`);
+        });
+        if (pools.some((r) => r.type === "piscine")) {
+          p.push(
+            `${f.poolUnsupervised ? "La piscine n'est pas surveill\xE9e : elle est utilis\xE9e sous la responsabilit\xE9 des baigneurs. " : ""}Les enfants restent sous la surveillance permanente d'un adulte.`
+          );
+        }
+        p.push("L'\xE9tablissement peut fermer un espace pour des raisons de s\xE9curit\xE9, de m\xE9t\xE9o ou d'entretien, sans indemnit\xE9.");
+        break;
+      }
+      case "animals": {
+        const supplements = animalServices(settings).filter((s) => s.billing !== "inclus" && s.price > 0);
+        if (f.animals === "no") p.push("Les animaux ne sont pas accept\xE9s.");
+        else if (f.animals === "onRequest" || f.animals === "yes") {
+          p.push(f.animals === "onRequest" ? "Les animaux sont accept\xE9s sur demande pr\xE9alable et apr\xE8s accord de l'\xE9tablissement." : "Les animaux sont accept\xE9s.");
+          if (supplements.length) {
+            sources.push("services");
+            p.push(`Suppl\xE9ment : ${supplements.map((s) => `${euros2(s.price)} par animal${s.conditions.trim() ? ` (${inlineConditions(s.conditions)})` : ""}`).join(" ; ")}.`);
+          }
+          if (f.animalsConditions.trim()) p.push(sentence(f.animalsConditions));
+          p.push("Ils restent sous la responsabilit\xE9 de leur propri\xE9taire, qui r\xE9pond des d\xE9g\xE2ts \xE9ventuels.");
+        } else {
+          missing.push("Animaux accept\xE9s ou non");
+          p.push(`Animaux : ${TODO}.`);
+        }
+        break;
+      }
+      case "rules": {
+        if (f.nonSmoking) p.push("Il est interdit de fumer \xE0 l'int\xE9rieur des b\xE2timents.");
+        p.push(
+          `Le client s'engage \xE0 respecter les lieux, ${ctx.bookEnabled ? "les r\xE8gles de vie pr\xE9sent\xE9es dans le livret d'accueil" : "les r\xE8gles de vie de l'\xE9tablissement"} et la tranquillit\xE9 des autres voyageurs. Il est responsable des d\xE9gradations caus\xE9es par lui-m\xEAme ou par les personnes qui l'accompagnent.`
+        );
+        if (f.securityDeposit && f.securityDeposit > 0)
+          p.push(`Un d\xE9p\xF4t de garantie de ${euros2(f.securityDeposit)} est demand\xE9 \xE0 l'arriv\xE9e ; il est restitu\xE9 au d\xE9part, d\xE9duction faite des \xE9ventuelles d\xE9gradations constat\xE9es.`);
+        p.push("L'\xE9tablissement ne peut \xEAtre tenu pour responsable de la perte ou du vol d'objets laiss\xE9s sans surveillance, dans les limites pr\xE9vues par la loi.");
+        break;
+      }
+      case "data": {
+        sources.push("establishment");
+        const contact = e.email.trim() || addressLine(settings);
+        if (!contact) missing.push("E-mail ou adresse (Param\xE9trage > \xC9tablissement)");
+        p.push(
+          "Les informations communiqu\xE9es lors de la r\xE9servation (nom, coordonn\xE9es, dates et composition du s\xE9jour) servent uniquement \xE0 la gestion de la r\xE9servation, \xE0 la facturation et au respect des obligations l\xE9gales. Elles ne sont ni vendues ni c\xE9d\xE9es \xE0 des tiers et sont conserv\xE9es le temps n\xE9cessaire \xE0 ces finalit\xE9s (dix ans pour les factures)."
+        );
+        p.push(
+          `Conform\xE9ment au r\xE8glement g\xE9n\xE9ral sur la protection des donn\xE9es (RGPD), le client dispose d'un droit d'acc\xE8s, de rectification, d'effacement et d'opposition, qu'il exerce en \xE9crivant \xE0 ${contact || TODO}. Il peut aussi adresser une r\xE9clamation \xE0 la CNIL (www.cnil.fr).`
+        );
+        break;
+      }
+      case "mediation": {
+        const name = need(f.mediatorName, "Nom du m\xE9diateur de la consommation");
+        const site = need(f.mediatorWebsite, "Site internet du m\xE9diateur");
+        p.push(
+          "En cas de litige, le client adresse d'abord une r\xE9clamation \xE9crite \xE0 l'\xE9tablissement. \xC0 d\xE9faut de solution amiable, il peut recourir gratuitement au m\xE9diateur de la consommation dont rel\xE8ve l'\xE9tablissement (articles L612-1 et suivants du Code de la consommation) :"
+        );
+        p.push(`${name}${f.mediatorAddress.trim() ? `, ${f.mediatorAddress.trim()}` : ""} \u2013 ${site}.`);
+        break;
+      }
+      case "law":
+        p.push(
+          `Les pr\xE9sentes conditions sont soumises au droit fran\xE7ais. \xC0 d\xE9faut d'accord amiable ou de m\xE9diation, le litige est port\xE9 devant ${f.court.trim() ? f.court.trim().replace(/\.$/, "") : "la juridiction comp\xE9tente"}.`
+        );
+        break;
+      case "custom":
+        break;
+    }
+    return { paragraphs: p.filter(Boolean), missing, sources };
+  }
+  function articleText(article, ctx) {
+    const split = (t) => t.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+    if (article.manual) {
+      const paragraphs = split(article.text);
+      return { paragraphs, missing: paragraphs.length ? [] : ["Texte de l'article"], sources: ["terms"] };
+    }
+    const gen = generatedText(article.kind, ctx);
+    return { ...gen, paragraphs: [...gen.paragraphs, ...split(article.extra)] };
+  }
+  function termsDocument(terms, ctx) {
+    const list3 = [];
+    terms.articles.forEach((a) => {
+      if (!a.enabled) return;
+      const t = articleText(a, ctx);
+      if (t.empty && t.paragraphs.length === 0) return;
+      if (a.kind === "custom" && t.paragraphs.length === 0 && !a.title.trim()) return;
+      list3.push({
+        number: list3.length + 1,
+        article: a,
+        title: a.title.trim() || (a.kind === "custom" ? "Article" : ARTICLE_TITLES[a.kind]),
+        paragraphs: t.paragraphs,
+        missing: t.missing,
+        sources: t.sources
+      });
+    });
+    return list3;
+  }
+  function termsPlainText(terms, ctx) {
+    const head = [terms.title.toUpperCase(), ctx.settings.establishment.name.trim(), terms.effectiveDate ? `En vigueur au ${dateFr(terms.effectiveDate)}` : ""].filter(Boolean).join("\n");
+    const body = termsDocument(terms, ctx).map((a) => `Article ${a.number} \u2013 ${a.title}
+
+${a.paragraphs.join("\n\n")}`).join("\n\n");
+    return `${head}
+
+${body}
+`;
+  }
+  var BOOK_SOURCE_PREFIX = "cgv:";
+  function bookProposals(ctx) {
+    const { settings, facts: f } = ctx;
+    const list3 = [];
+    const supplements = animalServices(settings).filter((s) => s.billing !== "inclus" && s.price > 0);
+    const animalPrice = supplements.length ? ` (suppl\xE9ment de ${euros2(supplements[0].price)} par animal${supplements[0].conditions.trim() ? `, ${inlineConditions(supplements[0].conditions)}` : ""})` : "";
+    list3.push({
+      id: "animals",
+      label: "Animaux",
+      articleKind: "animals",
+      sectionKind: "rules",
+      title: "Animaux",
+      text: f.animals === "no" ? "Nous ne pouvons pas accueillir les animaux." : f.animals === "onRequest" ? `Bienvenus sur demande, \xE0 nous signaler avant votre arriv\xE9e${animalPrice}.${f.animalsConditions.trim() ? ` ${sentence(f.animalsConditions)}` : ""}` : f.animals === "yes" ? `Bienvenus${animalPrice}.${f.animalsConditions.trim() ? ` ${sentence(f.animalsConditions)}` : ""}` : ""
+    });
+    list3.push({
+      id: "nonSmoking",
+      label: "Non-fumeur",
+      articleKind: "rules",
+      sectionKind: "rules",
+      title: "\xC9tablissement non-fumeur",
+      text: f.nonSmoking ? "Merci de ne pas fumer \xE0 l'int\xE9rieur." : ""
+    });
+    const hasPool = settings.resources.some((r) => r.active && r.type === "piscine");
+    list3.push({
+      id: "pool",
+      label: "Piscine",
+      articleKind: "pool",
+      sectionKind: "rules",
+      title: "Piscine",
+      text: hasPool ? `Les enfants restent toujours sous la surveillance d'un adulte${f.poolUnsupervised ? " : la piscine n'est pas surveill\xE9e" : ""}.` : ""
+    });
+    list3.push({
+      id: "payment",
+      label: "Moyens de paiement",
+      articleKind: "payment",
+      sectionKind: "practical",
+      title: "Moyens de paiement",
+      text: f.paymentMethods.length ? `${capitalize(f.paymentMethods.join(", "))}.` : ""
+    });
+    list3.push({
+      id: "touristTax",
+      label: "Taxe de s\xE9jour",
+      articleKind: "prices",
+      sectionKind: "practical",
+      title: "Taxe de s\xE9jour",
+      text: f.touristTax === "included" ? "Comprise dans le prix de votre s\xE9jour." : f.touristTax === "extra" ? `\xC0 r\xE9gler en plus du s\xE9jour, pour la commune${f.touristTaxText.trim() ? ` : ${f.touristTaxText.trim().replace(/\.$/, "")}` : ""}.` : ""
+    });
+    list3.push({
+      id: "securityDeposit",
+      label: "D\xE9p\xF4t de garantie",
+      articleKind: "rules",
+      sectionKind: "practical",
+      title: "D\xE9p\xF4t de garantie",
+      text: f.securityDeposit && f.securityDeposit > 0 ? `${euros2(f.securityDeposit)} demand\xE9s \xE0 l'arriv\xE9e et rendus au d\xE9part, sauf d\xE9gradation.` : ""
+    });
+    const missing = [];
+    const late = f.cancelLateRule ? lateCancellation(f, missing) : "";
+    const n = f.cancelFreeDays;
+    list3.push({
+      id: "cancellation",
+      label: "Annulation",
+      articleKind: "cancelClient",
+      sectionKind: "faq",
+      title: "Puis-je annuler ma r\xE9servation ?",
+      text: hasPolicy(settings.pricing.cancellation) ? `${policyShort(settings.pricing.cancellation)} Pour une r\xE9servation faite sur une plateforme, ce sont ses conditions qui s'appliquent.` : n === null || !late || missing.length ? "" : n > 0 ? `Oui, sans frais jusqu'\xE0 ${n} ${plural(n, "jour", "jours")} avant votre arriv\xE9e. Ensuite, ${late.replace(" \xE0 l'\xE9tablissement", "")}. Pour une r\xE9servation faite sur une plateforme, ce sont ses conditions qui s'appliquent.` : `${capitalize(late.replace(" \xE0 l'\xE9tablissement", ""))} en cas d'annulation. Pour une r\xE9servation faite sur une plateforme, ce sont ses conditions qui s'appliquent.`
+    });
+    return list3;
+  }
+  var sameTitle = (a, b) => a.trim().toLowerCase().replace(/\s+/g, " ") === b.trim().toLowerCase().replace(/\s+/g, " ");
+  function syncBookWithTerms(book, terms, ctx) {
+    const f = terms.facts;
+    const proposals = bookProposals(ctx);
+    const wanted = proposals.filter((p) => terms.bookLinks[p.id] && p.text);
+    const placed = /* @__PURE__ */ new Set();
+    let sections = book.sections.map((s) => {
+      let fields = s.fields;
+      if (s.kind === "arrival" && (f.arrivalFrom || f.arrivalTo)) fields = { ...fields, from: f.arrivalFrom, to: f.arrivalTo };
+      if (s.kind === "departure" && f.departureBefore) fields = { ...fields, before: f.departureBefore };
+      const items = [];
+      s.items.forEach((item2) => {
+        if (item2.source && item2.source.startsWith(BOOK_SOURCE_PREFIX)) {
+          const p = wanted.find((w2) => BOOK_SOURCE_PREFIX + w2.id === item2.source);
+          if (!p || placed.has(p.id)) return;
+          placed.add(p.id);
+          items.push({ ...item2, title: p.title, text: p.text });
+          return;
+        }
+        items.push(item2);
+      });
+      return { ...s, fields, items };
+    });
+    wanted.forEach((p) => {
+      if (placed.has(p.id)) return;
+      const index = sections.findIndex((s2) => s2.kind === p.sectionKind);
+      if (index < 0) return;
+      const s = sections[index];
+      const linked = { id: `cgv_${p.id}`, title: p.title, text: p.text, source: BOOK_SOURCE_PREFIX + p.id };
+      const same = s.items.findIndex((i) => !i.source && sameTitle(i.title, p.title));
+      const items = same >= 0 ? s.items.map((i, k) => k === same ? { ...linked, id: i.id } : i) : [...s.items, linked];
+      sections = sections.map((x, k) => k === index ? { ...x, items } : x);
+      placed.add(p.id);
+    });
+    return { ...book, sections };
+  }
+  var PROPOSAL_ARTICLES = {
+    animals: "animals",
+    nonSmoking: "rules",
+    pool: "pool",
+    payment: "payment",
+    touristTax: "prices",
+    securityDeposit: "rules",
+    cancellation: "cancelClient"
+  };
+  function linkedProposalId(item2) {
+    return item2.source && item2.source.startsWith(BOOK_SOURCE_PREFIX) ? item2.source.slice(BOOK_SOURCE_PREFIX.length) : null;
+  }
+  function hoursLockedByTerms(terms) {
+    return { arrival: !!(terms.facts.arrivalFrom || terms.facts.arrivalTo), departure: !!terms.facts.departureBefore };
+  }
+
+  // src/modules/cgv/store.ts
+  function getTerms(settings = getSettings()) {
+    return readTerms(settings);
+  }
+  function makeTermsContext(terms, settings = getSettings()) {
+    return termsContext(terms, settings, isModuleEnabled("pricing", settings), isModuleEnabled("welcomeBook", settings));
+  }
+  var todayIso7 = () => {
+    const d = /* @__PURE__ */ new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  var sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  function bookInUse(settings) {
+    return isModuleEnabled("welcomeBook", settings) || !!settings.modules.welcomeBook?.settings;
+  }
+  function withTerms(settings, terms) {
+    const invoicing = settings.modules.invoicing || { enabled: true };
+    const modules = { ...settings.modules, invoicing: { ...invoicing, settings: { ...invoicing.settings || {}, terms } } };
+    if (bookInUse(settings)) {
+      const book = readWelcomeBook(settings);
+      const synced = syncBookWithTerms(book, terms, makeTermsContext(terms, settings));
+      if (!sameJson(book, synced)) {
+        const wb = settings.modules.welcomeBook || { enabled: false };
+        modules.welcomeBook = { ...wb, settings: synced };
+      }
+    }
+    return { ...settings, modules };
+  }
+  function saveTerms(settings, draft) {
+    const previous = readTerms(settings);
+    const next = { ...draft, facts: effectiveFacts(draft, settings).facts, savedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    const text = (t) => termsPlainText({ ...t, effectiveDate: "" }, makeTermsContext(t, settings));
+    if (!next.effectiveDate || !previous.savedAt || text(previous) !== text(next)) next.effectiveDate = todayIso7();
+    saveSettings(withTerms(settings, next), "Conditions g\xE9n\xE9rales de vente enregistr\xE9es.");
+    try {
+      window.dispatchEvent(new CustomEvent("domaine_sylvaria_trigger_sync"));
+    } catch {
+    }
+    return readTerms(getSettings());
+  }
+  function applyTermsToBook(settings, book) {
+    if (!isModuleEnabled("invoicing", settings)) return book;
+    const terms = readTerms(settings);
+    if (!terms.savedAt) return book;
+    return syncBookWithTerms(book, terms, makeTermsContext(terms, settings));
+  }
+  function detachProposal(proposalId) {
+    const settings = getSettings();
+    const terms = readTerms(settings);
+    const bookLinks = { ...terms.bookLinks };
+    delete bookLinks[proposalId];
+    const source = BOOK_SOURCE_PREFIX + proposalId;
+    const book = readWelcomeBook(settings);
+    const detached = {
+      ...book,
+      sections: book.sections.map((s) => ({
+        ...s,
+        items: s.items.map((i) => {
+          if (i.source !== source) return i;
+          const copy = { ...i };
+          delete copy.source;
+          return copy;
+        })
+      }))
+    };
+    const invoicing = settings.modules.invoicing || { enabled: true };
+    const wb = settings.modules.welcomeBook || { enabled: false };
+    saveSettings(
+      {
+        ...settings,
+        modules: {
+          ...settings.modules,
+          invoicing: { ...invoicing, settings: { ...invoicing.settings || {}, terms: { ...terms, bookLinks } } },
+          welcomeBook: { ...wb, settings: detached }
+        }
+      },
+      "Livret : \xE9l\xE9ment d\xE9tach\xE9 des conditions g\xE9n\xE9rales de vente."
+    );
+    try {
+      window.dispatchEvent(new CustomEvent("domaine_sylvaria_trigger_sync"));
+    } catch {
+    }
+  }
+  var pendingOpen = null;
+  function openTermsTab(articleId = "") {
+    pendingOpen = articleId;
+    try {
+      window.dispatchEvent(new CustomEvent("domaine_sylvaria_open_tab", { detail: { tab: "invoices" } }));
+    } catch {
+    }
+  }
+  function takePendingTermsOpen() {
+    const v = pendingOpen;
+    pendingOpen = null;
+    return v;
   }
 
   // src/core/sync/syncedStores.ts
@@ -11546,6 +12370,22 @@ footer{background:#111}
       label: "Prix du site web (calcul\xE9s)",
       kind: "replace",
       read: () => isModuleEnabled("website") ? buildBookingData(getSettings(), void 0, getSite().booking.mode, hiddenItemIds(getSite())) : void 0,
+      write: () => {
+      }
+    },
+    {
+      // Conditions générales de vente enregistrées, jointes (PDF) à l'e-mail de confirmation de réservation envoyé par le connecteur
+      id: "termsPublished",
+      label: "Conditions g\xE9n\xE9rales de vente (pour l'e-mail de confirmation)",
+      kind: "replace",
+      read: () => {
+        const settings = getSettings();
+        const terms = readTerms(settings);
+        if (!terms.savedAt) return void 0;
+        const articles = termsDocument(terms, makeTermsContext(terms, settings)).map((a) => ({ number: a.number, title: a.title, paragraphs: a.paragraphs }));
+        if (articles.length === 0) return void 0;
+        return { title: terms.title, establishment: settings.establishment.name.trim(), effectiveDate: terms.effectiveDate, articles };
+      },
       write: () => {
       }
     },
@@ -13082,8 +13922,8 @@ footer{background:#111}
     }
   }
   function getAppsScriptCode() {
-    return `\uFEFF// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V30)
+    return `// =========================================================================
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V31)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -13163,6 +14003,7 @@ footer{background:#111}
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
 // V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Domaine Sylvaria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V31 : les conditions g\xE9n\xE9rales de vente (enregistr\xE9es dans l'application) sont jointes en PDF \xE0 l'e-mail de confirmation de r\xE9servation envoy\xE9 au client ; dans le livret, les services li\xE9s aux chambres (suppl\xE9ment chien, m\xE9nage\u2026) sont pr\xE9sent\xE9s avec chaque chambre et non plus seuls. Aucune nouvelle autorisation.
 // V30 : rappels automatiques d'acompte (r\xE9servations du site dont l'acompte demand\xE9 \xE0 l'avance n'est pas re\xE7u) : au client avant la date limite et une relance apr\xE8s, l'\xE9tablissement est pr\xE9venu ; r\xE9glables dans l'application. Les photos du livret et de la carte ne sont plus limit\xE9es \xE0 40 (stockage de l'appareil). Aucune nouvelle autorisation.
 // V29 : e-mails au client plus complets (confirmation, accus\xE9 de r\xE9ception, refus) : modalit\xE9s de r\xE8glement choisies dans l'application (acompte \xE0 l'avance et/ou paiement sur place), lien du livret d'accueil (petits-d\xE9jeuners et repas), coordonn\xE9es de l'\xE9tablissement en signature. Aucune nouvelle autorisation.
 // V28 : nationalit\xE9 du client et fiche individuelle de police (voyageurs \xE9trangers) jointes \xE0 la demande du site, rang\xE9es avec la demande et effac\xE9es six mois apr\xE8s le d\xE9part ; l'outil RGPD compte et supprime aussi les demandes du site. Aucune nouvelle autorisation.
@@ -13863,7 +14704,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 30;
+var CONNECTOR_VERSION = 31;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Domaine Sylvaria - Photos m\xE9nage";
@@ -14922,11 +15763,24 @@ function publicBookData_(ctx) {
       basePrice: roomOpt.showPrices ? Number(a.basePrice) || 0 : 0, order: Number(a.order) || 0, active: true
     };
   });
-  var serviceList = !services ? [] : listOf_(settings.services).filter(function(x) { return shown(x, srvOpt); }).sort(byOrder_).map(function(x) {
+  // V31 : un service li\xE9 aux chambres (suppl\xE9ment chien, m\xE9nage\u2026) est pr\xE9sent\xE9 avec les chambres (rubrique des chambres), jamais seul
+  var linkedService = function(x) { return x.scope ? x.scope === "linked" : !x.showInPlanning; };
+  var serviceList = listOf_(settings.services).filter(function(x) {
+    if (!isObject_(x) || !x.id || x.active === false) return false;
+    return linkedService(x) ? !!rooms && !roomOpt["hide_" + x.id] : !!services && !srvOpt["hide_" + x.id];
+  }).sort(byOrder_).map(function(x) {
+    var linked = linkedService(x);
+    var withPrice = linked ? roomOpt.showPrices : srvOpt.showPrices;
+    var roomPrices = {};
+    if (linked && withPrice && isObject_(x.roomPrices)) {
+      for (var rp in x.roomPrices) { if (isFinite(Number(x.roomPrices[rp]))) roomPrices[rp] = Number(x.roomPrices[rp]); }
+    }
     return {
       id: textOf_(x.id), name: textOf_(x.name), description: textOf_(x.description), unit: textOf_(x.unit), customUnitLabel: textOf_(x.customUnitLabel),
-      price: srvOpt.showPrices ? Number(x.price) || 0 : 0, billing: textOf_(x.billing), availability: textOf_(x.availability),
-      conditions: textOf_(x.conditions), order: Number(x.order) || 0, active: true
+      price: withPrice ? Number(x.price) || 0 : 0, billing: textOf_(x.billing), availability: textOf_(x.availability),
+      conditions: textOf_(x.conditions), order: Number(x.order) || 0, active: true,
+      scope: linked ? "linked" : "standalone", roomIds: Array.isArray(x.roomIds) ? x.roomIds.map(textOf_) : null,
+      includedInAccommodationIds: listOf_(x.includedInAccommodationIds).map(textOf_), roomPrices: roomPrices
     };
   });
   var resources = !(services && srvOpt.showResources) ? [] : listOf_(settings.resources).filter(function(r) { return shown(r, srvOpt); }).sort(byOrder_).map(function(r) {
@@ -16709,6 +17563,34 @@ function requestSummaryTable_(d) {
     (d.total ? row("Total estim\xE9", esc_(euroText_(d.total))) : "") + "</table>";
 }
 
+// ===== V31 : conditions g\xE9n\xE9rales de vente jointes \xE0 la confirmation =====
+// L'application envoie ses CGV enregistr\xE9es (jeu \xAB termsPublished \xBB) ; le connecteur les met en page et les joint en PDF.
+// Retourne null si les CGV n'ont pas \xE9t\xE9 enregistr\xE9es ou si le PDF ne peut pas \xEAtre fabriqu\xE9 (l'e-mail part alors sans pi\xE8ce jointe).
+function termsPdf_(store) {
+  try {
+    var entry = store && store.appStores && store.appStores.termsPublished;
+    var t = entry && entry.value;
+    if (!isObject_(t) || listOf_(t.articles).length === 0) return null;
+    var html = "<html><body style=\\"font-family:Georgia,serif;font-size:11pt;color:#1f2937;line-height:1.45\\">" +
+      "<div style=\\"text-align:center;border-bottom:2px solid #325032;padding-bottom:8px;margin-bottom:14px\\">" +
+      "<div style=\\"font-size:16pt;font-weight:bold;color:#325032;text-transform:uppercase\\">" + esc_(textOf_(t.title) || "Conditions g\xE9n\xE9rales de vente") + "</div>" +
+      (textOf_(t.establishment) ? "<div style=\\"font-size:11pt\\">" + esc_(t.establishment) + "</div>" : "") +
+      (/^\\d{4}-\\d{2}-\\d{2}$/.test(textOf_(t.effectiveDate)) ? "<div style=\\"font-size:9pt;color:#6b7280\\">En vigueur au " + esc_(frShort_(t.effectiveDate)) + "</div>" : "") +
+      "</div>";
+    listOf_(t.articles).forEach(function(a) {
+      if (!isObject_(a)) return;
+      html += "<p style=\\"margin:12px 0 2px\\"><b>Article " + esc_(a.number) + " \u2013 " + esc_(a.title) + "</b></p>";
+      listOf_(a.paragraphs).forEach(function(p) {
+        html += "<p style=\\"margin:0 0 4px;text-align:justify;white-space:pre-line\\">" + esc_(p) + "</p>";
+      });
+    });
+    html += "</body></html>";
+    return Utilities.newBlob(html, "text/html", "cgv.html").getAs("application/pdf").setName("Conditions g\xE9n\xE9rales de vente.pdf");
+  } catch(errPdf) {
+    return null;
+  }
+}
+
 // kind : "received" (demande re\xE7ue), "confirmed" (r\xE9servation confirm\xE9e), "refused" (demande refus\xE9e)
 function sendRequestMail_(ss, store, settings, d, kind, note) {
   if (!validEmail_(d.contact)) return;
@@ -16718,7 +17600,10 @@ function sendRequestMail_(ss, store, settings, d, kind, note) {
     var greeting = "<p style=\\"margin:0 0 12px\\">Bonjour " + esc_(textOf_(d.name)) + ",</p>";
     var body = "";
     var subject = "";
+    var attachments = [];
     if (kind === "confirmed") {
+      var cgv = termsPdf_(store);
+      if (cgv) attachments.push(cgv);
       subject = "votre r\xE9servation est confirm\xE9e";
       body = greeting +
         "<p style=\\"margin:0 0 12px\\">Nous avons le plaisir de vous confirmer votre r\xE9servation au <b>" + esc_(estName) + "</b>. Merci de votre confiance : nous sommes heureux de vous accueillir tr\xE8s prochainement.</p>" +
@@ -16732,6 +17617,9 @@ function sendRequestMail_(ss, store, settings, d, kind, note) {
           (mealsOrderingOn_(settings) ? " Il vous permet aussi de <b>r\xE9server vos petits-d\xE9jeuners</b> et de <b>commander des repas</b> (\xE0 commander au moins la veille du repas)." : "") + "</p>" +
           "<p style=\\"margin:0 0 6px\\"><a href=\\"" + esc_(link) + "\\" style=\\"background:#325032;color:#ffffff;padding:11px 20px;border-radius:10px;text-decoration:none;font-weight:bold;display:inline-block\\">Ouvrir mon livret d'accueil</a></p>" +
           "<p style=\\"margin:6px 0 0;font-size:12px;color:#737373\\">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur : " + esc_(link) + "</p>";
+      }
+      if (cgv) {
+        body += "<p style=\\"margin:20px 0 0\\">Vous trouverez en <b>pi\xE8ce jointe</b> nos conditions g\xE9n\xE9rales de vente (PDF), qui s'appliquent \xE0 votre r\xE9servation : merci d'en prendre connaissance.</p>";
       }
       body += "<p style=\\"margin:20px 0 0\\">Pour toute question, r\xE9pondez simplement \xE0 cet e-mail ou appelez-nous : nous restons \xE0 votre disposition.</p>";
     } else if (kind === "depositBefore" || kind === "depositLate") {
@@ -16772,6 +17660,7 @@ function sendRequestMail_(ss, store, settings, d, kind, note) {
     };
     var reply = establishmentEmail_(settings);
     if (reply) mail.replyTo = reply;
+    if (attachments.length > 0) mail.attachments = attachments;
     MailApp.sendEmail(mail);
   } catch(errMail) {}
 }
@@ -16869,7 +17758,7 @@ function purgeRequestPolice_(ss, todayIso) {
   });
   return purged;
 }
-// ===== FIN DU CONNECTEUR (V30) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== FIN DU CONNECTEUR (V31) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
 
@@ -18466,46 +19355,6 @@ function purgeRequestPolice_(ss, todayIso) {
     ] });
   };
 
-  // src/core/pricing/cancellation.ts
-  var emptyPolicy = () => ({ tiers: [], noShowPercent: null, note: "" });
-  function sortedTiers(p) {
-    return (p?.tiers || []).filter((t) => Number.isFinite(t.daysBefore) && t.daysBefore >= 0 && Number.isFinite(t.percent)).map((t) => ({ daysBefore: Math.floor(t.daysBefore), percent: Math.min(100, Math.max(0, t.percent)) })).sort((a, b) => b.daysBefore - a.daysBefore);
-  }
-  var hasPolicy = (p) => sortedTiers(p).length > 0;
-  function percentDue(p, daysBefore) {
-    const tiers = sortedTiers(p);
-    if (tiers.length === 0) return null;
-    const hit = tiers.filter((t) => daysBefore < t.daysBefore).pop();
-    return hit ? hit.percent : 0;
-  }
-  var feeDue = (p, daysBefore, total) => {
-    const pc = percentDue(p, daysBefore);
-    return pc === null ? null : Math.round(total * pc) / 100;
-  };
-  var days = (n) => `${n} jour${n > 1 ? "s" : ""}`;
-  var dueText = (pc) => pc === 0 ? "sans frais" : pc >= 100 ? "la totalit\xE9 du s\xE9jour reste due" : `${pc} % du prix du s\xE9jour reste d\xFB`;
-  function policySentences(p) {
-    const tiers = sortedTiers(p);
-    if (tiers.length === 0) return [];
-    const out = [`Annulation \xE0 ${days(tiers[0].daysBefore)} ou plus avant la date d'arriv\xE9e : sans frais.`];
-    tiers.forEach((t, i) => {
-      const lower = tiers[i + 1];
-      const range = lower ? `entre ${days(t.daysBefore)} et ${days(lower.daysBefore)} avant l'arriv\xE9e` : `\xE0 moins de ${days(t.daysBefore)} de la date d'arriv\xE9e`;
-      out.push(`Annulation ${range} : ${dueText(t.percent)}.`);
-    });
-    return out;
-  }
-  function noShowSentence(p) {
-    if (!p || p.noShowPercent === null || !Number.isFinite(p.noShowPercent)) return "";
-    return `Si le client ne se pr\xE9sente pas \xE0 la date pr\xE9vue sans avoir pr\xE9venu l'\xE9tablissement, ${dueText(Math.min(100, Math.max(0, p.noShowPercent)))} et l'\xE9tablissement peut disposer \xE0 nouveau de l'h\xE9bergement.`;
-  }
-  function policyShort(p) {
-    const tiers = sortedTiers(p);
-    if (tiers.length === 0) return "";
-    const parts = tiers.map((t) => `\xE0 moins de ${days(t.daysBefore)} : ${t.percent === 0 ? "sans frais" : t.percent >= 100 ? "s\xE9jour d\xFB en totalit\xE9" : `${t.percent} % d\xFB`}`);
-    return `Annulation gratuite jusqu'\xE0 ${days(tiers[0].daysBefore)} avant l'arriv\xE9e ; ensuite ${parts.join(" ; ")}.`;
-  }
-
   // src/core/theme/shades.json
   var shades_default = {
     comment: "Nuances d'origine de la couleur principale (vert #325032). Chaque nuance devient la variable CSS --sy-<nom> ; les classes Tailwind sy-<hex> et emerald-<n> les utilisent. Lu par src/core/theme/theme.ts et par build_standalone_html_and_sync.cjs.",
@@ -18666,7 +19515,7 @@ function purgeRequestPolice_(ss, todayIso) {
   function getMeals(settings = getSettings()) {
     return readMeals(settings);
   }
-  function bookInUse(settings) {
+  function bookInUse2(settings) {
     return isModuleEnabled("welcomeBook", settings) || !!settings.modules.welcomeBook?.settings;
   }
   function mealsMenuFor(settings, dishes = getLinkedDishes()) {
@@ -18679,12 +19528,12 @@ function purgeRequestPolice_(ss, todayIso) {
   function applyMealsToBook(settings, book, dishes) {
     return syncBookWithMeals(book, mealsMenuFor(settings, dishes));
   }
-  var sameJson = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  var sameJson2 = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   function withMealsInBook(settings, dishes) {
-    if (!bookInUse(settings)) return settings;
+    if (!bookInUse2(settings)) return settings;
     const book = readWelcomeBook(settings);
     const synced = applyMealsToBook(settings, book, dishes);
-    if (sameJson(book, synced)) return settings;
+    if (sameJson2(book, synced)) return settings;
     const wb = settings.modules.welcomeBook || { enabled: false };
     return { ...settings, modules: { ...settings.modules, welcomeBook: { ...wb, settings: synced } } };
   }
@@ -21015,7 +21864,7 @@ function purgeRequestPolice_(ss, todayIso) {
       )
     ] });
   };
-  var SERVICE_UNITS = [
+  var SERVICE_UNITS2 = [
     { value: "nuit", label: "Par nuit" },
     { value: "personne", label: "Par personne" },
     { value: "animal", label: "Par animal" },
@@ -21033,7 +21882,7 @@ function purgeRequestPolice_(ss, todayIso) {
     const linked = scope === "linked";
     const d = ed.draft;
     const set = (patch) => d && ed.setDraft({ ...d, ...patch });
-    const unitLabel = (s) => s.unit === "unite" ? `par ${s.customUnitLabel || "unit\xE9"}` : SERVICE_UNITS.find((u) => u.value === s.unit)?.label.toLowerCase();
+    const unitLabel = (s) => s.unit === "unite" ? `par ${s.customUnitLabel || "unit\xE9"}` : SERVICE_UNITS2.find((u) => u.value === s.unit)?.label.toLowerCase();
     return /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
         SectionTitle,
@@ -21078,7 +21927,7 @@ function purgeRequestPolice_(ss, todayIso) {
           children: [
             /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Nom *", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(TextInput, { value: d.name, onChange: (v) => set({ name: v }), placeholder: "Ex. Petit-d\xE9jeuner" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Unit\xE9 de facturation", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Select, { value: d.unit, onChange: (v) => set({ unit: v }), options: SERVICE_UNITS }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Unit\xE9 de facturation", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Select, { value: d.unit, onChange: (v) => set({ unit: v }), options: SERVICE_UNITS2 }) }),
               d.unit === "unite" && /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Nom de l'unit\xE9", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(TextInput, { value: d.customUnitLabel, onChange: (v) => set({ customUnitLabel: v }), placeholder: "Ex. v\xE9lo, panier" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Tarif", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(NumberInput, { value: d.price, onChange: (v) => set({ price: v ?? 0 }), suffix: "\u20AC" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Description", className: "sm:col-span-2", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(TextArea, { value: d.description, onChange: (v) => set({ description: v }) }) })
@@ -21231,7 +22080,7 @@ function purgeRequestPolice_(ss, todayIso) {
       ) : /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
         CatalogList,
         {
-          items: ed.items.filter((s) => linked ? isLinkedService(s) : isStandaloneService(s)),
+          items: ed.items.filter((s) => linked ? isLinkedService(s) : isStandaloneService2(s)),
           colorOf: (s) => s.colors?.accentColor,
           onEdit: ed.startEdit,
           onToggleActive: ed.toggleActive,
@@ -23868,7 +24717,7 @@ Cette op\xE9ration est d\xE9finitive.`
     departure: { label: "D\xE9part", icon: LogOut, help: "Heure limite de d\xE9part et ce qu'il faut faire avant de partir." },
     wifi: { label: "Wi-Fi", icon: Wifi, help: "Nom du r\xE9seau et mot de passe." },
     practical: { label: "Infos pratiques", icon: Info, help: "Horaires, stationnement, \xE9quipements, linge, d\xE9chets\u2026" },
-    services: { label: "Repas et services", icon: Coffee, help: "Reprend les fiches du Param\xE9trage > Services et Espaces (petit-d\xE9jeuner, repas, piscine\u2026)." },
+    services: { label: "Services", icon: Coffee, help: "Reprend les services ind\xE9pendants et les espaces du Param\xE9trage (pension, piscine\u2026). Les services li\xE9s aux chambres (suppl\xE9ment chien, m\xE9nage\u2026) sont pr\xE9sent\xE9s avec les chambres." },
     rules: { label: "R\xE8gles de vie", icon: ScrollText, help: "Ce que vous demandez \xE0 vos voyageurs pendant le s\xE9jour." },
     safety: { label: "S\xE9curit\xE9", icon: ShieldAlert, help: "Num\xE9ros d'urgence et consignes de s\xE9curit\xE9." },
     recommendations: { label: "Adresses conseill\xE9es", icon: MapPin, help: "Restaurants, activit\xE9s, visites et commerces \xE0 proximit\xE9." },
@@ -23909,7 +24758,7 @@ Cette op\xE9ration est d\xE9finitive.`
     const dt = new Date(Date.UTC(y, m - 1, d));
     return dt.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
   }
-  var euros2 = (n) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })} \u20AC`;
+  var euros3 = (n) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })} \u20AC`;
   function timeChoices(from, to) {
     if (!/^\d{2}:\d{2}$/.test(from) || !/^\d{2}:\d{2}$/.test(to)) return [];
     const toMin = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
@@ -24098,7 +24947,7 @@ Cette op\xE9ration est d\xE9finitive.`
           i.childUnitPrice > 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { className: "text-[11px] text-neutral-500", children: [
               "Portion enfant (",
-              euros2(i.childUnitPrice),
+              euros3(i.childUnitPrice),
               ")"
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Stepper, { value: qty[i.id]?.childQty || 0, onStep: (d) => stepLine(i.id, "childQty", d), color, label: `${i.name} enfant` })
@@ -24121,7 +24970,7 @@ Cette op\xE9ration est d\xE9finitive.`
           "Total indicatif",
           chosen.length > 1 ? ` (${chosen.length} jours)` : ""
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-[14px] font-bold", style: { color }, "data-order-total": true, children: euros2(total) })
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-[14px] font-bold", style: { color }, "data-order-total": true, children: euros3(total) })
       ] }),
       error && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { className: "text-[12px] text-red-700", children: error }),
       /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { className: "text-[10px] text-neutral-400 leading-snug", children: "Vos coordonn\xE9es servent uniquement \xE0 pr\xE9parer et confirmer cette commande ; elles ne sont pas transmises \xE0 des tiers et vous pouvez en demander l'effacement \xE0 l'\xE9tablissement." }),
@@ -24186,7 +25035,7 @@ Cette op\xE9ration est d\xE9finitive.`
                 o.children ? `, ${o.children} enfant${o.children > 1 ? "s" : ""}` : "",
                 o.lines.length > 0 ? ` \xB7 ${o.lines.map((l) => `${l.qty ? `${l.qty} \xD7 ` : ""}${l.name}${l.childQty ? ` (+${l.childQty} enfant)` : ""}`).join(", ")}` : ""
               ] }),
-              o.total > 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "text-[11px] font-semibold text-neutral-700", children: euros2(o.total) })
+              o.total > 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "text-[11px] font-semibold text-neutral-700", children: euros3(o.total) })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: `px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${look2.className}`, children: look2.label })
           ] }),
@@ -27581,7 +28430,7 @@ ${establishmentName}`;
   // src/modules/livret/BookView.tsx
   var import_react49 = __require("react");
   var import_jsx_runtime39 = __require("react/jsx-runtime");
-  var SERVICE_UNITS2 = {
+  var SERVICE_UNITS3 = {
     nuit: "nuit",
     personne: "personne",
     animal: "animal",
@@ -27589,18 +28438,20 @@ ${establishmentName}`;
     creneau: "cr\xE9neau",
     sejour: "s\xE9jour"
   };
-  var euros3 = (n) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })} \u20AC`;
-  function servicePrice(s) {
+  var euros4 = (n) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })} \u20AC`;
+  function servicePrice(s, roomId = "") {
     if (s.billing === "inclus") return "Inclus";
-    if (!(s.price > 0)) return "";
-    const unit = s.unit === "unite" ? s.customUnitLabel : SERVICE_UNITS2[s.unit];
-    return unit ? `${euros3(s.price)} / ${unit}` : euros3(s.price);
+    const own = roomId ? s.roomPrices?.[roomId] : void 0;
+    const price = typeof own === "number" && !isNaN(own) ? own : s.price;
+    if (!(price > 0)) return "";
+    const unit = s.unit === "unite" ? s.customUnitLabel : SERVICE_UNITS3[s.unit];
+    return unit ? `${euros4(price)} / ${unit}` : euros4(price);
   }
   function resourcePrice(r) {
     if (r.pricingMode === "free") return "Acc\xE8s libre";
     if (!(r.price > 0)) return "";
     const unit = { per_slot: "cr\xE9neau", per_person_slot: "personne et cr\xE9neau", per_day: "jour" }[r.pricingMode];
-    return `${euros3(r.price)} / ${unit}`;
+    return `${euros4(r.price)} / ${unit}`;
   }
   var Paragraphs = ({ text }) => {
     const parts = text.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
@@ -27726,7 +28577,7 @@ ${establishmentName}`;
               ] }),
               s.options.showPrices && a.basePrice > 0 && /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("span", { className: "text-[11px] font-bold shrink-0", style: { color }, children: [
                 "d\xE8s ",
-                euros3(a.basePrice),
+                euros4(a.basePrice),
                 " / nuit"
               ] })
             ] }),
@@ -27736,7 +28587,14 @@ ${establishmentName}`;
               " personne",
               a.maxGuests > 1 ? "s" : ""
             ] }),
-            s.options.showEquipments && a.equipments.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("div", { className: "flex flex-wrap gap-1 mt-2", children: a.equipments.map((eq) => /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("span", { className: "px-2 py-0.5 rounded-full text-[10px] font-semibold", style: { background: tint(color, 0.09), color }, children: eq }, eq)) })
+            s.options.showEquipments && a.equipments.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("div", { className: "flex flex-wrap gap-1 mt-2", children: a.equipments.map((eq) => /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("span", { className: "px-2 py-0.5 rounded-full text-[10px] font-semibold", style: { background: tint(color, 0.09), color }, children: eq }, eq)) }),
+            linkedServicesFor(catalog.services, a.id, (id) => !!s.options[`hide_${id}`]).map((x) => /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("div", { className: "flex items-start justify-between gap-2 mt-2 pt-2 border-t border-neutral-100", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("div", { className: "min-w-0", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("div", { className: "text-[12px] font-semibold text-neutral-800", children: x.name }),
+                [x.description, x.conditions].filter((t) => t.trim()).map((t, i) => /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("p", { className: "text-[11px] text-neutral-500 leading-relaxed whitespace-pre-line", children: t }, i))
+              ] }),
+              (s.options.showPrices || x.billing === "inclus") && servicePrice(x, a.id) && /* @__PURE__ */ (0, import_jsx_runtime39.jsx)("span", { className: "text-[11px] font-bold shrink-0", style: { color }, children: servicePrice(x, a.id) })
+            ] }, x.id))
           ] }, a.id)),
           /* @__PURE__ */ (0, import_jsx_runtime39.jsx)(Gallery, { ids: s.photos, photos: photos2 })
         ] });
@@ -27771,7 +28629,7 @@ ${establishmentName}`;
           /* @__PURE__ */ (0, import_jsx_runtime39.jsx)(Paragraphs, { text: s.text })
         ] });
       case "services": {
-        const services = [...catalog.services].filter((x) => x.active && !s.options[`hide_${x.id}`]).sort((a, b) => a.order - b.order);
+        const services = [...catalog.services].filter((x) => x.active && isStandaloneService(x) && !s.options[`hide_${x.id}`]).sort((a, b) => a.order - b.order);
         const resources = s.options.showResources ? [...catalog.resources].filter((x) => x.active && !s.options[`hide_${x.id}`]).sort((a, b) => a.order - b.order) : [];
         const card3 = (key, name, description, price, details) => /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("div", { className: "p-3 rounded-xl border border-neutral-100 bg-white", children: [
           /* @__PURE__ */ (0, import_jsx_runtime39.jsxs)("div", { className: "flex items-start justify-between gap-2", children: [
@@ -28065,7 +28923,11 @@ ${establishmentName}`;
         availability: str3(x.availability),
         conditions: str3(x.conditions),
         billing: x.billing === "inclus" ? "inclus" : "supplement",
-        includedInAccommodationIds: [],
+        includedInAccommodationIds: list2(x.includedInAccommodationIds).map(str3),
+        // V31 : le connecteur indique si le service est lié aux chambres ; sans cette information (connecteur plus ancien), il reste un service indépendant
+        scope: x.scope === "linked" ? "linked" : "standalone",
+        roomIds: Array.isArray(x.roomIds) ? x.roomIds.map(str3) : void 0,
+        roomPrices: x.roomPrices && typeof x.roomPrices === "object" ? Object.fromEntries(Object.entries(x.roomPrices).map(([k, v]) => [k, num5(v)])) : void 0,
         showInPlanning: false,
         active: true,
         order: num5(x.order)
@@ -29329,783 +30191,6 @@ ${m.message}
     ] });
   };
 
-  // src/modules/cgv/content.ts
-  var ARTICLE_TITLES = {
-    identification: "Identification de l'\xE9tablissement",
-    scope: "Objet et champ d'application",
-    booking: "R\xE9servation",
-    prices: "Prix et taxe de s\xE9jour",
-    payment: "Arrhes, acompte et paiement",
-    cancelClient: "Annulation par le client",
-    cancelHost: "Annulation par l'\xE9tablissement",
-    withdrawal: "Absence de droit de r\xE9tractation",
-    stay: "Arriv\xE9e et d\xE9part",
-    capacity: "Capacit\xE9 des h\xE9bergements",
-    services: "Prestations compl\xE9mentaires",
-    pool: "Piscine et espaces partag\xE9s",
-    animals: "Animaux",
-    rules: "R\xE8gles de vie, d\xE9p\xF4t de garantie et responsabilit\xE9",
-    data: "Donn\xE9es personnelles",
-    mediation: "M\xE9diation de la consommation",
-    law: "Droit applicable et litiges"
-  };
-  var BUILTIN_ORDER = Object.keys(ARTICLE_TITLES);
-  var PAYMENT_METHODS2 = [
-    { value: "esp\xE8ces", label: "Esp\xE8ces" },
-    { value: "ch\xE8que", label: "Ch\xE8que" },
-    { value: "virement bancaire", label: "Virement bancaire" },
-    { value: "carte bancaire", label: "Carte bancaire" },
-    { value: "Ch\xE8ques-Vacances (ANCV)", label: "Ch\xE8ques-Vacances (ANCV)" },
-    { value: "Wero", label: "Wero" }
-  ];
-  function createDefaultFacts() {
-    return {
-      arrivalFrom: "",
-      arrivalTo: "",
-      departureBefore: "",
-      depositKind: "",
-      depositPercent: null,
-      balanceWhen: "",
-      balanceDaysBefore: null,
-      paymentMethods: [],
-      cancelFreeDays: null,
-      cancelLateRule: "",
-      cancelLatePercent: null,
-      noShowRule: "",
-      shortenedStay: "due",
-      touristTax: "",
-      touristTaxText: "",
-      securityDeposit: null,
-      animals: "",
-      animalsConditions: "",
-      nonSmoking: true,
-      poolUnsupervised: true,
-      mediatorName: "",
-      mediatorAddress: "",
-      mediatorWebsite: "",
-      court: ""
-    };
-  }
-  function builtinArticle(kind) {
-    return { id: kind, kind, title: ARTICLE_TITLES[kind], enabled: true, manual: false, text: "", extra: "" };
-  }
-  function createDefaultTerms() {
-    return {
-      title: "Conditions g\xE9n\xE9rales de vente",
-      effectiveDate: "",
-      savedAt: "",
-      facts: createDefaultFacts(),
-      articles: BUILTIN_ORDER.map(builtinArticle),
-      invoiceMention: false,
-      attachToInvoice: false,
-      bookLinks: {}
-    };
-  }
-  var asText3 = (v) => typeof v === "string" ? v : "";
-  var asNumber2 = (v) => typeof v === "number" && isFinite(v) ? v : null;
-  var oneOf = (v, list3, fallback) => list3.includes(v) ? v : fallback;
-  function normalizeFacts(raw) {
-    const d = createDefaultFacts();
-    if (!raw || typeof raw !== "object") return d;
-    const r = raw;
-    return {
-      arrivalFrom: asText3(r.arrivalFrom),
-      arrivalTo: asText3(r.arrivalTo),
-      departureBefore: asText3(r.departureBefore),
-      depositKind: oneOf(r.depositKind, ["", "arrhes", "acompte", "none"], ""),
-      depositPercent: asNumber2(r.depositPercent),
-      balanceWhen: oneOf(r.balanceWhen, ["", "arrival", "departure", "before"], ""),
-      balanceDaysBefore: asNumber2(r.balanceDaysBefore),
-      paymentMethods: Array.isArray(r.paymentMethods) ? r.paymentMethods.filter((m) => typeof m === "string" && m.trim()) : [],
-      cancelFreeDays: asNumber2(r.cancelFreeDays),
-      cancelLateRule: oneOf(r.cancelLateRule, ["", "deposit", "percent", "total"], ""),
-      cancelLatePercent: asNumber2(r.cancelLatePercent),
-      noShowRule: oneOf(r.noShowRule, ["", "deposit", "total"], ""),
-      shortenedStay: oneOf(r.shortenedStay, ["due", "refund"], "due"),
-      touristTax: oneOf(r.touristTax, ["", "included", "extra"], ""),
-      touristTaxText: asText3(r.touristTaxText),
-      securityDeposit: asNumber2(r.securityDeposit),
-      animals: oneOf(r.animals, ["", "no", "onRequest", "yes"], ""),
-      animalsConditions: asText3(r.animalsConditions),
-      nonSmoking: r.nonSmoking !== false,
-      poolUnsupervised: r.poolUnsupervised !== false,
-      mediatorName: asText3(r.mediatorName),
-      mediatorAddress: asText3(r.mediatorAddress),
-      mediatorWebsite: asText3(r.mediatorWebsite),
-      court: asText3(r.court)
-    };
-  }
-  function normalizeArticle(raw) {
-    if (!raw || typeof raw !== "object") return null;
-    const r = raw;
-    const kind = r.kind === "custom" || r.kind && r.kind in ARTICLE_TITLES ? r.kind : null;
-    const id = asText3(r.id);
-    if (!kind || !id) return null;
-    return {
-      id,
-      kind,
-      title: asText3(r.title),
-      enabled: r.enabled !== false,
-      manual: kind === "custom" || r.manual === true,
-      text: asText3(r.text),
-      extra: asText3(r.extra)
-    };
-  }
-  function normalizeTerms(raw) {
-    const d = createDefaultTerms();
-    if (!raw || typeof raw !== "object") return d;
-    const r = raw;
-    let articles = Array.isArray(r.articles) ? r.articles.map(normalizeArticle).filter(Boolean) : d.articles;
-    articles = articles.filter((a, i) => a.kind === "custom" || articles.findIndex((b) => b.kind === a.kind) === i);
-    BUILTIN_ORDER.forEach((kind, index) => {
-      if (articles.some((a) => a.kind === kind)) return;
-      const before = BUILTIN_ORDER.slice(0, index).reverse().find((k) => articles.some((a) => a.kind === k));
-      const at = before ? articles.findIndex((a) => a.kind === before) + 1 : 0;
-      articles.splice(at, 0, builtinArticle(kind));
-    });
-    const links = {};
-    if (r.bookLinks && typeof r.bookLinks === "object") {
-      Object.entries(r.bookLinks).forEach(([k, v]) => {
-        if (v === true) links[k] = true;
-      });
-    }
-    return {
-      title: typeof r.title === "string" && r.title.trim() ? r.title : d.title,
-      effectiveDate: asText3(r.effectiveDate),
-      savedAt: asText3(r.savedAt),
-      facts: normalizeFacts(r.facts),
-      articles,
-      invoiceMention: r.invoiceMention === true,
-      attachToInvoice: r.attachToInvoice === true,
-      bookLinks: links
-    };
-  }
-  function readTerms(settings) {
-    const stored = settings.modules.invoicing?.settings;
-    return normalizeTerms(stored?.terms);
-  }
-  function termsExist(terms) {
-    return terms.savedAt !== "";
-  }
-  function bookHours(settings) {
-    const book = readWelcomeBook(settings);
-    const arrival = book.sections.find((s) => s.kind === "arrival");
-    const departure = book.sections.find((s) => s.kind === "departure");
-    return {
-      arrivalFrom: (arrival?.fields.from || "").trim(),
-      arrivalTo: (arrival?.fields.to || "").trim(),
-      departureBefore: (departure?.fields.before || "").trim()
-    };
-  }
-  function effectiveFacts(terms, settings) {
-    const hours = bookHours(settings);
-    const facts = { ...terms.facts };
-    const fromBook = [];
-    if (!facts.arrivalFrom && !facts.arrivalTo && hours.arrivalFrom) {
-      facts.arrivalFrom = hours.arrivalFrom;
-      facts.arrivalTo = hours.arrivalTo;
-      fromBook.push("arrivalFrom");
-      if (hours.arrivalTo) fromBook.push("arrivalTo");
-    }
-    if (!facts.departureBefore && hours.departureBefore) {
-      facts.departureBefore = hours.departureBefore;
-      fromBook.push("departureBefore");
-    }
-    return { facts, fromBook };
-  }
-  var TODO = "[\xE0 compl\xE9ter]";
-  var euros4 = (n) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })} \u20AC`;
-  function hourText2(hhmm) {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(hhmm.trim());
-    if (!m) return hhmm.trim();
-    return `${Number(m[1])} h${m[2] === "00" ? "" : ` ${m[2]}`}`;
-  }
-  function dateFr(iso) {
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
-    return m ? `${m[3]}/${m[2]}/${m[1]}` : iso;
-  }
-  var sentence = (s) => {
-    const t = s.trim();
-    if (!t) return "";
-    return /[.!?…]$/.test(t) ? t : `${t}.`;
-  };
-  var capitalize = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-  var plural = (n, one, many) => n > 1 ? many : one;
-  var listText = (items) => items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} et ${items[items.length - 1]}`;
-  var SERVICE_UNITS3 = {
-    nuit: "nuit",
-    personne: "personne",
-    animal: "animal",
-    repas: "repas",
-    creneau: "cr\xE9neau",
-    sejour: "s\xE9jour"
-  };
-  function serviceLine(s) {
-    if (!(s.price > 0)) return "";
-    const unit = s.unit === "unite" ? s.customUnitLabel : SERVICE_UNITS3[s.unit];
-    const options = (s.priceOptions || []).filter((o) => o.label.trim() && o.price > 0);
-    if (options.length > 1) {
-      return `${s.name.trim()}${unit ? ` (par ${unit})` : ""} \u2013 ${options.map((o) => `${o.label.trim()} : ${euros4(o.price)}`).join(", ")}`;
-    }
-    return `${s.name.trim()} : ${unit ? `${euros4(s.price)} par ${unit}` : euros4(s.price)}`;
-  }
-  var RESOURCE_UNITS = { per_slot: "cr\xE9neau", per_person_slot: "personne et par cr\xE9neau", per_day: "jour" };
-  var byOrder2 = (list3) => [...list3].sort((a, b) => a.order - b.order);
-  var inlineConditions = (s) => s.trim().replace(/\.$/, "").replace(/\s*\(([^)]*)\)/g, ", $1").replace(/^./, (c) => c.toLowerCase());
-  function animalServices(settings) {
-    return byOrder2(settings.services.filter((s) => s.active && s.unit === "animal" && !s.showInPlanning));
-  }
-  function termsContext(terms, settings, pricingEnabled, bookEnabled) {
-    const { facts, fromBook } = effectiveFacts(terms, settings);
-    return { settings, facts, fromBook, pricingEnabled, bookEnabled };
-  }
-  var depositWords = (kind) => kind === "arrhes" ? { the: "les arrhes", kept: "les arrhes restent acquises \xE0 l'\xE9tablissement", refunded: "les arrhes sont int\xE9gralement rembours\xE9es" } : { the: "l'acompte", kept: "l'acompte reste acquis \xE0 l'\xE9tablissement", refunded: "l'acompte est int\xE9gralement rembours\xE9" };
-  function lateCancellation(f, missing) {
-    switch (f.cancelLateRule) {
-      case "deposit":
-        if (f.depositKind === "none") {
-          missing.push("R\xE8gle d'annulation (aucun versement n'est demand\xE9 \xE0 la r\xE9servation)");
-          return TODO;
-        }
-        if (!f.depositKind) return `${TODO} restent acquis \xE0 l'\xE9tablissement`;
-        return depositWords(f.depositKind).kept;
-      case "percent":
-        if (f.cancelLatePercent === null) missing.push("Pourcentage d\xFB en cas d'annulation tardive");
-        return `${f.cancelLatePercent === null ? TODO : `${f.cancelLatePercent} %`} du prix total du s\xE9jour reste d\xFB`;
-      case "total":
-        return "la totalit\xE9 du prix du s\xE9jour reste due";
-      default:
-        missing.push("Frais en cas d'annulation tardive");
-        return TODO;
-    }
-  }
-  function addressLine(settings) {
-    const e = settings.establishment;
-    return [e.address, [e.postalCode, e.city].filter(Boolean).join(" "), e.country].map((s) => s.trim()).filter(Boolean).join(", ");
-  }
-  function generatedText(kind, ctx) {
-    const { settings, facts: f } = ctx;
-    const e = settings.establishment;
-    const missing = [];
-    const sources = [];
-    const p = [];
-    const need = (value, label2) => {
-      if (value === null || value === void 0 || String(value).trim() === "") {
-        missing.push(label2);
-        return TODO;
-      }
-      return String(value).trim();
-    };
-    switch (kind) {
-      case "identification": {
-        sources.push("establishment");
-        const name = need(e.name, "Nom (Param\xE9trage > \xC9tablissement)");
-        const address = addressLine(settings);
-        if (!e.address.trim()) missing.push("Adresse (Param\xE9trage > \xC9tablissement)");
-        const contact = [e.phone.trim() && `t\xE9l\xE9phone : ${e.phone.trim()}`, e.email.trim() && `e-mail : ${e.email.trim()}`].filter(Boolean);
-        if (contact.length === 0) missing.push("T\xE9l\xE9phone ou e-mail (Param\xE9trage > \xC9tablissement)");
-        p.push(
-          sentence(
-            `Les pr\xE9sentes conditions g\xE9n\xE9rales de vente sont propos\xE9es par ${name}${e.legalStatus.trim() ? `, ${e.legalStatus.trim()}` : ""}, ${address || TODO}`
-          )
-        );
-        p.push(`SIRET : ${need(e.siret, "SIRET (Param\xE9trage > \xC9tablissement)")}.`);
-        p.push(sentence(capitalize(contact.length ? contact.join(", ") : `contact : ${TODO}`) + (e.website.trim() ? `, site : ${e.website.trim()}` : "")));
-        p.push("Ci-apr\xE8s \xAB l'\xE9tablissement \xBB.");
-        break;
-      }
-      case "scope": {
-        sources.push("platforms");
-        const otas = settings.platforms.filter((x) => x.active && settings.pricing.otaSources.includes(x.id)).map((x) => x.label);
-        p.push(
-          "Elles s'appliquent \xE0 toutes les r\xE9servations d'h\xE9bergement et de prestations conclues directement avec l'\xE9tablissement, \xE0 distance ou sur place. Elles sont port\xE9es \xE0 la connaissance du client avant la r\xE9servation ; toute r\xE9servation vaut acceptation de ces conditions."
-        );
-        p.push(
-          `Pour une r\xE9servation effectu\xE9e par l'interm\xE9diaire d'une plateforme${otas.length ? ` (${otas.join(", ")}\u2026)` : ""}, les conditions de cette plateforme (paiement, annulation) s'appliquent en priorit\xE9.`
-        );
-        break;
-      }
-      case "booking": {
-        const confirm = f.depositKind === "arrhes" ? "apr\xE8s r\xE9ception des arrhes" : f.depositKind === "acompte" ? "apr\xE8s r\xE9ception de l'acompte" : f.depositKind === "none" ? "apr\xE8s acceptation par le client de la proposition de s\xE9jour" : (missing.push("Arrhes, acompte ou aucun versement (article \xAB Arrhes, acompte et paiement \xBB)"), TODO);
-        p.push(
-          `La r\xE9servation devient ferme ${confirm} et l'envoi par l'\xE9tablissement d'une confirmation \xE9crite (courrier ou e-mail) qui r\xE9capitule les dates, le nombre de personnes et le prix du s\xE9jour.`
-        );
-        p.push("Le client doit \xEAtre majeur et capable de contracter. La r\xE9servation est personnelle et ne peut \xEAtre c\xE9d\xE9e.");
-        break;
-      }
-      case "prices": {
-        sources.push("establishment");
-        const vat = e.vatMention.trim().replace(/\.$/, "");
-        p.push(`Les prix sont indiqu\xE9s en euros, toutes taxes comprises${vat ? ` (${vat})` : ""}. Le prix du s\xE9jour est celui indiqu\xE9 dans la confirmation de r\xE9servation.`);
-        const included = byOrder2(settings.services.filter((s) => s.active && s.billing === "inclus")).map((s) => s.name.trim()).filter(Boolean);
-        if (included.length) {
-          sources.push("services");
-          p.push(`Le prix comprend : ${listText(included)}.`);
-        }
-        const discounts = ctx.pricingEnabled ? [...settings.pricing.longStayDiscounts].filter((d) => d.minNights > 0 && d.percent > 0).sort((a, b) => a.minNights - b.minNights) : [];
-        if (discounts.length) {
-          sources.push("pricing");
-          p.push(`R\xE9duction pour les longs s\xE9jours : ${discounts.map((d) => `${d.percent} % \xE0 partir de ${d.minNights} nuits`).join(", ")}.`);
-        }
-        if (f.touristTax === "included") p.push("La taxe de s\xE9jour est comprise dans le prix.");
-        else if (f.touristTax === "extra")
-          p.push(
-            `La taxe de s\xE9jour est per\xE7ue en suppl\xE9ment, pour le compte de la commune${f.touristTaxText.trim() ? ` : ${f.touristTaxText.trim().replace(/\.$/, "")}` : ", selon le tarif en vigueur"}.`
-          );
-        else {
-          missing.push("Taxe de s\xE9jour (comprise ou en suppl\xE9ment)");
-          p.push(`Taxe de s\xE9jour : ${TODO}.`);
-        }
-        break;
-      }
-      case "payment": {
-        if (f.depositKind === "arrhes" || f.depositKind === "acompte") {
-          const pct2 = f.depositPercent === null ? (missing.push("Pourcentage vers\xE9 \xE0 la r\xE9servation"), TODO) : `${f.depositPercent} %`;
-          p.push(
-            f.depositKind === "arrhes" ? `\xC0 la r\xE9servation, le client verse ${pct2} du prix du s\xE9jour \xE0 titre d'arrhes. Conform\xE9ment \xE0 l'article L214-1 du Code de la consommation, chacune des parties peut revenir sur son engagement : le client en abandonnant les arrhes, l'\xE9tablissement en les restituant au double.` : `\xC0 la r\xE9servation, le client verse un acompte de ${pct2} du prix du s\xE9jour. Le versement d'un acompte engage d\xE9finitivement les deux parties.`
-          );
-        } else if (f.depositKind === "none") {
-          p.push("Aucun versement n'est demand\xE9 \xE0 la r\xE9servation.");
-        } else {
-          missing.push("Arrhes, acompte ou aucun versement");
-          p.push(`Versement \xE0 la r\xE9servation : ${TODO}.`);
-        }
-        const what = f.depositKind === "none" ? "Le prix du s\xE9jour est r\xE9gl\xE9" : "Le solde du s\xE9jour est r\xE9gl\xE9";
-        if (f.balanceWhen === "arrival") p.push(`${what} \xE0 l'arriv\xE9e.`);
-        else if (f.balanceWhen === "departure") p.push(`${what} au d\xE9part.`);
-        else if (f.balanceWhen === "before") {
-          const n = f.balanceDaysBefore;
-          if (n === null) missing.push("Nombre de jours avant l'arriv\xE9e pour le solde");
-          p.push(`${what} au plus tard ${n === null ? TODO : `${n} ${plural(n, "jour", "jours")}`} avant l'arriv\xE9e.`);
-        } else {
-          missing.push("Moment du paiement du solde");
-          p.push(`${what} ${TODO}.`);
-        }
-        p.push("Les prestations compl\xE9mentaires sont r\xE9gl\xE9es au plus tard au d\xE9part.");
-        if (f.paymentMethods.length) p.push(`Moyens de paiement accept\xE9s : ${f.paymentMethods.join(", ")}.`);
-        else {
-          missing.push("Moyens de paiement accept\xE9s");
-          p.push(`Moyens de paiement accept\xE9s : ${TODO}.`);
-        }
-        break;
-      }
-      case "cancelClient": {
-        p.push("Toute annulation doit \xEAtre notifi\xE9e \xE0 l'\xE9tablissement par \xE9crit (courrier ou e-mail).");
-        const policy = settings.pricing.cancellation;
-        const fromPricing = hasPolicy(policy);
-        const late = fromPricing ? "" : lateCancellation(f, missing);
-        const n = f.cancelFreeDays;
-        if (fromPricing) {
-          sources.push("pricing");
-          policySentences(policy).forEach((s) => p.push(s));
-        } else if (n === null) {
-          missing.push("D\xE9lai d'annulation sans frais");
-          p.push(`Annulation plus de ${TODO} jours avant la date d'arriv\xE9e : sans frais. Au-del\xE0 : ${late}.`);
-        } else if (n > 0) {
-          const free = f.depositKind === "arrhes" || f.depositKind === "acompte" ? depositWords(f.depositKind).refunded : "aucun frais n'est d\xFB";
-          p.push(`Annulation plus de ${n} ${plural(n, "jour", "jours")} avant la date d'arriv\xE9e : ${free}.`);
-          p.push(`Annulation moins de ${n} ${plural(n, "jour", "jours")} avant la date d'arriv\xE9e : ${late}.`);
-        } else {
-          p.push(`En cas d'annulation, ${late}.`);
-        }
-        const policyNoShow = fromPricing ? noShowSentence(policy) : "";
-        const noShow = policyNoShow ? "" : f.noShowRule === "total" ? "la totalit\xE9 du prix du s\xE9jour reste due" : f.noShowRule === "deposit" ? f.depositKind === "arrhes" || f.depositKind === "acompte" ? depositWords(f.depositKind).kept : (missing.push("R\xE8gle si le client ne se pr\xE9sente pas (aucun versement \xE0 la r\xE9servation)"), TODO) : (missing.push("R\xE8gle si le client ne se pr\xE9sente pas"), TODO);
-        if (policyNoShow) p.push(policyNoShow);
-        else p.push(`Si le client ne se pr\xE9sente pas \xE0 la date pr\xE9vue sans avoir pr\xE9venu l'\xE9tablissement, ${noShow} et l'\xE9tablissement peut disposer \xE0 nouveau de l'h\xE9bergement.`);
-        if (fromPricing && policy?.note.trim()) p.push(sentence(policy.note.trim()));
-        p.push(
-          f.shortenedStay === "refund" ? "En cas d'arriv\xE9e retard\xE9e ou de d\xE9part anticip\xE9, les nuits non consomm\xE9es sont rembours\xE9es." : "En cas d'arriv\xE9e retard\xE9e ou de d\xE9part anticip\xE9, le prix du s\xE9jour reste int\xE9gralement d\xFB."
-        );
-        break;
-      }
-      case "cancelHost": {
-        if (f.depositKind === "arrhes") {
-          p.push("Si l'\xE9tablissement annule le s\xE9jour, il restitue au client le double des arrhes vers\xE9es (article L214-1 du Code de la consommation).");
-        } else if (f.depositKind === "acompte" || f.depositKind === "none") {
-          p.push("Si l'\xE9tablissement annule le s\xE9jour, il rembourse imm\xE9diatement au client l'int\xE9gralit\xE9 des sommes vers\xE9es, sans pr\xE9judice des dommages et int\xE9r\xEAts que le client pourrait obtenir.");
-        } else {
-          missing.push("Arrhes, acompte ou aucun versement (article \xAB Arrhes, acompte et paiement \xBB)");
-          p.push(`Si l'\xE9tablissement annule le s\xE9jour : ${TODO}.`);
-        }
-        p.push("Ces dispositions ne s'appliquent pas en cas de force majeure.");
-        break;
-      }
-      case "withdrawal":
-        p.push(
-          "Conform\xE9ment \xE0 l'article L221-28 12\xB0 du Code de la consommation, le client ne b\xE9n\xE9ficie pas du droit de r\xE9tractation pour les prestations d'h\xE9bergement fournies \xE0 une date ou \xE0 une p\xE9riode d\xE9termin\xE9e."
-        );
-        break;
-      case "stay": {
-        if (ctx.fromBook.length) sources.push("book");
-        else sources.push("terms");
-        const from = f.arrivalFrom ? hourText2(f.arrivalFrom) : (missing.push("Heure d'arriv\xE9e"), TODO);
-        const before = f.departureBefore ? hourText2(f.departureBefore) : (missing.push("Heure de d\xE9part"), TODO);
-        const arrival = f.arrivalTo ? `de ${from} \xE0 ${hourText2(f.arrivalTo)}` : `\xE0 partir de ${from}`;
-        p.push(`Les arriv\xE9es se font ${arrival} et les d\xE9parts avant ${before}.`);
-        p.push("En cas d'arriv\xE9e en dehors de ces horaires ou de retard, le client pr\xE9vient l'\xE9tablissement.");
-        break;
-      }
-      case "capacity": {
-        sources.push("accommodations");
-        const rooms = byOrder2(settings.accommodations.filter((a) => a.active));
-        if (rooms.length === 0) return { paragraphs: [], missing: [], sources, empty: true };
-        const lines2 = rooms.map((a) => {
-          const max = a.maxGuests || 0;
-          const min = a.minGuests || 0;
-          const range = min > 1 && min < max ? `${min} \xE0 ${max} personnes` : `${max} ${plural(max, "personne", "personnes")} au maximum`;
-          const extra = a.extraGuestPrice > 0 && a.baseGuestsCount > 0 && a.baseGuestsCount < max ? ` (suppl\xE9ment de ${euros4(a.extraGuestPrice)} par personne et par nuit au-del\xE0 de ${a.baseGuestsCount} ${plural(a.baseGuestsCount, "personne", "personnes")})` : "";
-          return `${a.name.trim()} : ${range}${extra}`;
-        });
-        p.push(`${lines2.join(" ; ")}.`);
-        p.push("Le nombre de personnes ne peut pas d\xE9passer la capacit\xE9 de l'h\xE9bergement r\xE9serv\xE9 ; l'\xE9tablissement peut refuser toute personne suppl\xE9mentaire non pr\xE9vue dans la r\xE9servation. Les mineurs restent sous la responsabilit\xE9 de leurs parents ou accompagnateurs.");
-        break;
-      }
-      case "services": {
-        const animalIds = animalServices(settings).map((s) => s.id);
-        const services = byOrder2(settings.services.filter((s) => s.active && !animalIds.includes(s.id) && s.billing !== "inclus")).map((s) => {
-          const line = serviceLine(s);
-          return line ? `${line}${s.conditions.trim() ? ` (${inlineConditions(s.conditions)})` : ""}` : "";
-        }).filter(Boolean);
-        const resources = byOrder2(settings.resources.filter((r) => r.active && r.pricingMode !== "free" && r.price > 0)).map(
-          (r) => `${r.name.trim()} : ${euros4(r.price)} par ${RESOURCE_UNITS[r.pricingMode]}${r.halfDayPrice ? `, forfait demi-journ\xE9e ${euros4(r.halfDayPrice)}` : ""}`
-        );
-        if (services.length) sources.push("services");
-        if (resources.length) sources.push("resources");
-        if (services.length + resources.length === 0) return { paragraphs: [], missing: [], sources: ["services"], empty: true };
-        p.push("Les prestations suivantes sont propos\xE9es en suppl\xE9ment, selon les disponibilit\xE9s :");
-        p.push(`${[...services, ...resources].join(" ; ")}.`);
-        break;
-      }
-      case "pool": {
-        const pools = byOrder2(settings.resources.filter((r) => r.active));
-        if (pools.length === 0) return { paragraphs: [], missing: [], sources: ["resources"], empty: true };
-        sources.push("resources");
-        pools.forEach((r) => {
-          if (!r.openingHours.trim() && !r.accessConditions.trim()) return;
-          const hours = r.openingHours.trim() ? ` : ouverture ${r.openingHours.trim()}` : "";
-          const cond = r.accessConditions.trim() ? `. ${sentence(capitalize(r.accessConditions.trim()))}` : ".";
-          p.push(`${r.name.trim()}${hours}${cond}`);
-        });
-        if (pools.some((r) => r.type === "piscine")) {
-          p.push(
-            `${f.poolUnsupervised ? "La piscine n'est pas surveill\xE9e : elle est utilis\xE9e sous la responsabilit\xE9 des baigneurs. " : ""}Les enfants restent sous la surveillance permanente d'un adulte.`
-          );
-        }
-        p.push("L'\xE9tablissement peut fermer un espace pour des raisons de s\xE9curit\xE9, de m\xE9t\xE9o ou d'entretien, sans indemnit\xE9.");
-        break;
-      }
-      case "animals": {
-        const supplements = animalServices(settings).filter((s) => s.billing !== "inclus" && s.price > 0);
-        if (f.animals === "no") p.push("Les animaux ne sont pas accept\xE9s.");
-        else if (f.animals === "onRequest" || f.animals === "yes") {
-          p.push(f.animals === "onRequest" ? "Les animaux sont accept\xE9s sur demande pr\xE9alable et apr\xE8s accord de l'\xE9tablissement." : "Les animaux sont accept\xE9s.");
-          if (supplements.length) {
-            sources.push("services");
-            p.push(`Suppl\xE9ment : ${supplements.map((s) => `${euros4(s.price)} par animal${s.conditions.trim() ? ` (${inlineConditions(s.conditions)})` : ""}`).join(" ; ")}.`);
-          }
-          if (f.animalsConditions.trim()) p.push(sentence(f.animalsConditions));
-          p.push("Ils restent sous la responsabilit\xE9 de leur propri\xE9taire, qui r\xE9pond des d\xE9g\xE2ts \xE9ventuels.");
-        } else {
-          missing.push("Animaux accept\xE9s ou non");
-          p.push(`Animaux : ${TODO}.`);
-        }
-        break;
-      }
-      case "rules": {
-        if (f.nonSmoking) p.push("Il est interdit de fumer \xE0 l'int\xE9rieur des b\xE2timents.");
-        p.push(
-          `Le client s'engage \xE0 respecter les lieux, ${ctx.bookEnabled ? "les r\xE8gles de vie pr\xE9sent\xE9es dans le livret d'accueil" : "les r\xE8gles de vie de l'\xE9tablissement"} et la tranquillit\xE9 des autres voyageurs. Il est responsable des d\xE9gradations caus\xE9es par lui-m\xEAme ou par les personnes qui l'accompagnent.`
-        );
-        if (f.securityDeposit && f.securityDeposit > 0)
-          p.push(`Un d\xE9p\xF4t de garantie de ${euros4(f.securityDeposit)} est demand\xE9 \xE0 l'arriv\xE9e ; il est restitu\xE9 au d\xE9part, d\xE9duction faite des \xE9ventuelles d\xE9gradations constat\xE9es.`);
-        p.push("L'\xE9tablissement ne peut \xEAtre tenu pour responsable de la perte ou du vol d'objets laiss\xE9s sans surveillance, dans les limites pr\xE9vues par la loi.");
-        break;
-      }
-      case "data": {
-        sources.push("establishment");
-        const contact = e.email.trim() || addressLine(settings);
-        if (!contact) missing.push("E-mail ou adresse (Param\xE9trage > \xC9tablissement)");
-        p.push(
-          "Les informations communiqu\xE9es lors de la r\xE9servation (nom, coordonn\xE9es, dates et composition du s\xE9jour) servent uniquement \xE0 la gestion de la r\xE9servation, \xE0 la facturation et au respect des obligations l\xE9gales. Elles ne sont ni vendues ni c\xE9d\xE9es \xE0 des tiers et sont conserv\xE9es le temps n\xE9cessaire \xE0 ces finalit\xE9s (dix ans pour les factures)."
-        );
-        p.push(
-          `Conform\xE9ment au r\xE8glement g\xE9n\xE9ral sur la protection des donn\xE9es (RGPD), le client dispose d'un droit d'acc\xE8s, de rectification, d'effacement et d'opposition, qu'il exerce en \xE9crivant \xE0 ${contact || TODO}. Il peut aussi adresser une r\xE9clamation \xE0 la CNIL (www.cnil.fr).`
-        );
-        break;
-      }
-      case "mediation": {
-        const name = need(f.mediatorName, "Nom du m\xE9diateur de la consommation");
-        const site = need(f.mediatorWebsite, "Site internet du m\xE9diateur");
-        p.push(
-          "En cas de litige, le client adresse d'abord une r\xE9clamation \xE9crite \xE0 l'\xE9tablissement. \xC0 d\xE9faut de solution amiable, il peut recourir gratuitement au m\xE9diateur de la consommation dont rel\xE8ve l'\xE9tablissement (articles L612-1 et suivants du Code de la consommation) :"
-        );
-        p.push(`${name}${f.mediatorAddress.trim() ? `, ${f.mediatorAddress.trim()}` : ""} \u2013 ${site}.`);
-        break;
-      }
-      case "law":
-        p.push(
-          `Les pr\xE9sentes conditions sont soumises au droit fran\xE7ais. \xC0 d\xE9faut d'accord amiable ou de m\xE9diation, le litige est port\xE9 devant ${f.court.trim() ? f.court.trim().replace(/\.$/, "") : "la juridiction comp\xE9tente"}.`
-        );
-        break;
-      case "custom":
-        break;
-    }
-    return { paragraphs: p.filter(Boolean), missing, sources };
-  }
-  function articleText(article, ctx) {
-    const split = (t) => t.split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
-    if (article.manual) {
-      const paragraphs = split(article.text);
-      return { paragraphs, missing: paragraphs.length ? [] : ["Texte de l'article"], sources: ["terms"] };
-    }
-    const gen = generatedText(article.kind, ctx);
-    return { ...gen, paragraphs: [...gen.paragraphs, ...split(article.extra)] };
-  }
-  function termsDocument(terms, ctx) {
-    const list3 = [];
-    terms.articles.forEach((a) => {
-      if (!a.enabled) return;
-      const t = articleText(a, ctx);
-      if (t.empty && t.paragraphs.length === 0) return;
-      if (a.kind === "custom" && t.paragraphs.length === 0 && !a.title.trim()) return;
-      list3.push({
-        number: list3.length + 1,
-        article: a,
-        title: a.title.trim() || (a.kind === "custom" ? "Article" : ARTICLE_TITLES[a.kind]),
-        paragraphs: t.paragraphs,
-        missing: t.missing,
-        sources: t.sources
-      });
-    });
-    return list3;
-  }
-  function termsPlainText(terms, ctx) {
-    const head = [terms.title.toUpperCase(), ctx.settings.establishment.name.trim(), terms.effectiveDate ? `En vigueur au ${dateFr(terms.effectiveDate)}` : ""].filter(Boolean).join("\n");
-    const body = termsDocument(terms, ctx).map((a) => `Article ${a.number} \u2013 ${a.title}
-
-${a.paragraphs.join("\n\n")}`).join("\n\n");
-    return `${head}
-
-${body}
-`;
-  }
-  var BOOK_SOURCE_PREFIX = "cgv:";
-  function bookProposals(ctx) {
-    const { settings, facts: f } = ctx;
-    const list3 = [];
-    const supplements = animalServices(settings).filter((s) => s.billing !== "inclus" && s.price > 0);
-    const animalPrice = supplements.length ? ` (suppl\xE9ment de ${euros4(supplements[0].price)} par animal${supplements[0].conditions.trim() ? `, ${inlineConditions(supplements[0].conditions)}` : ""})` : "";
-    list3.push({
-      id: "animals",
-      label: "Animaux",
-      articleKind: "animals",
-      sectionKind: "rules",
-      title: "Animaux",
-      text: f.animals === "no" ? "Nous ne pouvons pas accueillir les animaux." : f.animals === "onRequest" ? `Bienvenus sur demande, \xE0 nous signaler avant votre arriv\xE9e${animalPrice}.${f.animalsConditions.trim() ? ` ${sentence(f.animalsConditions)}` : ""}` : f.animals === "yes" ? `Bienvenus${animalPrice}.${f.animalsConditions.trim() ? ` ${sentence(f.animalsConditions)}` : ""}` : ""
-    });
-    list3.push({
-      id: "nonSmoking",
-      label: "Non-fumeur",
-      articleKind: "rules",
-      sectionKind: "rules",
-      title: "\xC9tablissement non-fumeur",
-      text: f.nonSmoking ? "Merci de ne pas fumer \xE0 l'int\xE9rieur." : ""
-    });
-    const hasPool = settings.resources.some((r) => r.active && r.type === "piscine");
-    list3.push({
-      id: "pool",
-      label: "Piscine",
-      articleKind: "pool",
-      sectionKind: "rules",
-      title: "Piscine",
-      text: hasPool ? `Les enfants restent toujours sous la surveillance d'un adulte${f.poolUnsupervised ? " : la piscine n'est pas surveill\xE9e" : ""}.` : ""
-    });
-    list3.push({
-      id: "payment",
-      label: "Moyens de paiement",
-      articleKind: "payment",
-      sectionKind: "practical",
-      title: "Moyens de paiement",
-      text: f.paymentMethods.length ? `${capitalize(f.paymentMethods.join(", "))}.` : ""
-    });
-    list3.push({
-      id: "touristTax",
-      label: "Taxe de s\xE9jour",
-      articleKind: "prices",
-      sectionKind: "practical",
-      title: "Taxe de s\xE9jour",
-      text: f.touristTax === "included" ? "Comprise dans le prix de votre s\xE9jour." : f.touristTax === "extra" ? `\xC0 r\xE9gler en plus du s\xE9jour, pour la commune${f.touristTaxText.trim() ? ` : ${f.touristTaxText.trim().replace(/\.$/, "")}` : ""}.` : ""
-    });
-    list3.push({
-      id: "securityDeposit",
-      label: "D\xE9p\xF4t de garantie",
-      articleKind: "rules",
-      sectionKind: "practical",
-      title: "D\xE9p\xF4t de garantie",
-      text: f.securityDeposit && f.securityDeposit > 0 ? `${euros4(f.securityDeposit)} demand\xE9s \xE0 l'arriv\xE9e et rendus au d\xE9part, sauf d\xE9gradation.` : ""
-    });
-    const missing = [];
-    const late = f.cancelLateRule ? lateCancellation(f, missing) : "";
-    const n = f.cancelFreeDays;
-    list3.push({
-      id: "cancellation",
-      label: "Annulation",
-      articleKind: "cancelClient",
-      sectionKind: "faq",
-      title: "Puis-je annuler ma r\xE9servation ?",
-      text: hasPolicy(settings.pricing.cancellation) ? `${policyShort(settings.pricing.cancellation)} Pour une r\xE9servation faite sur une plateforme, ce sont ses conditions qui s'appliquent.` : n === null || !late || missing.length ? "" : n > 0 ? `Oui, sans frais jusqu'\xE0 ${n} ${plural(n, "jour", "jours")} avant votre arriv\xE9e. Ensuite, ${late.replace(" \xE0 l'\xE9tablissement", "")}. Pour une r\xE9servation faite sur une plateforme, ce sont ses conditions qui s'appliquent.` : `${capitalize(late.replace(" \xE0 l'\xE9tablissement", ""))} en cas d'annulation. Pour une r\xE9servation faite sur une plateforme, ce sont ses conditions qui s'appliquent.`
-    });
-    return list3;
-  }
-  var sameTitle = (a, b) => a.trim().toLowerCase().replace(/\s+/g, " ") === b.trim().toLowerCase().replace(/\s+/g, " ");
-  function syncBookWithTerms(book, terms, ctx) {
-    const f = terms.facts;
-    const proposals = bookProposals(ctx);
-    const wanted = proposals.filter((p) => terms.bookLinks[p.id] && p.text);
-    const placed = /* @__PURE__ */ new Set();
-    let sections = book.sections.map((s) => {
-      let fields = s.fields;
-      if (s.kind === "arrival" && (f.arrivalFrom || f.arrivalTo)) fields = { ...fields, from: f.arrivalFrom, to: f.arrivalTo };
-      if (s.kind === "departure" && f.departureBefore) fields = { ...fields, before: f.departureBefore };
-      const items = [];
-      s.items.forEach((item2) => {
-        if (item2.source && item2.source.startsWith(BOOK_SOURCE_PREFIX)) {
-          const p = wanted.find((w2) => BOOK_SOURCE_PREFIX + w2.id === item2.source);
-          if (!p || placed.has(p.id)) return;
-          placed.add(p.id);
-          items.push({ ...item2, title: p.title, text: p.text });
-          return;
-        }
-        items.push(item2);
-      });
-      return { ...s, fields, items };
-    });
-    wanted.forEach((p) => {
-      if (placed.has(p.id)) return;
-      const index = sections.findIndex((s2) => s2.kind === p.sectionKind);
-      if (index < 0) return;
-      const s = sections[index];
-      const linked = { id: `cgv_${p.id}`, title: p.title, text: p.text, source: BOOK_SOURCE_PREFIX + p.id };
-      const same = s.items.findIndex((i) => !i.source && sameTitle(i.title, p.title));
-      const items = same >= 0 ? s.items.map((i, k) => k === same ? { ...linked, id: i.id } : i) : [...s.items, linked];
-      sections = sections.map((x, k) => k === index ? { ...x, items } : x);
-      placed.add(p.id);
-    });
-    return { ...book, sections };
-  }
-  var PROPOSAL_ARTICLES = {
-    animals: "animals",
-    nonSmoking: "rules",
-    pool: "pool",
-    payment: "payment",
-    touristTax: "prices",
-    securityDeposit: "rules",
-    cancellation: "cancelClient"
-  };
-  function linkedProposalId(item2) {
-    return item2.source && item2.source.startsWith(BOOK_SOURCE_PREFIX) ? item2.source.slice(BOOK_SOURCE_PREFIX.length) : null;
-  }
-  function hoursLockedByTerms(terms) {
-    return { arrival: !!(terms.facts.arrivalFrom || terms.facts.arrivalTo), departure: !!terms.facts.departureBefore };
-  }
-
-  // src/modules/cgv/store.ts
-  function getTerms(settings = getSettings()) {
-    return readTerms(settings);
-  }
-  function makeTermsContext(terms, settings = getSettings()) {
-    return termsContext(terms, settings, isModuleEnabled("pricing", settings), isModuleEnabled("welcomeBook", settings));
-  }
-  var todayIso7 = () => {
-    const d = /* @__PURE__ */ new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  };
-  var sameJson2 = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  function bookInUse2(settings) {
-    return isModuleEnabled("welcomeBook", settings) || !!settings.modules.welcomeBook?.settings;
-  }
-  function withTerms(settings, terms) {
-    const invoicing = settings.modules.invoicing || { enabled: true };
-    const modules = { ...settings.modules, invoicing: { ...invoicing, settings: { ...invoicing.settings || {}, terms } } };
-    if (bookInUse2(settings)) {
-      const book = readWelcomeBook(settings);
-      const synced = syncBookWithTerms(book, terms, makeTermsContext(terms, settings));
-      if (!sameJson2(book, synced)) {
-        const wb = settings.modules.welcomeBook || { enabled: false };
-        modules.welcomeBook = { ...wb, settings: synced };
-      }
-    }
-    return { ...settings, modules };
-  }
-  function saveTerms(settings, draft) {
-    const previous = readTerms(settings);
-    const next = { ...draft, facts: effectiveFacts(draft, settings).facts, savedAt: (/* @__PURE__ */ new Date()).toISOString() };
-    const text = (t) => termsPlainText({ ...t, effectiveDate: "" }, makeTermsContext(t, settings));
-    if (!next.effectiveDate || !previous.savedAt || text(previous) !== text(next)) next.effectiveDate = todayIso7();
-    saveSettings(withTerms(settings, next), "Conditions g\xE9n\xE9rales de vente enregistr\xE9es.");
-    try {
-      window.dispatchEvent(new CustomEvent("domaine_sylvaria_trigger_sync"));
-    } catch {
-    }
-    return readTerms(getSettings());
-  }
-  function applyTermsToBook(settings, book) {
-    if (!isModuleEnabled("invoicing", settings)) return book;
-    const terms = readTerms(settings);
-    if (!terms.savedAt) return book;
-    return syncBookWithTerms(book, terms, makeTermsContext(terms, settings));
-  }
-  function detachProposal(proposalId) {
-    const settings = getSettings();
-    const terms = readTerms(settings);
-    const bookLinks = { ...terms.bookLinks };
-    delete bookLinks[proposalId];
-    const source = BOOK_SOURCE_PREFIX + proposalId;
-    const book = readWelcomeBook(settings);
-    const detached = {
-      ...book,
-      sections: book.sections.map((s) => ({
-        ...s,
-        items: s.items.map((i) => {
-          if (i.source !== source) return i;
-          const copy = { ...i };
-          delete copy.source;
-          return copy;
-        })
-      }))
-    };
-    const invoicing = settings.modules.invoicing || { enabled: true };
-    const wb = settings.modules.welcomeBook || { enabled: false };
-    saveSettings(
-      {
-        ...settings,
-        modules: {
-          ...settings.modules,
-          invoicing: { ...invoicing, settings: { ...invoicing.settings || {}, terms: { ...terms, bookLinks } } },
-          welcomeBook: { ...wb, settings: detached }
-        }
-      },
-      "Livret : \xE9l\xE9ment d\xE9tach\xE9 des conditions g\xE9n\xE9rales de vente."
-    );
-    try {
-      window.dispatchEvent(new CustomEvent("domaine_sylvaria_trigger_sync"));
-    } catch {
-    }
-  }
-  var pendingOpen = null;
-  function openTermsTab(articleId = "") {
-    pendingOpen = articleId;
-    try {
-      window.dispatchEvent(new CustomEvent("domaine_sylvaria_open_tab", { detail: { tab: "invoices" } }));
-    } catch {
-    }
-  }
-  function takePendingTermsOpen() {
-    const v = pendingOpen;
-    pendingOpen = null;
-    return v;
-  }
-
   // src/modules/livret/WelcomeBookEditor.tsx
   var import_jsx_runtime43 = __require("react/jsx-runtime");
   var timeInput3 = "w-full py-2 px-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-sy-325032 text-neutral-900";
@@ -30406,7 +30491,11 @@ ${body}
         /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1", children: [
           /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !!s.options.showCapacity, onChange: (v) => setOption("showCapacity", v), label: "Capacit\xE9" }),
           /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !!s.options.showEquipments, onChange: (v) => setOption("showEquipments", v), label: "\xC9quipements" }),
-          /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !!s.options.showPrices, onChange: (v) => setOption("showPrices", v), label: "Prix \xAB d\xE8s \u2026 / nuit \xBB" })
+          /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !!s.options.showPrices, onChange: (v) => setOption("showPrices", v), label: "Prix \xAB d\xE8s \u2026 / nuit \xBB et des services" })
+        ] }),
+        byOrder4(settings.services.filter((x) => x.active && !isStandaloneService(x))).length > 0 && /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)(import_jsx_runtime43.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("div", { className: "text-[11px] font-semibold text-neutral-700 pt-1", children: "Services li\xE9s aux chambres (pr\xE9sent\xE9s avec chaque chambre)" }),
+          byOrder4(settings.services.filter((x) => x.active && !isStandaloneService(x))).map((x) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !s.options[`hide_${x.id}`], onChange: (v) => setOption(`hide_${x.id}`, !v), label: x.name }, x.id))
         ] })
       ] }),
       s.kind === "arrival" && locked.arrival && /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "p-2.5 rounded-xl border border-sky-100 bg-sky-50/40 space-y-1", "data-cgv-hours": "arrival", children: [
@@ -30437,7 +30526,7 @@ ${body}
         /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !!s.options.showResources, onChange: (v) => setOption("showResources", v), label: "Montrer les espaces (piscine, spa\u2026)", hint: "Fiches de Param\xE9trage > Espaces et ressources" }),
         s.options.showResources && byOrder4(settings.resources.filter((r) => r.active)).map((r) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("div", { className: "pl-5", children: /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !s.options[`hide_${r.id}`], onChange: (v) => setOption(`hide_${r.id}`, !v), label: r.name }) }, r.id)),
         /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("div", { className: "text-[11px] font-semibold text-neutral-700 pt-1", children: "Services affich\xE9s (Param\xE9trage > Services et prestations)" }),
-        byOrder4(settings.services.filter((x) => x.active)).map((x) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !s.options[`hide_${x.id}`], onChange: (v) => setOption(`hide_${x.id}`, !v), label: x.name }, x.id)),
+        byOrder4(settings.services.filter((x) => x.active && isStandaloneService(x))).map((x) => /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !s.options[`hide_${x.id}`], onChange: (v) => setOption(`hide_${x.id}`, !v), label: x.name }, x.id)),
         /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(CheckboxRow, { checked: !!s.options.showPrices, onChange: (v) => setOption("showPrices", v), label: "Afficher les prix" }),
         /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("p", { className: "text-[10px] text-neutral-500", children: isModuleEnabled("meals", settings) ? "La carte des repas a sa propre rubrique \xAB Repas et petit-d\xE9jeuner \xBB, reprise du module Repas." : "Pour montrer votre carte des repas, activez le module Repas (Param\xE9trage > Modules)." })
       ] }),
@@ -52697,7 +52786,7 @@ ${r.current.trim()}` : ""
       facts: [a.maxGuests ? `jusqu'\xE0 ${a.maxGuests} personnes` : "", a.equipments.filter(Boolean).length ? `\xE9quipements : ${a.equipments.filter(Boolean).join(", ")}` : "", a.subtitle].filter(Boolean).join(" ; ")
     })) : page.kind === "services" ? [
       ...settings.resources.filter((r) => r.active).map((r) => ({ id: r.id, name: r.name, text: r.description, kind: "description d'un \xE9quipement de d\xE9tente", facts: [r.openingHours && `horaires : ${r.openingHours}`, r.accessConditions].filter(Boolean).join(" ; ") })),
-      ...settings.services.filter((s) => s.active && isStandaloneService(s)).map((s) => ({ id: s.id, name: s.name, text: s.description, kind: "description d'un service", facts: [s.availability, s.conditions].filter(Boolean).join(" ; ") }))
+      ...settings.services.filter((s) => s.active && isStandaloneService2(s)).map((s) => ({ id: s.id, name: s.name, text: s.description, kind: "description d'un service", facts: [s.availability, s.conditions].filter(Boolean).join(" ; ") }))
     ] : [];
     return /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { className: "grid md:grid-cols-[230px_1fr] gap-4", "data-site-pages": true, children: [
       /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { className: "space-y-1.5", children: [
@@ -53435,7 +53524,7 @@ if(C.preview){
     const accommodations = settings.accommodations.filter((a) => a.active).sort(byOrder3);
     const hidden = hiddenItemIds(site);
     const services = settings.services.filter((s) => s.active && !hidden.includes(s.id)).sort(byOrder3);
-    const showcaseServices = services.filter(isStandaloneService);
+    const showcaseServices = services.filter(isStandaloneService2);
     const resources = settings.resources.filter((r) => r.active && !hidden.includes(r.id)).sort(byOrder3);
     const extraOf = (id) => site.extras[id] || { description: "", photos: [], keywords: "" };
     const roomText = (a) => extraOf(a.id).description.trim() || a.description.trim();
@@ -56626,7 +56715,7 @@ Sitemap: ${base}sitemap.xml
       }
       case "capacity":
         return /* @__PURE__ */ (0, import_jsx_runtime131.jsxs)("div", { className: "space-y-1 p-2.5 rounded-xl bg-neutral-50 border border-neutral-100", children: [
-          s.accommodations.filter((a) => a.active).map((a) => /* @__PURE__ */ (0, import_jsx_runtime131.jsx)(ReadOnlyLine, { label: a.name, value: `${a.minGuests} \xE0 ${a.maxGuests} personnes${a.extraGuestPrice > 0 ? `, ${euros4(a.extraGuestPrice)} par personne au-del\xE0 de ${a.baseGuestsCount}` : ""}` }, a.id)),
+          s.accommodations.filter((a) => a.active).map((a) => /* @__PURE__ */ (0, import_jsx_runtime131.jsx)(ReadOnlyLine, { label: a.name, value: `${a.minGuests} \xE0 ${a.maxGuests} personnes${a.extraGuestPrice > 0 ? `, ${euros2(a.extraGuestPrice)} par personne au-del\xE0 de ${a.baseGuestsCount}` : ""}` }, a.id)),
           /* @__PURE__ */ (0, import_jsx_runtime131.jsx)("p", { className: "text-[10px] text-neutral-500 pt-1", children: "Capacit\xE9s et suppl\xE9ments : Param\xE9trage > H\xE9bergements." })
         ] });
       case "services":
@@ -56655,7 +56744,7 @@ Sitemap: ${base}sitemap.xml
             ) }),
             (facts.animals === "onRequest" || facts.animals === "yes") && /* @__PURE__ */ (0, import_jsx_runtime131.jsx)(Field, { label: "Conditions (facultatif)", children: /* @__PURE__ */ (0, import_jsx_runtime131.jsx)(TextInput, { value: facts.animalsConditions, onChange: (v) => set({ animalsConditions: v }), placeholder: "Ex. chiens uniquement, pas sur les lits" }) })
           ] }),
-          supplements.length > 0 && facts.animals !== "no" && /* @__PURE__ */ (0, import_jsx_runtime131.jsx)(ReadOnlyLine, { label: "Suppl\xE9ment (Param\xE9trage > Services)", value: supplements.map((x) => `${x.name} : ${euros4(x.price)}`).join(" ; ") })
+          supplements.length > 0 && facts.animals !== "no" && /* @__PURE__ */ (0, import_jsx_runtime131.jsx)(ReadOnlyLine, { label: "Suppl\xE9ment (Param\xE9trage > Services)", value: supplements.map((x) => `${x.name} : ${euros2(x.price)}`).join(" ; ") })
         ] });
       }
       case "rules":
