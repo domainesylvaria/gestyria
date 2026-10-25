@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v203</title>
-  <meta name="application-name" content="Gestyria v203" />
+  <title>Gestyria v204</title>
+  <meta name="application-name" content="Gestyria v204" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6653,7 +6653,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "203";
+  var APP_VERSION = "204";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -19906,6 +19906,43 @@ function purgeRequestPolice_(ss, todayIso) {
       )
     ] });
   };
+  var TouristTaxCard = ({ settings, draft, set }) => {
+    const tax = { ...DEFAULT_TOURIST_TAX, ...draft.touristTax || {} };
+    const setTax = (patch) => set({ touristTax: { ...tax, ...patch } });
+    return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "p-3.5 rounded-xl border border-neutral-200 bg-white space-y-3", "data-tourist-tax": true, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "font-serif font-bold text-sm text-neutral-900", children: "Taxe de s\xE9jour" }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { className: "text-[11px] text-neutral-500 mt-0.5", children: "Montant fix\xE9 par votre commune. Il est propos\xE9 dans la fiche de r\xE9servation (bouton \xAB Appliquer \xBB), \xE0 ajuster au besoin : il reste hors chiffre d'affaires. Laissez 0 pour ne rien proposer." })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Field, { label: "Calcul", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Select, { value: tax.mode, options: TAX_MODES, onChange: (v) => setTax({ mode: v }) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Field, { label: tax.mode === "percent" ? "Pourcentage" : "Montant par personne et par nuit", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(NumberInput, { value: tax.value, onChange: (v) => setTax({ value: Math.max(0, v ?? 0) }), suffix: tax.mode === "percent" ? "%" : "\u20AC" }) })
+      ] }),
+      tax.mode === "person" && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("label", { className: "flex items-center gap-2 text-xs text-neutral-700 cursor-pointer", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
+          "input",
+          {
+            type: "checkbox",
+            checked: tax.exemptChildren,
+            onChange: (e) => setTax({ exemptChildren: e.target.checked }),
+            className: "w-3.5 h-3.5 accent-sy-325032 cursor-pointer"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { children: "Enfants exon\xE9r\xE9s (d\xE9coch\xE9e : les enfants paient comme les adultes ; les b\xE9b\xE9s ne paient jamais)" })
+      ] }),
+      tax.value > 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { className: "text-[11px] text-neutral-600", children: [
+        "Exemple : 2 adultes, 1 enfant, 1 b\xE9b\xE9, 3 nuits, h\xE9bergement \xE0 300 \u20AC \u2192",
+        " ",
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("strong", { children: [
+          String(
+            suggestedTouristTax({ nights: 3, adults: 2, children: 1, babies: 1, roomAmount: 300 }, { ...settings, pricing: { ...draft, touristTax: tax } })
+          ).replace(".", ","),
+          " ",
+          "\u20AC"
+        ] })
+      ] })
+    ] });
+  };
   var PricingSection = ({ settings, onToast }) => {
     const [draft, setDraft] = (0, import_react21.useState)(settings.pricing);
     const [lastMinute, setLastMinute] = (0, import_react21.useState)(settings.rates.lastMinute);
@@ -19918,7 +19955,7 @@ function purgeRequestPolice_(ss, todayIso) {
         SectionTitle,
         {
           title: "Tarification et r\xE8gles de prix",
-          description: "Remises longue dur\xE9e, remise de derni\xE8re minute et r\xE8gles d'annulation."
+          description: "Remises longue dur\xE9e, remise de derni\xE8re minute, r\xE8gles d'annulation et taxe de s\xE9jour."
         }
       ),
       /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(InfoNote, { children: [
@@ -20000,8 +20037,9 @@ function purgeRequestPolice_(ss, todayIso) {
             noShowSentence(cancel) && /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("li", { children: noShowSentence(cancel) })
           ] })
         ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(TouristTaxCard, { settings, draft, set }),
         /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(LastMinuteCard, { value: lastMinute, tiers: settings.rates.tiers, onChange: setLastMinute }),
-        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { className: "text-[11px] text-neutral-500", children: "Les taux URSSAF et d'imp\xF4t, les co\xFBts et la taxe de s\xE9jour se r\xE8glent dans la rubrique \xAB Fiche de r\xE9servation \xBB." })
+        /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { className: "text-[11px] text-neutral-500", children: "Les taux URSSAF et d'imp\xF4t et les co\xFBts se r\xE8glent dans la rubrique \xAB Fiche de r\xE9servation \xBB." })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
         SaveBar,
@@ -20027,14 +20065,12 @@ function purgeRequestPolice_(ss, todayIso) {
     const [draft, setDraft] = (0, import_react21.useState)(settings.pricing);
     const dirty = JSON.stringify(draft) !== JSON.stringify(settings.pricing);
     const set = (patch) => setDraft({ ...draft, ...patch });
-    const tax = { ...DEFAULT_TOURIST_TAX, ...draft.touristTax || {} };
-    const setTax = (patch) => set({ touristTax: { ...tax, ...patch } });
     return /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
         SectionTitle,
         {
           title: "Fiche de r\xE9servation",
-          description: "Pr\xE9l\xE8vements, co\xFBts et taxe de s\xE9jour propos\xE9s dans la fiche d'une r\xE9servation."
+          description: "Pr\xE9l\xE8vements et co\xFBts propos\xE9s dans la fiche d'une r\xE9servation (la taxe de s\xE9jour est dans Tarification)."
         }
       ),
       /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)(InfoNote, { children: [
@@ -20046,39 +20082,6 @@ function purgeRequestPolice_(ss, todayIso) {
         /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [
           /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Field, { label: "Taux URSSAF", hint: "Appliqu\xE9 au montant d\xE9clar\xE9", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(NumberInput, { value: draft.urssafRate, onChange: (v) => set({ urssafRate: v ?? 0 }), suffix: "%" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Field, { label: "Taux d'imp\xF4t", hint: "Appliqu\xE9 au montant d\xE9clar\xE9", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(NumberInput, { value: draft.incomeTaxRate, onChange: (v) => set({ incomeTaxRate: v ?? 0 }), suffix: "%" }) })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "p-3.5 rounded-xl border border-neutral-200 bg-white space-y-3", "data-tourist-tax": true, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "font-serif font-bold text-sm text-neutral-900", children: "Taxe de s\xE9jour" }),
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { className: "text-[11px] text-neutral-500 mt-0.5", children: "Montant fix\xE9 par votre commune. Il est propos\xE9 dans la fiche de r\xE9servation (bouton \xAB Appliquer \xBB), \xE0 ajuster au besoin : il reste hors chiffre d'affaires. Laissez 0 pour ne rien proposer." })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Field, { label: "Calcul", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Select, { value: tax.mode, options: TAX_MODES, onChange: (v) => setTax({ mode: v }) }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(Field, { label: tax.mode === "percent" ? "Pourcentage" : "Montant par personne et par nuit", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(NumberInput, { value: tax.value, onChange: (v) => setTax({ value: Math.max(0, v ?? 0) }), suffix: tax.mode === "percent" ? "%" : "\u20AC" }) })
-          ] }),
-          tax.mode === "person" && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("label", { className: "flex items-center gap-2 text-xs text-neutral-700 cursor-pointer", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(
-              "input",
-              {
-                type: "checkbox",
-                checked: tax.exemptChildren,
-                onChange: (e) => setTax({ exemptChildren: e.target.checked }),
-                className: "w-3.5 h-3.5 accent-sy-325032 cursor-pointer"
-              }
-            ),
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("span", { children: "Enfants exon\xE9r\xE9s (d\xE9coch\xE9e : les enfants paient comme les adultes ; les b\xE9b\xE9s ne paient jamais)" })
-          ] }),
-          tax.value > 0 && /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("p", { className: "text-[11px] text-neutral-600", children: [
-            "Exemple : 2 adultes, 1 enfant, 1 b\xE9b\xE9, 3 nuits, h\xE9bergement \xE0 300 \u20AC \u2192",
-            " ",
-            /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("strong", { children: [
-              String(
-                suggestedTouristTax({ nights: 3, adults: 2, children: 1, babies: 1, roomAmount: 300 }, { ...settings, pricing: { ...draft, touristTax: tax } })
-              ).replace(".", ","),
-              " ",
-              "\u20AC"
-            ] })
-          ] })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime9.jsx)(CostFieldsEditor, { settings, draft, set }),
         /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("p", { className: "text-[11px] text-neutral-500", children: "Les plateformes en ligne (URSSAF et imp\xF4t coch\xE9s d'office, taxe de s\xE9jour prise en charge) se choisissent dans la rubrique \xAB Plateformes et iCal \xBB." })
