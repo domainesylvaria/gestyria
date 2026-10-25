@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v202</title>
-  <meta name="application-name" content="Gestyria v202" />
+  <title>Gestyria v203</title>
+  <meta name="application-name" content="Gestyria v203" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6653,7 +6653,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "202";
+  var APP_VERSION = "203";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -8915,6 +8915,11 @@ footer{background:#111}
     if (info.version < 21) throw new Error(CONNECTOR_V21_MESSAGE);
   }
   var CONNECTOR_V24_MESSAGE = "La saisie d'une commande de repas demande la mise \xE0 jour du connecteur Google (V24) : Param\xE9trage > Google Sheets, copiez TOUT le nouveau code dans Apps Script et d\xE9ployez une nouvelle version.";
+  var CONNECTOR_V34_MESSAGE = "Modifier ou supprimer une commande de repas demande la mise \xE0 jour du connecteur Google (V34) : Param\xE9trage > Google Sheets, copiez TOUT le nouveau code dans Apps Script et d\xE9ployez une nouvelle version.";
+  async function requireV34(target = currentTarget()) {
+    const info = await connectorInfo(target, true);
+    if (info.version < 34) throw new Error(CONNECTOR_V34_MESSAGE);
+  }
   async function requireV24(target = currentTarget()) {
     const info = await connectorInfo(target, true);
     if (info.version < 24) throw new Error(CONNECTOR_V24_MESSAGE);
@@ -13926,7 +13931,7 @@ ${body}
   }
   function getAppsScriptCode() {
     return `// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V33)
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V34)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -14006,6 +14011,7 @@ ${body}
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
 // V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Domaine Sylvaria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V34 : modification et suppression d'une commande de repas par l'administratrice (actions "mealOrderAdmin" avec orderId, et "mealOrderDelete"). Aucune nouvelle autorisation.
 // V33 : une r\xE9servation du site annul\xE9e ou supprim\xE9e dans l'application lib\xE8re ses nuits sur le site (d\xE9cision \xAB released \xBB, sans e-mail au client). Aucune nouvelle autorisation.
 // V32 : si le PDF des CGV ne peut pas \xEAtre fabriqu\xE9, elles sont \xE9crites dans l'e-mail ; fonction essaiCgv() et point \xAB cgv \xBB dans \xAB V\xE9rifier le connecteur \xBB. Aucune nouvelle autorisation.
 // V31 : les conditions g\xE9n\xE9rales de vente (enregistr\xE9es dans l'application) sont jointes en PDF \xE0 l'e-mail de confirmation de r\xE9servation envoy\xE9 au client ; dans le livret, les services li\xE9s aux chambres (suppl\xE9ment chien, m\xE9nage\u2026) sont pr\xE9sent\xE9s avec chaque chambre et non plus seuls. Aucune nouvelle autorisation.
@@ -14709,7 +14715,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 33;
+var CONNECTOR_VERSION = 34;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Domaine Sylvaria - Photos m\xE9nage";
@@ -15108,6 +15114,11 @@ function routePostV10_(e, data) {
     if (action === "mealOrderAdmin") {
       if (!isAdminRequest_(e, data)) return keyRequiredResponse_();
       return adminMealOrder_(data);
+    }
+    // V34 : suppression de commandes de repas
+    if (action === "mealOrderDelete") {
+      if (!isAdminRequest_(e, data)) return keyRequiredResponse_();
+      return deleteMealOrders_(data.ids);
     }
     // V22 : RGPD, messages et commandes d'une personne ou plus anciens qu'une dur\xE9e
     if (action === "privacyTool") {
@@ -16332,7 +16343,14 @@ function adminMealOrder_(data) {
     lines.push({ itemId: cleanText_(l.itemId, 80), name: cleanText_(l.name, 120), qty: qty, childQty: childQty, price: cleanText_(l.price, 40), unitPrice: unit, childUnitPrice: childUnit });
   });
   total = Math.round(total * 100) / 100;
-  var status = String(data.status) === "confirmed" ? "confirmed" : "done";
+  // V34 : avec orderId, la commande existante est modifi\xE9e (identifiant, date de r\xE9ception, contact et origine conserv\xE9s)
+  var existing = null;
+  if (textOf_(data.orderId)) {
+    readOrders_(ss).forEach(function(o) { if (o.id === textOf_(data.orderId)) existing = o; });
+    if (!existing) return { status: "error", message: "Commande introuvable." };
+  }
+  var statusIn = String(data.status);
+  var status = existing && ["new", "confirmed", "refused", "done"].indexOf(statusIn) >= 0 ? statusIn : (statusIn === "confirmed" ? "confirmed" : "done");
   var reservationId = textOf_(data.reservationId);
   var res = null;
   if (reservationId) {
@@ -16343,21 +16361,34 @@ function adminMealOrder_(data) {
   var name = cleanText_(data.name, 80) || (res ? textOf_(res.guestName).slice(0, 80) : "");
   var time = /^\\d{2}:\\d{2}$/.test(textOf_(data.time)) ? textOf_(data.time) : "";
   var message = cleanText_(data.message, 1000);
-  var at = new Date();
-  var id = "c" + at.getTime().toString(36) + "a" + Math.floor(Math.random() * 1e6).toString(36);
+  var at = existing && !isNaN(new Date(existing.at).getTime()) ? new Date(existing.at) : new Date();
+  var id = existing ? existing.id : "c" + at.getTime().toString(36) + "a" + Math.floor(Math.random() * 1e6).toString(36);
+  var sheet = orderSheet_(ss);
+  var contactKept = existing ? textOf_(existing.contact) : "";
   var d = {
     at: at.toISOString(), momentId: momentId, momentName: momentName, date: date, time: time, adults: adults, children: children,
-    lines: lines, total: total, name: name, contact: "", message: message, reservationId: res ? String(res.id) : "", guest: false
+    lines: lines, total: total, name: name, contact: contactKept, message: message, reservationId: res ? String(res.id) : "", guest: existing ? existing.guest === true : false
   };
   var row = [
     Utilities.formatDate(at, "Europe/Paris", "yyyy-MM-dd HH:mm"), momentName, date, time, adults, children, orderLinesText_(lines),
-    total, name, "", message, stayText_(res), "Saisie par l'\xE9tablissement", ORDER_STATUS_TEXT[status], id, JSON.stringify(d)
+    total, name, contactKept, message, stayText_(res), existing ? textOf_(sheet.getRange(existing.row, 13).getValue()) : "Saisie par l'\xE9tablissement", ORDER_STATUS_TEXT[status], id, JSON.stringify(d)
   ];
-  var sheet = orderSheet_(ss);
-  sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setNumberFormat("@").setValues([row]);
+  sheet.getRange(existing ? existing.row : sheet.getLastRow() + 1, 1, 1, row.length).setNumberFormat("@").setValues([row]);
   d.id = id;
   d.status = status;
   return { status: "success", version: CONNECTOR_VERSION, orders: [publicOrder_(d)] };
+}
+
+// V34 : suppression de commandes par l'administratrice (lignes retir\xE9es de l'onglet, de bas en haut pour ne pas d\xE9caler les autres)
+function deleteMealOrders_(ids) {
+  var wanted = {};
+  listOf_(ids).forEach(function(id) { wanted[textOf_(id)] = true; });
+  var ss = getTargetSpreadsheet();
+  var sheet = ss.getSheetByName(ORDER_SHEET);
+  var rows = [];
+  readOrders_(ss).forEach(function(o) { if (wanted[o.id]) rows.push(o.row); });
+  rows.sort(function(a, b) { return b - a; }).forEach(function(r) { sheet.deleteRow(r); });
+  return { status: "success", version: CONNECTOR_VERSION, deleted: rows.length };
 }
 
 // --- Application de l'administratrice ---
@@ -17795,7 +17826,7 @@ function purgeRequestPolice_(ss, todayIso) {
   });
   return purged;
 }
-// ===== FIN DU CONNECTEUR (V33) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== FIN DU CONNECTEUR (V34) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
 
@@ -24743,7 +24774,7 @@ Cette op\xE9ration est d\xE9finitive.`
 
   // src/modules/repas/MealsView.tsx
   var import_react48 = __require("react");
-  var import_react_dom2 = __require("react-dom");
+  var import_react_dom3 = __require("react-dom");
 
   // src/modules/livret/MenuBody.tsx
   var import_react38 = __require("react");
@@ -26533,6 +26564,19 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
     setCache({ ...cache, orders: [...cache.orders, created] });
     return created;
   }
+  async function updateAdminMealOrder(orderId, input5) {
+    await requireV34();
+    const res2 = await connectorPost({ action: "mealOrderAdmin", orderId, ...input5 });
+    const updated = (Array.isArray(res2.orders) ? res2.orders : []).map(normalizeOrder)[0];
+    if (!updated) throw new Error("Commande non enregistr\xE9e.");
+    setCache({ ...cache, orders: cache.orders.map((o) => o.id === orderId ? updated : o) });
+    return updated;
+  }
+  async function deleteMealOrders(ids) {
+    await requireV34();
+    await connectorPost({ action: "mealOrderDelete", ids });
+    setCache({ ...cache, orders: cache.orders.filter((o) => !ids.includes(o.id)) });
+  }
   var ORDER_STATUS_LABELS = {
     new: "\xC0 confirmer",
     confirmed: "Confirm\xE9e",
@@ -26543,6 +26587,7 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
 
   // src/modules/repas/AdminOrderForm.tsx
   var import_react44 = __require("react");
+  var import_react_dom2 = __require("react-dom");
   var import_jsx_runtime33 = __require("react/jsx-runtime");
   var field = "w-full py-2 px-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-sy-325032 text-neutral-900";
   var toNum = (s) => Math.max(0, parseFloat(s.replace(",", ".")) || 0);
@@ -26559,11 +26604,12 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
       className: `${field} text-center font-mono ${className}`
     }
   );
-  var AdminOrderForm = ({ reservations, fixedReservation, initialMomentId, onClose, onSaved, onToast }) => {
+  var AdminOrderForm = ({ reservations, fixedReservation, initialMomentId, editOrder, onClose, onSaved, onToast }) => {
     const menu = (0, import_react44.useMemo)(() => mealsMenuFor(getSettings()), []);
     const moments = menu?.moments || [];
-    const firstMoment = moments.find((m) => m.id === initialMomentId) || moments[0];
+    const firstMoment = moments.find((m) => m.id === (editOrder?.momentId || initialMomentId)) || moments[0];
     const startDate = (() => {
+      if (editOrder) return editOrder.date;
       if (!fixedReservation) return parisNow().date;
       const t = parisNow().date;
       const inStay = t >= fixedReservation.checkIn && t <= fixedReservation.checkOut ? t : fixedReservation.checkIn;
@@ -26571,23 +26617,36 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
     })();
     const [date, setDate] = (0, import_react44.useState)(startDate);
     const [momentId, setMomentId] = (0, import_react44.useState)(firstMoment?.id || "");
-    const [reservationId, setReservationId] = (0, import_react44.useState)(fixedReservation?.id || "");
-    const [name, setName] = (0, import_react44.useState)(fixedReservation?.guestName || "");
-    const [adults, setAdults] = (0, import_react44.useState)(fixedReservation?.adultsCount ? String(fixedReservation.adultsCount) : "");
-    const [children, setChildren] = (0, import_react44.useState)(fixedReservation?.childrenCount ? String(fixedReservation.childrenCount) : "");
-    const [time, setTime] = (0, import_react44.useState)("");
-    const [message, setMessage] = (0, import_react44.useState)("");
-    const [status, setStatus] = (0, import_react44.useState)("done");
-    const [qty, setQty] = (0, import_react44.useState)({});
-    const [childQty, setChildQty] = (0, import_react44.useState)({});
+    const [reservationId, setReservationId] = (0, import_react44.useState)(editOrder ? editOrder.reservationId : fixedReservation?.id || "");
+    const [name, setName] = (0, import_react44.useState)(editOrder ? editOrder.name : fixedReservation?.guestName || "");
+    const [adults, setAdults] = (0, import_react44.useState)(editOrder ? String(editOrder.adults || "") : fixedReservation?.adultsCount ? String(fixedReservation.adultsCount) : "");
+    const [children, setChildren] = (0, import_react44.useState)(editOrder ? String(editOrder.children || "") : fixedReservation?.childrenCount ? String(fixedReservation.childrenCount) : "");
+    const [time, setTime] = (0, import_react44.useState)(editOrder?.time || "");
+    const [message, setMessage] = (0, import_react44.useState)(editOrder?.message || "");
+    const [status, setStatus] = (0, import_react44.useState)(editOrder && editOrder.status !== "cancelled" ? editOrder.status : "done");
+    const prefill = (pick) => {
+      const out = {};
+      (editOrder?.lines || []).forEach((l) => {
+        if (l.itemId.startsWith(EXTRA_ING) || l.itemId.startsWith(EXTRA_FREE)) return;
+        const n = pick(l);
+        if (n > 0) out[l.itemId.startsWith(EXTRA_USE) ? l.itemId.slice(EXTRA_USE.length) : l.itemId] = String(n).replace(".", ",");
+      });
+      return out;
+    };
+    const [qty, setQty] = (0, import_react44.useState)(() => prefill((l) => l.qty));
+    const [childQty, setChildQty] = (0, import_react44.useState)(() => prefill((l) => l.childQty));
     const ingredients = (0, import_react44.useMemo)(() => getLinkedIngredients().filter((i) => i.portionCost > 0), []);
-    const [extras, setExtras] = (0, import_react44.useState)([]);
+    const [extras, setExtras] = (0, import_react44.useState)(
+      () => (editOrder?.lines || []).filter((l) => l.itemId.startsWith(EXTRA_ING) || l.itemId.startsWith(EXTRA_FREE)).map(
+        (l, n) => l.itemId.startsWith(EXTRA_ING) ? { key: `e${n}`, ing: l.itemId.slice(EXTRA_ING.length), label: "", unitCost: "", qty: String(l.qty).replace(".", ",") } : { key: `e${n}`, ing: "", label: l.name, unitCost: l.itemId.slice(EXTRA_FREE.length).replace(".", ","), qty: String(l.qty).replace(".", ",") }
+      )
+    );
     const addExtra = () => setExtras((list3) => [...list3, { key: String(Date.now() + list3.length), ing: ingredients[0]?.id || "", label: "", unitCost: "", qty: "" }]);
     const setExtra = (key, patch) => setExtras((list3) => list3.map((x) => x.key === key ? { ...x, ...patch } : x));
     const [busy, setBusy] = (0, import_react44.useState)(false);
     const [error, setError] = (0, import_react44.useState)("");
     const moment2 = moments.find((m) => m.id === momentId);
-    const stays = fixedReservation ? [fixedReservation] : reservations.filter((r) => !r.isBlocked && r.checkIn <= date && r.checkOut >= date);
+    const stays = fixedReservation ? [fixedReservation] : reservations.filter((r) => !r.isBlocked && (r.checkIn <= date && r.checkOut >= date || r.id === reservationId));
     const stay = reservations.find((r) => r.id === reservationId);
     const dishes = (0, import_react44.useMemo)(() => getLinkedDishes(), []);
     const content = (0, import_react44.useMemo)(() => getMeals(), []);
@@ -26640,8 +26699,10 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
       }
       setBusy(true);
       try {
-        await createAdminMealOrder({ momentId: moment2.id, momentName: moment2.name, date, time, adults: a, children: c, lines: lines2, name: name.trim(), message: message.trim(), reservationId, status });
-        onToast("Commande enregistr\xE9e.");
+        const input5 = { momentId: moment2.id, momentName: moment2.name, date, time, adults: a, children: c, lines: lines2, name: name.trim(), message: message.trim(), reservationId, status };
+        if (editOrder) await updateAdminMealOrder(editOrder.id, input5);
+        else await createAdminMealOrder(input5);
+        onToast(editOrder ? "Commande modifi\xE9e." : "Commande enregistr\xE9e.");
         onSaved();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Enregistrement impossible.");
@@ -26665,7 +26726,7 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
     const money3 = (n) => euros(Math.round(n * 100) / 100);
     return /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "bg-white rounded-2xl border border-sy-cad7cd p-3.5 sm:p-4 space-y-3", "data-admin-order": true, children: [
       /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "flex items-center gap-2", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900 flex-1", children: "Saisir une commande (aussi apr\xE8s coup)" }),
+        /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900 flex-1", children: editOrder ? "Modifier la commande" : "Saisir une commande (aussi apr\xE8s coup)" }),
         /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("button", { type: "button", onClick: onClose, "aria-label": "Fermer", className: "p-1.5 rounded-lg hover:bg-neutral-100 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(X, { className: "w-4 h-4" }) })
       ] }),
       moments.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("p", { className: "text-xs text-neutral-600", children: "La carte des repas est vide ou n'est pas reprise dans le livret : ajoutez des repas et des plats (onglet Repas) pour pouvoir saisir une commande." }) : /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)(import_jsx_runtime33.Fragment, { children: [
@@ -26835,7 +26896,9 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
             "Statut",
             /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("select", { value: status, onChange: (e) => setStatus(e.target.value), className: `${field} mt-1`, children: [
               /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("option", { value: "done", children: "Servie (d\xE9j\xE0 consomm\xE9e)" }),
-              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("option", { value: "confirmed", children: "Confirm\xE9e (\xE0 venir)" })
+              /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("option", { value: "confirmed", children: "Confirm\xE9e (\xE0 venir)" }),
+              editOrder && /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("option", { value: "new", children: "\xC0 confirmer" }),
+              editOrder && /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("option", { value: "refused", children: "Refus\xE9e" })
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("label", { className: "block text-[11px] font-semibold text-neutral-700", children: [
@@ -26847,13 +26910,18 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
         /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("div", { className: "flex gap-2", children: [
           /* @__PURE__ */ (0, import_jsx_runtime33.jsxs)("button", { type: "button", onClick: save, disabled: busy, className: "flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-sy-325032 hover:bg-sy-253d25 rounded-xl cursor-pointer disabled:opacity-50", children: [
             busy && /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(LoaderCircle, { className: "w-3.5 h-3.5 animate-spin" }),
-            " Enregistrer la commande"
+            " ",
+            editOrder ? "Enregistrer les modifications" : "Enregistrer la commande"
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("button", { type: "button", onClick: onClose, className: "px-4 py-2.5 text-xs font-semibold text-neutral-700 border border-neutral-200 rounded-xl cursor-pointer", children: "Annuler" })
         ] })
       ] })
     ] });
   };
+  var AdminOrderDialog = (props) => (0, import_react_dom2.createPortal)(
+    /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "fixed inset-0 z-[90] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4", role: "dialog", "aria-modal": "true", "aria-label": "Commande", "data-stay-order-dialog": true, children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)("div", { className: "bg-white w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl p-2", children: /* @__PURE__ */ (0, import_jsx_runtime33.jsx)(AdminOrderForm, { ...props }) }) }),
+    document.body
+  );
 
   // src/modules/repas/OrdersPanel.tsx
   var import_jsx_runtime34 = __require("react/jsx-runtime");
@@ -26902,6 +26970,7 @@ ${establishmentName}`;
     const [loading2, setLoading] = (0, import_react45.useState)(false);
     const [error, setError] = (0, import_react45.useState)("");
     const [adding, setAdding] = (0, import_react45.useState)(false);
+    const [editing, setEditing] = (0, import_react45.useState)(null);
     const [busy, setBusy] = (0, import_react45.useState)(null);
     const today5 = parisNow().date;
     const dishes = getLinkedDishes();
@@ -26955,6 +27024,18 @@ ${establishmentName}`;
         setBusy(null);
       }
     };
+    const remove = async (o) => {
+      if (!window.confirm(`Supprimer cette commande (${o.name || "sans nom"}, ${o.momentName} du ${dayLabel(o.date)}) ? Elle sera retir\xE9e du Google Sheet.`)) return;
+      setBusy(o.id);
+      try {
+        await deleteMealOrders([o.id]);
+        onToast("Commande supprim\xE9e.");
+      } catch (err) {
+        onToast(err?.message || "Suppression impossible.");
+      } finally {
+        setBusy(null);
+      }
+    };
     const newCount = orders.filter((o) => o.status === "new").length;
     return /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "space-y-4", "data-meals-orders": true, children: [
       /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200 p-3.5 sm:p-4", children: [
@@ -27004,6 +27085,7 @@ ${establishmentName}`;
         ] }),
         error && /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("p", { className: "text-[12px] text-red-700 mt-2", children: error })
       ] }),
+      editing && /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(AdminOrderDialog, { reservations, editOrder: editing, onClose: () => setEditing(null), onSaved: () => setEditing(null), onToast }),
       adding && /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(AdminOrderForm, { reservations, onClose: () => setAdding(false), onSaved: () => {
         setAdding(false);
         setFilter("all");
@@ -27144,6 +27226,14 @@ ${establishmentName}`;
                     phone && /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("a", { href: `tel:${phone.replace(/[^0-9+]/g, "")}`, className: "flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-sy-325032 border border-neutral-200 rounded-lg", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(Phone, { className: "w-3.5 h-3.5" }),
                       " Appeler"
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("button", { type: "button", onClick: () => setEditing(o), disabled: busy === o.id, className: "flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-sy-325032 border border-neutral-200 rounded-lg cursor-pointer disabled:opacity-50", "data-order-edit": true, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(Pencil, { className: "w-3.5 h-3.5" }),
+                      " Modifier"
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("button", { type: "button", onClick: () => remove(o), disabled: busy === o.id, className: "flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-red-700 border border-red-200 rounded-lg cursor-pointer disabled:opacity-50", "data-order-delete": true, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(Trash2, { className: "w-3.5 h-3.5" }),
+                      " Supprimer"
                     ] })
                   ] })
                 ]
@@ -28050,7 +28140,7 @@ ${establishmentName}`;
       }));
       onAdd(added);
     };
-    return (0, import_react_dom2.createPortal)(
+    return (0, import_react_dom3.createPortal)(
       /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-3 bg-neutral-900/50", onClick: onClose, children: /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("div", { className: "bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[88vh] flex flex-col overflow-hidden", onClick: (e) => e.stopPropagation(), "data-meal-picker": true, children: [
         /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("div", { className: "px-4 py-3 border-b border-neutral-200 flex items-center justify-between gap-2", children: [
           /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("div", { className: "min-w-0", children: [
@@ -28546,7 +28636,7 @@ ${establishmentName}`;
           }
         ) : null;
       })(),
-      mobilePreview && (0, import_react_dom2.createPortal)(
+      mobilePreview && (0, import_react_dom3.createPortal)(
         /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("div", { className: "lg:hidden fixed inset-0 z-50 bg-neutral-50 flex flex-col", children: [
           /* @__PURE__ */ (0, import_jsx_runtime38.jsxs)("div", { className: "flex items-center justify-between gap-2 px-3 py-2 bg-white border-b border-neutral-200 shrink-0", children: [
             /* @__PURE__ */ (0, import_jsx_runtime38.jsx)("span", { className: "text-xs font-bold text-neutral-700", children: "Aper\xE7u dans le livret" }),
@@ -28566,7 +28656,7 @@ ${establishmentName}`;
 
   // src/modules/livret/WelcomeBookEditor.tsx
   var import_react53 = __require("react");
-  var import_react_dom3 = __require("react-dom");
+  var import_react_dom4 = __require("react-dom");
 
   // src/modules/livret/BookView.tsx
   var import_react49 = __require("react");
@@ -31021,7 +31111,7 @@ ${m.message}
           /* @__PURE__ */ (0, import_jsx_runtime43.jsx)("p", { className: "text-[10px] text-neutral-400 text-center mt-2", children: "Cliquez sur une rubrique de l'aper\xE7u pour la modifier." })
         ] })
       ] }),
-      mobilePreview && (0, import_react_dom3.createPortal)(
+      mobilePreview && (0, import_react_dom4.createPortal)(
         /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "lg:hidden fixed inset-0 z-50 bg-neutral-50 flex flex-col", children: [
           /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("div", { className: "flex items-center justify-between gap-2 px-3 py-2 bg-white border-b border-neutral-200 shrink-0", children: [
             /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(AudienceSwitch, { value: audience, onChange: setAudience }),
@@ -33007,7 +33097,7 @@ Vos r\xE9servations, factures et fiches clients ne sont pas touch\xE9es. Cette a
 
   // src/core/print/PrintArea.tsx
   var import_react59 = __require("react");
-  var import_react_dom4 = __require("react-dom");
+  var import_react_dom5 = __require("react-dom");
   var import_jsx_runtime50 = __require("react/jsx-runtime");
   var PRINT_CSS = `
 @media screen { #sy-print-root { display: none !important; } }
@@ -33048,7 +33138,7 @@ Vos r\xE9servations, factures et fiches clients ne sont pas touch\xE9es. Cette a
     }, []);
     return { printing, print };
   }
-  var PrintArea = ({ children }) => (0, import_react_dom4.createPortal)(
+  var PrintArea = ({ children }) => (0, import_react_dom5.createPortal)(
     /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("div", { id: "sy-print-root", children: [
       /* @__PURE__ */ (0, import_jsx_runtime50.jsx)("style", { dangerouslySetInnerHTML: { __html: PRINT_CSS } }),
       children
@@ -52037,7 +52127,7 @@ Cliquer pour modifier le tarif` : void 0,
   };
 
   // src/modules/docgen/export.tsx
-  var import_react_dom5 = __require("react-dom");
+  var import_react_dom6 = __require("react-dom");
   var import_client = __require("react-dom/client");
   var import_jsx_runtime115 = __require("react/jsx-runtime");
   var escapeHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -52045,7 +52135,7 @@ Cliquer pour modifier le tarif` : void 0,
   function buildWordHtml(doc, ctx) {
     const host = document.createElement("div");
     const root = (0, import_client.createRoot)(host);
-    (0, import_react_dom5.flushSync)(() => root.render(/* @__PURE__ */ (0, import_jsx_runtime115.jsx)(DocumentSheet, { doc, ctx: { ...ctx, asImage: true } })));
+    (0, import_react_dom6.flushSync)(() => root.render(/* @__PURE__ */ (0, import_jsx_runtime115.jsx)(DocumentSheet, { doc, ctx: { ...ctx, asImage: true } })));
     const body = host.innerHTML;
     root.unmount();
     return `<!DOCTYPE html>
@@ -52355,7 +52445,7 @@ body { font-family: ${fontName(doc.font, doc.font)}; font-size: ${doc.size}pt; }
 
   // src/modules/siteweb/photos.tsx
   var import_react119 = __require("react");
-  var import_react_dom6 = __require("react-dom");
+  var import_react_dom7 = __require("react-dom");
   var import_jsx_runtime117 = __require("react/jsx-runtime");
   var LibThumb = ({ photo, className = "" }) => {
     const [src, setSrc] = (0, import_react119.useState)("");
@@ -52454,7 +52544,7 @@ body { font-family: ${fontName(doc.font, doc.font)}; font-size: ${doc.size}pt; }
         id
       );
     };
-    return (0, import_react_dom6.createPortal)(
+    return (0, import_react_dom7.createPortal)(
       /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("div", { className: "fixed inset-0 z-[80] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4", role: "dialog", "aria-modal": "true", "aria-label": "Choisir des photos", "data-photo-picker": true, children: /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("div", { className: "bg-white w-full sm:max-w-3xl max-h-[92vh] rounded-t-2xl sm:rounded-2xl flex flex-col overflow-hidden", children: [
         /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("div", { className: "flex items-center gap-2 px-4 py-3 border-b border-neutral-100", children: [
           /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("h3", { className: "font-serif font-bold text-base text-neutral-900 flex-1", children: [
@@ -56412,7 +56502,7 @@ Sitemap: ${base}sitemap.xml
 
   // src/modules/cgv/TermsEditor.tsx
   var import_react131 = __require("react");
-  var import_react_dom7 = __require("react-dom");
+  var import_react_dom8 = __require("react-dom");
 
   // src/modules/cgv/TermsDocument.tsx
   var import_jsx_runtime129 = __require("react/jsx-runtime");
@@ -57203,7 +57293,7 @@ ${text}` : text });
           /* @__PURE__ */ (0, import_jsx_runtime131.jsx)("p", { className: "text-[10px] text-neutral-400 text-center mt-2", children: "Cliquez sur un article de l'aper\xE7u pour le modifier." })
         ] })
       ] }),
-      mobilePreview && (0, import_react_dom7.createPortal)(
+      mobilePreview && (0, import_react_dom8.createPortal)(
         /* @__PURE__ */ (0, import_jsx_runtime131.jsxs)("div", { className: "lg:hidden fixed inset-0 z-50 bg-white flex flex-col", children: [
           /* @__PURE__ */ (0, import_jsx_runtime131.jsxs)("div", { className: "flex items-center justify-between gap-2 px-3 py-2 bg-white border-b border-neutral-200 shrink-0", children: [
             /* @__PURE__ */ (0, import_jsx_runtime131.jsx)("span", { className: "text-xs font-bold text-neutral-700", children: "Aper\xE7u des CGV" }),
@@ -59204,7 +59294,7 @@ Cette action supprimera la facture du registre et la retirera du Google Sheet.`)
 
   // src/modules/repas/StayMeals.tsx
   var import_react137 = __require("react");
-  var import_react_dom8 = __require("react-dom");
+  var import_react_dom9 = __require("react-dom");
   var import_jsx_runtime137 = __require("react/jsx-runtime");
   function useStayOrders(reservationId, enabled) {
     const cache3 = useMealOrders(enabled && !!reservationId);
@@ -59368,7 +59458,7 @@ ${establishment}`;
     onClose,
     onSaved,
     onToast
-  }) => (0, import_react_dom8.createPortal)(
+  }) => (0, import_react_dom9.createPortal)(
     /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("div", { className: "fixed inset-0 z-[90] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4", role: "dialog", "aria-modal": "true", "aria-label": "Saisir une commande", "data-stay-order-dialog": true, children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("div", { className: "bg-white w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-2xl p-2", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(
       AdminOrderForm,
       {
@@ -59386,20 +59476,66 @@ ${establishment}`;
     ) }) }),
     document.body
   );
-  var StayOrdersList = ({ orders }) => /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("div", { className: "space-y-1.5", "data-stay-meal-orders": true, children: orders.map((o) => /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: `p-2 rounded-lg bg-neutral-50 text-[11px] ${countsForStay(o) ? "" : "opacity-60 line-through"}`, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "flex items-start justify-between gap-2", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("span", { className: "font-semibold text-neutral-900", children: [
-        o.momentName,
-        " \xB7 ",
-        dayLabel(o.date),
-        " \xB7 ",
-        peopleText(o)
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("span", { className: "text-neutral-500 shrink-0", children: ORDER_STATUS_LABELS[o.status] })
-    ] }),
-    o.lines.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("div", { className: "text-neutral-600", children: linesText(o) }),
-    o.total > 0 && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("div", { className: "font-semibold text-neutral-800", children: euros(o.total) })
-  ] }, o.id)) });
+  var StayOrdersList = ({ orders, reservation, onToast }) => {
+    const [editing, setEditing] = (0, import_react137.useState)(null);
+    const [busy, setBusy] = (0, import_react137.useState)("");
+    const [error, setError] = (0, import_react137.useState)("");
+    const remove = async (o) => {
+      if (!window.confirm(`Supprimer cette commande (${o.momentName} du ${dayLabel(o.date)}) ? Elle sera retir\xE9e du Google Sheet.`)) return;
+      setBusy(o.id);
+      setError("");
+      try {
+        await deleteMealOrders([o.id]);
+        onToast?.("Commande supprim\xE9e.");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Suppression impossible.");
+      } finally {
+        setBusy("");
+      }
+    };
+    const small = "inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold border rounded-md cursor-pointer disabled:opacity-50";
+    return /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "space-y-1.5", "data-stay-meal-orders": true, children: [
+      orders.map((o) => /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 text-[11px]", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: countsForStay(o) ? "" : "opacity-60 line-through", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "flex items-start justify-between gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("span", { className: "font-semibold text-neutral-900", children: [
+              o.momentName,
+              " \xB7 ",
+              dayLabel(o.date),
+              " \xB7 ",
+              peopleText(o)
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("span", { className: "text-neutral-500 shrink-0", children: ORDER_STATUS_LABELS[o.status] })
+          ] }),
+          o.lines.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("div", { className: "text-neutral-600", children: linesText(o) }),
+          o.total > 0 && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("div", { className: "font-semibold text-neutral-800", children: euros(o.total) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "flex items-center gap-1.5 mt-1", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("button", { type: "button", onClick: () => setEditing(o), disabled: busy === o.id, className: `${small} text-sy-325032 border-neutral-200 bg-white`, "data-order-edit": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Pencil, { className: "w-3 h-3" }),
+            " Modifier"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("button", { type: "button", onClick: () => remove(o), disabled: busy === o.id, className: `${small} text-red-700 border-red-200 bg-white`, "data-order-delete": true, children: [
+            busy === o.id ? /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(LoaderCircle, { className: "w-3 h-3 animate-spin" }) : /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Trash2, { className: "w-3 h-3" }),
+            " Supprimer"
+          ] })
+        ] })
+      ] }, o.id)),
+      error && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("p", { className: "text-[11px] text-red-700", children: error }),
+      editing && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(
+        AdminOrderDialog,
+        {
+          reservations: reservation ? [reservation] : [],
+          fixedReservation: reservation,
+          editOrder: editing,
+          onClose: () => setEditing(null),
+          onSaved: () => setEditing(null),
+          onToast: onToast || (() => {
+          })
+        }
+      )
+    ] });
+  };
   var StayMealsBlock = ({ reservation }) => {
     const settings = useSettings();
     const { orders, amounts } = useStayAmounts(reservation.id);
@@ -59448,7 +59584,7 @@ ${establishment}`;
       ] }),
       published && content.ordering.enabled && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("p", { className: "text-[10px] text-neutral-400", children: "Lien propre \xE0 ce s\xE9jour, valable jusqu'\xE0 3 jours apr\xE8s le d\xE9part. Il fonctionne d\xE8s que l'application a enregistr\xE9 vers Google (automatique)." }),
       orders.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "space-y-1.5", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(StayOrdersList, { orders }),
+        /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(StayOrdersList, { orders, reservation }),
         amounts && /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "p-2 rounded-lg border border-sy-cad7cd bg-sy-f4f7f4 text-[11px] text-sy-1e3222", "data-stay-amounts": true, children: [
           /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("strong", { children: "Repas command\xE9s :" }),
           " vente ",
@@ -59503,7 +59639,7 @@ ${establishment}`;
       ] }),
       orders.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)(import_jsx_runtime137.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("button", { type: "button", onClick: () => setOpen((o) => !o), className: "font-semibold underline cursor-pointer", children: open ? "Masquer la liste des commandes" : `Voir la liste des commandes (${orders.length})` }),
-        open && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(StayOrdersList, { orders })
+        open && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(StayOrdersList, { orders, reservation })
       ] }),
       ordering && reservation && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(
         StayOrderDialog,
