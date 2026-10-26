@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v217</title>
-  <meta name="application-name" content="Gestyria v217" />
+  <title>Gestyria v218</title>
+  <meta name="application-name" content="Gestyria v218" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -4992,17 +4992,17 @@ footer{background:#111}
       schemaVersion: SETTINGS_SCHEMA_VERSION,
       updatedAt: "",
       establishment: {
-        name: "Domaine Sylvaria",
-        subtitle: "Chambre Figuier \xB7 Chambre Magnolia \xB7 Piscine \xB7 Pension",
+        name: "Mon \xE9tablissement",
+        subtitle: "Chambres d'h\xF4tes",
         legalStatus: "Entrepreneur Individuel (EI)",
-        address: "2 route de Pruniers",
-        postalCode: "41230",
-        city: "Lassay-sur-Croisne",
+        address: "",
+        postalCode: "",
+        city: "",
         country: "France",
-        phone: "06 12 07 72 87",
+        phone: "",
         email: "",
         website: "",
-        siret: "48503962200025",
+        siret: "",
         vatMention: "TVA non applicable, art. 293 B du CGI.",
         themeColor: "#325032"
       },
@@ -5172,7 +5172,7 @@ footer{background:#111}
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `sauvegarde_domaine_sylvaria_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
+    a.download = `sauvegarde_gestyria_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -7135,7 +7135,7 @@ footer{background:#111}
       date: "2026-09-28",
       roomId: "magnolia",
       guestRating: 5,
-      guestComment: "Un s\xE9jour inoubliable au Domaine Sylvaria ! La chambre Magnolia est lumineuse et d\xE9cor\xE9e avec go\xFBt. Petit d\xE9jeuner d'exception avec des produits du verger pr\xE8s de la piscine. Nous reviendrons avec grand plaisir.",
+      guestComment: "Un s\xE9jour inoubliable ! La chambre est lumineuse et d\xE9cor\xE9e avec go\xFBt. Petit d\xE9jeuner d'exception avec des produits locaux. Nous reviendrons avec grand plaisir.",
       hostRating: 5,
       hostComment: "Voyageurs charmants et tr\xE8s respectueux des lieux. Un r\xE9el plaisir de les accueillir au domaine.",
       createdAt: "2026-09-28T10:00:00Z"
@@ -7296,7 +7296,7 @@ footer{background:#111}
       unifiedReviews: unifiedReviews2
     };
   }
-  function exportReservationsToCSV(reservations, title = "reservations_domaine_sylvaria") {
+  function exportReservationsToCSV(reservations, title = "reservations") {
     const headers = [
       "ID",
       "Chambre",
@@ -7370,7 +7370,7 @@ footer{background:#111}
     link.click();
     document.body.removeChild(link);
   }
-  function exportSynthesisToCSV(reservations, title = "tableau_synthese_domaine_sylvaria") {
+  function exportSynthesisToCSV(reservations, title = "tableau_synthese") {
     const headers = [
       "Date de d\xE9but de r\xE9servation",
       "Nombre de nuits",
@@ -7941,7 +7941,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "217";
+  var APP_VERSION = "218";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -19795,7 +19795,7 @@ function purgeRequestPolice_(ss, todayIso) {
     ];
     XLSX.utils.book_append_sheet(wb, wsMeals, "Carte_Plats_Repas");
     const guideRows = [
-      ["DOMAINE SYLVARIA - CLASSEUR EXCEL DE R\xC9F\xC9RENCE POUR GOOGLE SHEETS"],
+      ["GESTYRIA - CLASSEUR EXCEL DE R\xC9F\xC9RENCE POUR GOOGLE SHEETS"],
       [""],
       ["COMMENT UTILISER CE FICHIER COMME BASE DE DONN\xC9ES GOOGLE SHEETS :"],
       ["1.", "D\xE9posez ce fichier .xlsx dans votre Google Drive."],
@@ -19804,7 +19804,7 @@ function purgeRequestPolice_(ss, todayIso) {
       ["4.", `Supprimez tout le contenu et collez le script Web App fourni dans l'application (bouton "Copier le script").`],
       ["5.", 'Cliquez sur D\xE9ployer > Nouveau d\xE9ploiement > S\xE9lectionner type "Application Web".'],
       ["6.", 'Ex\xE9cuter en tant que : "Moi" et Acc\xE8s : "Tout le monde" (Anyone).'],
-      ["7.", "Copiez l'URL de l'application Web fournie par Google et collez-la dans Domaine Sylvaria."],
+      ["7.", "Copiez l'URL de l'application Web fournie par Google et collez-la dans Gestyria."],
       [""],
       ["FONCTIONNEMENT DES ONGLETS :"],
       ["\u2022 R\xE9servations :", "Stocke l'ensemble des s\xE9jours avec toutes les colonnes reconnues sans erreur."],
@@ -19817,7 +19817,7 @@ function purgeRequestPolice_(ss, todayIso) {
     const wsGuide = XLSX.utils.aoa_to_sheet(guideRows);
     wsGuide["!cols"] = [{ wch: 28 }, { wch: 75 }];
     XLSX.utils.book_append_sheet(wb, wsGuide, "Guide_Google_Sheets");
-    const fileName = `Domaine_Sylvaria_Classeur_Reference_${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}.xlsx`;
+    const fileName = `Gestyria_Classeur_Reference_${(/* @__PURE__ */ new Date()).toISOString().split("T")[0]}.xlsx`;
     XLSX.writeFile(wb, fileName);
   }
 
@@ -19859,6 +19859,9 @@ function purgeRequestPolice_(ss, todayIso) {
     showUploadTrigger = true
   }) => {
     const [customLogoUrl, setCustomLogoUrl] = (0, import_react16.useState)(null);
+    const estName = useSettings().establishment.name || "";
+    const showBlason = isFirstEstablishment() && /sylvaria/i.test(estName);
+    const label2 = estName.trim() || "Mon \xE9tablissement";
     const [showOptions, setShowOptions] = (0, import_react16.useState)(false);
     const fileInputRef = (0, import_react16.useRef)(null);
     (0, import_react16.useEffect)(() => {
@@ -19916,7 +19919,7 @@ function purgeRequestPolice_(ss, todayIso) {
           accept: "image/*",
           onChange: handleFileChange,
           className: "hidden",
-          "aria-label": "Charger le logo officiel du Domaine Sylvaria"
+          "aria-label": `Charger le logo de ${label2}`
         }
       ),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
@@ -19924,17 +19927,17 @@ function purgeRequestPolice_(ss, todayIso) {
         {
           onClick: () => showUploadTrigger && setShowOptions(!showOptions),
           className: `${sizeClasses} aspect-square shrink-0 relative flex items-center justify-center select-none transition-transform duration-200 ${showUploadTrigger ? "cursor-pointer hover:opacity-90 active:scale-95" : ""}`,
-          title: showUploadTrigger ? "Logo officiel Domaine Sylvaria (cliquez pour personnaliser ou r\xE9initialiser)" : "Domaine Sylvaria",
+          title: showUploadTrigger ? `Logo de ${label2} (cliquez pour le personnaliser ou le r\xE9initialiser)` : label2,
           children: customLogoUrl ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
             "img",
             {
               src: customLogoUrl,
-              alt: "Logo officiel du Domaine Sylvaria",
+              alt: `Logo de ${label2}`,
               className: "w-full h-full object-contain",
               onError: () => setCustomLogoUrl(null)
             }
-          ) : !isFirstEstablishment() ? (
-            // Établissement ajouté : pas le blason du Domaine, un repère neutre en attendant son logo (clic > importer)
+          ) : !showBlason ? (
+            // Pas le blason du Domaine : un repère neutre en attendant son logo (clic > importer)
             /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "w-full h-full rounded-xl flex items-center justify-center bg-sy-e9efea text-sy-325032", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Building2, { className: "w-3/5 h-3/5" }) })
           ) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("svg", { viewBox: "0 0 400 400", xmlns: "http://www.w3.org/2000/svg", className: "w-full h-full aspect-square object-contain block", children: [
             /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("defs", { children: [
@@ -19983,7 +19986,7 @@ function purgeRequestPolice_(ss, todayIso) {
           /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "flex items-center justify-between pb-2 mb-2 border-b border-neutral-100", children: [
             /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "font-semibold text-neutral-800 flex items-center gap-1.5", children: [
               /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Image2, { className: "w-3.5 h-3.5 text-sy-325032" }),
-              "Logo du Domaine"
+              "Logo de l'\xE9tablissement"
             ] }),
             customLogoUrl && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
               "button",
@@ -19991,7 +19994,7 @@ function purgeRequestPolice_(ss, todayIso) {
                 type: "button",
                 onClick: handleReset,
                 className: "text-[11px] text-neutral-500 hover:text-rose-600 flex items-center gap-1 cursor-pointer transition-colors",
-                title: "Revenir au blason vectoriel officiel",
+                title: "Retirer mon logo",
                 children: [
                   /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(RotateCcw, { className: "w-3 h-3" }),
                   "R\xE9initialiser"
@@ -19999,7 +20002,7 @@ function purgeRequestPolice_(ss, todayIso) {
               }
             )
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "text-[11px] text-neutral-500 mb-2.5 leading-relaxed", children: customLogoUrl ? "Vous utilisez actuellement une image personnalis\xE9e pour le Domaine Sylvaria." : "Logo officiel du Domaine Sylvaria. Vous pouvez aussi importer votre propre fichier image (PNG, JPG, SVG)." }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("p", { className: "text-[11px] text-neutral-500 mb-2.5 leading-relaxed", children: customLogoUrl ? "Vous utilisez actuellement votre propre logo." : "Aucun logo pour le moment. Importez votre fichier image (PNG, JPG ou SVG) : il appara\xEEtra dans l'en-t\xEAte et sur les factures." }),
           /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
             "button",
             {
@@ -20011,7 +20014,7 @@ function purgeRequestPolice_(ss, todayIso) {
               className: "w-full flex items-center justify-center gap-2 py-2 px-3 bg-sy-325032 hover:bg-sy-253d25 text-white font-medium rounded-lg shadow-xs transition-colors cursor-pointer",
               children: [
                 /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Upload, { className: "w-3.5 h-3.5" }),
-                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { children: customLogoUrl ? "Changer le logo..." : "Importer le logo du domaine..." })
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { children: customLogoUrl ? "Changer le logo..." : "Importer mon logo..." })
               ]
             }
           )
@@ -24506,7 +24509,7 @@ Cette action est d\xE9finitive. Pensez \xE0 une sauvegarde de cet \xE9tablisseme
         /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(CalendarSync, { className: "w-4 h-4 text-sy-325032" }),
         "Calendriers iCal"
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(InfoNote, { children: "Collez le lien d'export iCal de chaque plateforme (Airbnb : Calendrier > Disponibilit\xE9 > Exporter ; Booking : Tarifs et disponibilit\xE9s > Synchroniser les calendriers). Ces liens sont envoy\xE9s au Google Sheet avec le bouton \xAB Enregistrer \xBB, puis lus par l'import automatique (toutes les heures). Ils donnent acc\xE8s \xE0 vos calendriers : ne les communiquez pas. Un lien laiss\xE9 vide pour Figuier ou Magnolia garde celui enregistr\xE9 dans le script Google." }),
+      /* @__PURE__ */ (0, import_jsx_runtime18.jsx)(InfoNote, { children: "Collez le lien d'export iCal de chaque plateforme (Airbnb : Calendrier > Disponibilit\xE9 > Exporter ; Booking : Tarifs et disponibilit\xE9s > Synchroniser les calendriers). Ces liens sont envoy\xE9s au Google Sheet avec le bouton \xAB Enregistrer \xBB, puis lus par l'import automatique (toutes les heures). Ils donnent acc\xE8s \xE0 vos calendriers : ne les communiquez pas. Un lien laiss\xE9 vide pour un h\xE9bergement garde celui enregistr\xE9 dans le script Google." }),
       /* @__PURE__ */ (0, import_jsx_runtime18.jsx)("div", { className: "space-y-3", children: settings.accommodations.map((acc) => {
         const feeds = draft.feeds[acc.id] || [];
         return /* @__PURE__ */ (0, import_jsx_runtime18.jsxs)("div", { className: `p-3 rounded-xl border border-neutral-200 ${acc.active ? "bg-white" : "bg-neutral-50 opacity-70"}`, children: [
@@ -25791,7 +25794,7 @@ Cette op\xE9ration est d\xE9finitive.`
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("p", { className: "text-[10px] text-neutral-400 mt-1", children: "Messages du livret, livre d'or et commandes de repas. Demande le connecteur V22." })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("p", { className: "text-[10px] text-neutral-400 mt-3", children: "Les copies de sauvegarde contiennent aussi ces donn\xE9es : ne gardez pas de vieux fichiers \xAB sauvegarde-sylvaria-\u2026 \xBB et supprimez-les une fois le contr\xF4le fait." })
+        /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("p", { className: "text-[10px] text-neutral-400 mt-3", children: "Les copies de sauvegarde contiennent aussi ces donn\xE9es : ne gardez pas de vieux fichiers \xAB sauvegarde-gestyria-\u2026 \xBB et supprimez-les une fois le contr\xF4le fait." })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { className: card, children: [
         /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("h4", { className: h, children: "3. Demande d'une personne (acc\xE8s, effacement)" }),
@@ -34504,7 +34507,7 @@ ${m.message}
       draft && /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "bg-white border border-sy-cad7cd rounded-2xl p-4 space-y-3 shadow-xs", children: [
         /* @__PURE__ */ (0, import_jsx_runtime49.jsx)("h3", { className: "font-serif font-bold text-base text-neutral-900", children: isNew ? "Nouveau bien \xE0 amortir" : "Modifier le bien" }),
         /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(Field, { label: "Nom du bien", children: /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(TextInput, { value: draft.label, onChange: (label2) => set({ label: label2 }), placeholder: "Ex. Matelas Figuier, pompe de piscine\u2026" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(Field, { label: "Nom du bien", children: /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(TextInput, { value: draft.label, onChange: (label2) => set({ label: label2 }), placeholder: "Ex. Matelas chambre 1, pompe de piscine\u2026" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(Field, { label: "Cat\xE9gorie", children: /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(
             Select,
             {
@@ -40691,7 +40694,7 @@ Cliquer pour modifier le tarif` : void 0,
       });
     }, [allReservations, selectedYear]);
     const handleExportAnnualCSV = () => {
-      exportReservationsToCSV(allReservations, `bilan_annuel_domaine_sylvaria_${selectedYear}`);
+      exportReservationsToCSV(allReservations, `bilan_annuel_${selectedYear}`);
     };
     const renderLegendItemsForMonth = (m, mode) => {
       if (!m) return null;
@@ -43421,7 +43424,7 @@ Cliquer pour modifier le tarif` : void 0,
     const globalMarginPercent = totals.revenues > 0 ? Math.round(totals.globalMargin / totals.revenues * 100) : 0;
     const directMarginPercent = totals.revenues > 0 ? Math.round(totals.directMargin / totals.revenues * 100) : 0;
     const handleExportCSV = () => {
-      exportSynthesisToCSV(filteredReservations, `tableau_synthese_domaine_sylvaria_${filterYear === "all" ? "toutes_annees" : filterYear}`);
+      exportSynthesisToCSV(filteredReservations, `tableau_synthese_${filterYear === "all" ? "toutes_annees" : filterYear}`);
     };
     const handlePrint = () => {
       window.print();
@@ -46579,7 +46582,7 @@ Cliquer pour modifier le tarif` : void 0,
       /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "grid sm:grid-cols-2 gap-3", children: [
         /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Field, { label: "Nom de l'\xE9quipement", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(TextInput, { value: e.name, onChange: (v) => set({ name: v }), placeholder: "Chaudi\xE8re, lave-linge\u2026" }) }),
         /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Field, { label: "Cat\xE9gorie", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Select, { value: e.category, onChange: (v) => set({ category: v }), options: [{ value: "", label: "\u2014 Choisir \u2014" }, ...categories.map((c) => ({ value: c, label: c }))] }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Field, { label: "Emplacement", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(TextInput, { value: e.location, onChange: (v) => set({ location: v }), placeholder: "Cuisine, chambre Figuier\u2026" }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Field, { label: "Emplacement", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(TextInput, { value: e.location, onChange: (v) => set({ location: v }), placeholder: "Cuisine, chambre 1\u2026" }) }),
         /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Field, { label: "Rubrique du registre de s\xE9curit\xE9", hint: "Pour faire figurer cet \xE9quipement dans le registre de s\xE9curit\xE9 imprim\xE9.", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Select, { value: e.family || "", onChange: (v) => set({ family: v }), options: [{ value: "", label: "Automatique (d'apr\xE8s la cat\xE9gorie)" }, ...readRegister(est).families.map((f) => ({ value: f.id, label: f.name }))] }) }),
         /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Field, { label: "Statut", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Select, { value: e.status, onChange: (v) => set({ status: v }), options: Object.keys(EQUIP_STATUS_LABEL).map((s) => ({ value: s, label: EQUIP_STATUS_LABEL[s] })) }) }),
         /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Field, { label: "Marque", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(TextInput, { value: e.brand, onChange: (v) => set({ brand: v }) }) }),
@@ -56725,7 +56728,7 @@ Sitemap: ${base}sitemap.xml
         if (bundle.pages.length === 0) throw new Error("Aucune page active : rien \xE0 g\xE9n\xE9rer.");
         const bytes = makeZip(bundle.files);
         const stamp = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-        download4(bytes, `site-web-${(site.domain || "sylvaria").replace(/[^a-z0-9.-]/g, "")}-${stamp}.zip`, "application/zip");
+        download4(bytes, `site-web-${(site.domain || "mon-site").replace(/[^a-z0-9.-]/g, "")}-${stamp}.zip`, "application/zip");
         onGenerated((/* @__PURE__ */ new Date()).toISOString());
         onToast(`Site g\xE9n\xE9r\xE9 : ${bundle.pages.length} page${bundle.pages.length > 1 ? "s" : ""}, ${bundle.files.length} fichiers.`);
         setWarnings(bundle.warnings);
@@ -56780,7 +56783,7 @@ Sitemap: ${base}sitemap.xml
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("label", { className: "block text-[11px] font-semibold text-neutral-700", children: [
             "Compte GitHub (vide : celui du jeton)",
-            /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("input", { value: pubCfg.owner, onChange: (e) => updateCfg({ ...pubCfg, owner: e.target.value }), className: "mt-1 w-full text-xs border border-neutral-200 rounded-lg p-2 bg-white", placeholder: "domainesylvaria" })
+            /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("input", { value: pubCfg.owner, onChange: (e) => updateCfg({ ...pubCfg, owner: e.target.value }), className: "mt-1 w-full text-xs border border-neutral-200 rounded-lg p-2 bg-white", placeholder: "moncompte" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("label", { className: "block text-[11px] font-semibold text-neutral-700 sm:col-span-2", children: [
             "Jeton GitHub (gard\xE9 dans cet appareil seulement, jamais synchronis\xE9 ni sauvegard\xE9)",
@@ -57030,8 +57033,8 @@ Sitemap: ${base}sitemap.xml
         /* @__PURE__ */ (0, import_jsx_runtime125.jsx)(InfoNote, { children: "Le style est appliqu\xE9 \xE0 toutes les pages ; v\xE9rifiez le r\xE9sultat dans \xAB Aper\xE7u et g\xE9n\xE9ration \xBB. Il peut \xEAtre chang\xE9 \xE0 tout moment, vos textes et photos ne bougent pas." })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime125.jsxs)(Card3, { title: "Nom de domaine", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime125.jsx)(Field, { label: "Nom de domaine du site", hint: "Exemple : www.domainesylvaria.fr. Vide : vous n'en avez pas encore, l'aper\xE7u fonctionne quand m\xEAme.", children: /* @__PURE__ */ (0, import_jsx_runtime125.jsx)(TextInput, { value: site.domain, onChange: (v) => set({ domain: v }), placeholder: "www.mon-domaine.fr" }) }),
-        !domainOk && /* @__PURE__ */ (0, import_jsx_runtime125.jsx)("p", { className: "text-xs text-red-700", children: "Ce n'est pas un nom de domaine valide (exemple : www.mon-domaine.fr)." }),
+        /* @__PURE__ */ (0, import_jsx_runtime125.jsx)(Field, { label: "Nom de domaine du site", hint: "Exemple : www.mondomaine.fr. Vide : vous n'en avez pas encore, l'aper\xE7u fonctionne quand m\xEAme.", children: /* @__PURE__ */ (0, import_jsx_runtime125.jsx)(TextInput, { value: site.domain, onChange: (v) => set({ domain: v }), placeholder: "www.mondomaine.fr" }) }),
+        !domainOk && /* @__PURE__ */ (0, import_jsx_runtime125.jsx)("p", { className: "text-xs text-red-700", children: "Ce n'est pas un nom de domaine valide (exemple : www.mondomaine.fr)." }),
         est.website.trim() && !site.domain.trim() && /* @__PURE__ */ (0, import_jsx_runtime125.jsxs)("button", { type: "button", className: "text-[11px] font-semibold text-sy-325032 hover:underline cursor-pointer", onClick: () => set({ domain: cleanDomain(est.website) }), children: [
           "Reprendre l'adresse web de l'\xE9tablissement (",
           est.website,
@@ -66145,7 +66148,7 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
     const handleExportCSV = () => {
       exportReservationsToCSV(
         effectiveReservations,
-        isOfficialVersion ? `reservations_domaine_sylvaria_officiel_${selectedYear}` : `reservations_domaine_sylvaria_${selectedYear}`
+        isOfficialVersion ? `reservations_officiel_${selectedYear}` : `reservations_${selectedYear}`
       );
       showToast("Export CSV t\xE9l\xE9charg\xE9.");
     };
