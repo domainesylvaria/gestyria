@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v224</title>
-  <meta name="application-name" content="Gestyria v224" />
+  <title>Gestyria v225</title>
+  <meta name="application-name" content="Gestyria v225" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -7964,7 +7964,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "224";
+  var APP_VERSION = "225";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -14214,7 +14214,7 @@ ${body}
       },
       body: JSON.stringify({
         properties: {
-          title: "Domaine Sylvaria - Gestion des R\xE9servations & Donn\xE9es",
+          title: "Gestyria - Gestion des R\xE9servations & Donn\xE9es",
           locale: "fr_FR",
           timeZone: "Europe/Paris"
         },
@@ -15051,7 +15051,7 @@ ${body}
           r.checkOut || r.checkIn,
           `H\xF4te (sur ${r.guestName})`,
           ROOMS[r.roomId]?.name || r.roomId,
-          "Domaine Sylvaria",
+          getSettings().establishment.name || "\xC9tablissement",
           r.hostRating,
           "Avis attribu\xE9 au voyageur",
           r.hostComment || "Aucun commentaire"
@@ -15302,7 +15302,7 @@ ${body}
   }
   function getAppsScriptCode() {
     return `// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V36)
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - GESTYRIA (V37)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -15310,7 +15310,7 @@ ${body}
 // 3. Cliquez en haut \xE0 droite sur "D\xE9ployer" > "Nouveau d\xE9ploiement"
 // 4. Choisissez le type "Application Web" (roue dent\xE9e)
 // 5. Configurer :
-//    - Description : "Domaine Sylvaria Connecteur"
+//    - Description : "Gestyria Connecteur"
 //    - Ex\xE9cuter en tant que : "Moi" (votre compte Google)
 //    - Qui a acc\xE8s : "Tout le monde" (indispensable pour synchroniser PC & Mobile)
 // 6. Cliquez sur "D\xE9ployer", autorisez l'acc\xE8s et copiez l'URL de l'application Web.
@@ -15372,7 +15372,7 @@ ${body}
 // d\xE9clencheur horaire d\xE9j\xE0 install\xE9 (aucune nouvelle autorisation) ; (2) la lecture de secours des onglets ne prend plus
 // de colonnes \xAB au rang \xBB pour les notes et commentaires (un montant pouvait se retrouver dans la case avis).
 // V17 (Assistant administratif) : fichiers des documents (PDF, Word, Excel, images\u2026) rang\xE9s dans un dossier Google
-// Drive priv\xE9 \xAB Domaine Sylvaria - Documents administratifs \xBB ; rappels d'\xE9ch\xE9ance par e-mail (m\xEAme d\xE9clencheur
+// Drive priv\xE9 \xAB Gestyria - Documents administratifs \xBB ; rappels d'\xE9ch\xE9ance par e-mail (m\xEAme d\xE9clencheur
 // horaire, un e-mail regroup\xE9, jamais deux fois le m\xEAme palier) ; les personnes autoris\xE9es au module voient, avec leur
 // lien d'acc\xE8s, seulement les documents que vous avez marqu\xE9s \xAB partag\xE9s \xBB (ni notes, ni historique).
 // V19 : adresse en ligne de l'application chang\xE9e (compte GitHub domainesylvaria).
@@ -15381,7 +15381,8 @@ ${body}
 // Personnes et acc\xE8s, ou fonction verifierConnecteur ici) qui dit simplement ce qui manque. Aucune nouvelle autorisation.
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
-// V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Domaine Sylvaria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Gestyria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V37 : noms g\xE9n\xE9riques \xAB Gestyria \xBB pour ce que le connecteur cr\xE9e d\xE9sormais (classeur, dossiers Google Drive, nom et identifiant du calendrier iCal d'export) et nom d'\xE9tablissement par d\xE9faut \xAB Mon \xE9tablissement \xBB. Les dossiers Drive d\xE9j\xE0 cr\xE9\xE9s sont retrouv\xE9s par leur identifiant et gardent leur nom. Aucune nouvelle autorisation.
 // V36 : (1) la protection par cl\xE9 est OBLIGATOIRE : sans cl\xE9 enregistr\xE9e, le connecteur ne lit ni n'\xE9crit plus rien (seule la pose de la premi\xE8re cl\xE9 est possible, depuis Param\xE9trage > Personnes et acc\xE8s) et la cl\xE9 ne peut plus \xEAtre retir\xE9e ; (2) l'enregistrement r\xE9pond \xAB conflict \xBB (sans rien \xE9crire) quand un autre appareil a enregistr\xE9 depuis la derni\xE8re lecture, et renvoie la nouvelle \xAB revision \xBB. Aucune nouvelle autorisation.
 // V35 : les nuits o\xF9 l'\xE9tablissement est ferm\xE9 (Param\xE9trage > Ouverture et fermetures) sont ajout\xE9es au calendrier iCal d'export : Airbnb, Booking et les autres plateformes les voient indisponibles. Aucune nouvelle autorisation.
 // V34 : modification et suppression d'une commande de repas par l'administratrice (actions "mealOrderAdmin" avec orderId, et "mealOrderDelete"). Aucune nouvelle autorisation.
@@ -15427,7 +15428,7 @@ function getTargetSpreadsheet() {
   }
 
   if (!ss) {
-    ss = SpreadsheetApp.create("Domaine Sylvaria - Gestion & R\xE9servations");
+    ss = SpreadsheetApp.create("Gestyria - Gestion & R\xE9servations");
     try {
       PropertiesService.getScriptProperties().setProperty("BOUND_SPREADSHEET_ID", ss.getId());
     } catch(err3) {}
@@ -16100,10 +16101,10 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 36;
+var CONNECTOR_VERSION = 37;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
-var PHOTO_FOLDER_NAME = "Domaine Sylvaria - Photos m\xE9nage";
+var PHOTO_FOLDER_NAME = "Gestyria - Photos m\xE9nage";
 var REMINDER_SENT_PROP = "RAPPELS_MENAGE_ENVOYES";
 var PHOTO_MAX_BYTES = 8 * 1024 * 1024;
 
@@ -16974,7 +16975,7 @@ function sendHousekeepingReminders_(test) {
   var stored = (stores.housekeepingTasks && isObject_(stores.housekeepingTasks.value)) ? stores.housekeepingTasks.value : {};
   var tasks = reminderTasks_(agenda, stored);
   var tomorrow = isoShift_(today, 1);
-  var estName = (settings.establishment && settings.establishment.name) || "Domaine Sylvaria";
+  var estName = (settings.establishment && settings.establishment.name) || "Mon \xE9tablissement";
   var adminEmail = adminRecipient_(reminders.adminEmail, settings);
   var recipients = [];
 
@@ -17327,7 +17328,7 @@ function receiveBookMessage_(data) {
 
   if (ctx.pub.notify !== false) {
     try {
-      var estName = textOf_(ctx.settings.establishment && ctx.settings.establishment.name) || "Domaine Sylvaria";
+      var estName = textOf_(ctx.settings.establishment && ctx.settings.establishment.name) || "Mon \xE9tablissement";
       var to = adminRecipient_(cleanText_(ctx.pub.notifyEmail, 200), ctx.settings);
       var lines = [
         name ? "<b>De :</b> " + esc_(name) : "",
@@ -17552,7 +17553,7 @@ function setOrderCells_(sheet, row, status, reservationText, d) {
 function notifyOrders_(ctx, subject, heading, lines) {
   if (ctx.pub.notify === false) return;
   try {
-    var estName = textOf_(ctx.settings.establishment && ctx.settings.establishment.name) || "Domaine Sylvaria";
+    var estName = textOf_(ctx.settings.establishment && ctx.settings.establishment.name) || "Mon \xE9tablissement";
     // Personnes autoris\xE9es au module Repas (adresse valide) : elles re\xE7oivent la commande ; l'administratrice (adresse de
     // l'\xE9tablissement) est en copie. Sans personne autoris\xE9e, la commande va \xE0 l'administratrice.
     var admin = adminRecipient_(cleanText_(ctx.pub.notifyEmail, 200), ctx.settings);
@@ -17837,7 +17838,7 @@ function sendStayLink_(data) {
   if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(to)) return { status: "error", message: "Adresse e-mail du voyageur absente ou invalide." };
   var link = cleanText_(data.link, 1500);
   if (!/^https:\\/\\/[^\\s"<>]+$/.test(link)) return { status: "error", message: "Lien invalide." };
-  var estName = cleanText_(data.establishment, 80) || "Domaine Sylvaria";
+  var estName = cleanText_(data.establishment, 80) || "Mon \xE9tablissement";
   var name = cleanText_(data.name, 80);
   var period = cleanText_(data.period, 120);
   var meals = data.kind !== "book";
@@ -17989,7 +17990,7 @@ function sendReviewRequests_(dry) {
     if (list.length === 0) return { status: "success", sent: 0 };
 
     var est = settings.establishment || {};
-    var estName = textOf_(est.name) || "Domaine Sylvaria";
+    var estName = textOf_(est.name) || "Mon \xE9tablissement";
     var reviewUrl = textOf_(rq.reviewUrl).trim();
     var replyTo = establishmentEmail_(settings);
     var nowIso = now.toISOString();
@@ -18034,7 +18035,7 @@ function sendReviewRequests_(dry) {
 // =========================================================================
 
 var DOC_FOLDER_PROP = "DOSSIER_DOCUMENTS_ADMIN";
-var DOC_FOLDER_NAME = "Domaine Sylvaria - Documents administratifs";
+var DOC_FOLDER_NAME = "Gestyria - Documents administratifs";
 var DOC_MAX_BYTES = 10 * 1024 * 1024;
 var DOC_MIME_ = {
   pdf: "application/pdf", doc: "application/msword", docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -18060,7 +18061,7 @@ function docFolder_() {
 
 // V23 : dossier priv\xE9 de la phototh\xE8que du site web
 var SITE_FOLDER_PROP = "DOSSIER_PHOTOTHEQUE_SITE";
-var SITE_FOLDER_NAME = "Domaine Sylvaria - Phototh\xE8que du site";
+var SITE_FOLDER_NAME = "Gestyria - Phototh\xE8que du site";
 function siteFolder_() {
   var props = PropertiesService.getScriptProperties();
   var id = props.getProperty(SITE_FOLDER_PROP);
@@ -18256,7 +18257,7 @@ function sendDocReminders_(test) {
     if (items.length === 0) return { status: "success", sent: 0 };
     items.sort(function(a, b) { return a.days - b.days; });
 
-    var estName = textOf_(settings.establishment && settings.establishment.name) || "Domaine Sylvaria";
+    var estName = textOf_(settings.establishment && settings.establishment.name) || "Mon \xE9tablissement";
     var adminList = [];
     textOf_(rem.emails).split(/[,;\\s]+/).forEach(function(m) { if (validEmail_(m) && adminList.indexOf(m) < 0) adminList.push(m); });
     var adminTo = test ? adminRecipient_("", settings) : (adminList.length > 0 ? adminList.join(",") : adminRecipient_("", settings));
@@ -18477,7 +18478,7 @@ function sendSiteReminders_(test) {
     var total = siteDigestCount_(all);
     if (total === 0) return { status: "success", sent: 0 };
 
-    var estName = textOf_(settings.establishment && settings.establishment.name) || "Domaine Sylvaria";
+    var estName = textOf_(settings.establishment && settings.establishment.name) || "Mon \xE9tablissement";
     var adminList = [];
     textOf_(rem.emails).split(/[,;\\s]+/).forEach(function(m) { if (validEmail_(m) && adminList.indexOf(m) < 0) adminList.push(m); });
     var adminTo = test ? adminRecipient_("", settings) : (adminList.length > 0 ? adminList.join(",") : adminRecipient_("", settings));
@@ -18643,8 +18644,8 @@ function closedRanges_(opening, fromIso, days) {
 // Texte du calendrier (fonction pure : r\xE9servations, h\xE9bergement, plateforme destinataire, date du jour AAAA-MM-JJ)
 function buildIcal_(list, room, forPlatform, todayIso, stamp, opening) {
   var lines = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Domaine Sylvaria//Export iCal//FR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-    "X-WR-CALNAME:Domaine Sylvaria " + room
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Gestyria//Export iCal//FR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    "X-WR-CALNAME:Gestyria " + room
   ];
   var d = new Date(todayIso + "T12:00:00Z");
   d.setUTCDate(d.getUTCDate() - 7);
@@ -18799,7 +18800,7 @@ function stayConflicts_(store, requests, roomId, arrival, departure) {
 function guestMail_(settings, to, subject, intro, lines) {
   if (!validEmail_(to)) return;
   try {
-    var estName = textOf_(settings.establishment && settings.establishment.name) || "Domaine Sylvaria";
+    var estName = textOf_(settings.establishment && settings.establishment.name) || "Mon \xE9tablissement";
     var mail = {
       to: String(to).trim(),
       subject: estName + " : " + subject,
@@ -18902,7 +18903,7 @@ function receiveSiteRequest_(data) {
   var sheet = requestSheet_(ctx.ss);
   sheet.getRange(sheet.getLastRow() + 1, 1, 1, row.length).setNumberFormat("@").setValues([row]);
 
-  var estName = textOf_(settings.establishment && settings.establishment.name) || "Domaine Sylvaria";
+  var estName = textOf_(settings.establishment && settings.establishment.name) || "Mon \xE9tablissement";
   if (ctx.pub.notify !== false) {
     try {
       var lines = requestRecapHtml_(d).concat([
@@ -19018,7 +19019,7 @@ function establishmentSignatureHtml_(settings) {
   if (validEmail_(est.email)) lines.push("E-mail : <a href=\\"mailto:" + esc_(String(est.email).trim()) + "\\" style=\\"color:#325032\\">" + esc_(String(est.email).trim()) + "</a>");
   if (siteUrl && /^https?:\\/\\/[^\\s"<>]+$/.test(siteUrl)) lines.push("Site web : <a href=\\"" + esc_(siteUrl) + "\\" style=\\"color:#325032\\">" + esc_(site.replace(/^https?:\\/\\//i, "").replace(/\\/$/, "")) + "</a>");
   return "<table role=\\"presentation\\" style=\\"margin-top:22px;border-top:2px solid #325032;padding-top:12px;width:100%\\"><tr><td style=\\"font-size:13px;color:#404040;line-height:1.6\\">" +
-    "<b style=\\"font-family:Georgia,serif;font-size:15px;color:#325032\\">" + esc_(textOf_(est.name) || "Domaine Sylvaria") + "</b>" +
+    "<b style=\\"font-family:Georgia,serif;font-size:15px;color:#325032\\">" + esc_(textOf_(est.name) || "Mon \xE9tablissement") + "</b>" +
     (textOf_(est.subtitle) ? "<br><i>" + esc_(est.subtitle) + "</i>" : "") +
     (lines.length ? "<br>" + lines.join("<br>") : "") + "</td></tr></table>";
 }
@@ -19107,7 +19108,7 @@ function essaiCgv() {
 function sendRequestMail_(ss, store, settings, d, kind, note) {
   if (!validEmail_(d.contact)) return;
   try {
-    var estName = textOf_(settings.establishment && settings.establishment.name) || "Domaine Sylvaria";
+    var estName = textOf_(settings.establishment && settings.establishment.name) || "Mon \xE9tablissement";
     var today = parisNow_().date;
     var greeting = "<p style=\\"margin:0 0 12px\\">Bonjour " + esc_(textOf_(d.name)) + ",</p>";
     var body = "";
@@ -19231,7 +19232,7 @@ function sendDepositReminders_(test) {
     });
     if (late.length > 0) {
       try {
-        var estName = textOf_(settings.establishment && settings.establishment.name) || "Domaine Sylvaria";
+        var estName = textOf_(settings.establishment && settings.establishment.name) || "Mon \xE9tablissement";
         MailApp.sendEmail({
           to: adminRecipient_("", settings),
           subject: "Acompte non re\xE7u : " + late.length + " r\xE9servation" + (late.length > 1 ? "s" : "") + " du site",
@@ -35077,7 +35078,7 @@ ${m.message}
           ] })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(InfoNote, { children: "Les photos sont rang\xE9es dans votre dossier Google Drive priv\xE9 \xAB Domaine Sylvaria - Photos m\xE9nage \xBB (connecteur Google requis). Les d\xE9penses sont synchronis\xE9es avec le Google Sheet comme le reste des donn\xE9es." })
+      /* @__PURE__ */ (0, import_jsx_runtime51.jsx)(InfoNote, { children: "Les photos sont rang\xE9es dans votre dossier Google Drive priv\xE9 \xAB Gestyria - Photos m\xE9nage \xBB (connecteur Google requis). Les d\xE9penses sont synchronis\xE9es avec le Google Sheet comme le reste des donn\xE9es." })
     ] });
   };
 
@@ -55633,7 +55634,7 @@ body { font-family: ${fontName(doc.font, doc.font)}; font-size: ${doc.size}pt; }
     return /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "space-y-4", "data-site-library": true, children: [
       /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)(InfoNote, { children: [
         "Les photos du site sont rang\xE9es dans le dossier Google Drive priv\xE9 ",
-        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("strong", { children: "\xAB Domaine Sylvaria - Phototh\xE8que du site \xBB" }),
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("strong", { children: "\xAB Gestyria - Phototh\xE8que du site \xBB" }),
         " (cr\xE9\xE9 automatiquement). Elles sont r\xE9duites avant l'envoi (environ 1800 pixels, 250 Ko) pour que le site reste rapide. L'application ne garde que leur fiche : texte alternatif (lu par les lecteurs d'\xE9cran et Google) et mots-cl\xE9s pour les retrouver. Les photos d\xE9j\xE0 ajout\xE9es au livret d'accueil restent utilisables sur le site (bouton \xAB Photos du livret \xBB au moment de choisir)."
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "flex flex-wrap items-center gap-2", children: [
