@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v216</title>
-  <meta name="application-name" content="Gestyria v216" />
+  <title>Gestyria v217</title>
+  <meta name="application-name" content="Gestyria v217" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -7941,7 +7941,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "216";
+  var APP_VERSION = "217";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -56621,6 +56621,9 @@ Sitemap: ${base}sitemap.xml
     const [pubProgress, setPubProgress] = (0, import_react125.useState)("");
     const [pubError, setPubError] = (0, import_react125.useState)("");
     const [pubResult, setPubResult] = (0, import_react125.useState)(null);
+    const domRoot = (cleanDomain(site.domain) || "monsite.fr").replace(/^www\./, "");
+    const domWww = `www.${domRoot}`;
+    const ghOwner = (pubCfg.owner || "votre-compte").trim().toLowerCase();
     const urls = (0, import_react125.useRef)([]);
     const siteRef = (0, import_react125.useRef)(site);
     siteRef.current = site;
@@ -56802,7 +56805,7 @@ Sitemap: ${base}sitemap.xml
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("li", { children: "Cliquez sur \xAB Publier le site \xBB. Le d\xE9p\xF4t est cr\xE9\xE9 tout seul et le site appara\xEEt \xE0 l'adresse indiqu\xE9e, 1 \xE0 2 minutes plus tard." })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("p", { className: "mt-2", children: "Votre propre nom de domaine : saisissez-le dans R\xE9glages, publiez, puis chez votre registrar faites pointer le domaine vers GitHub Pages (GitHub indique les valeurs DNS dans Settings > Pages du d\xE9p\xF4t)." })
+          /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("p", { className: "mt-2", children: "Votre propre nom de domaine : suivez le guide \xAB Brancher votre nom de domaine \xBB plus bas." })
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("button", { type: "button", onClick: publishNow, disabled: publishing || !pubToken.trim(), className: "flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-sy-325032 hover:bg-sy-253d25 rounded-xl cursor-pointer disabled:opacity-50", "data-site-publish-btn": true, children: [
           publishing ? /* @__PURE__ */ (0, import_jsx_runtime124.jsx)(LoaderCircle, { className: "w-4 h-4 animate-spin" }) : /* @__PURE__ */ (0, import_jsx_runtime124.jsx)(Rocket, { className: "w-4 h-4" }),
@@ -56831,12 +56834,92 @@ Sitemap: ${base}sitemap.xml
             "D\xE9p\xF4t : ",
             /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("a", { href: pubResult.repoUrl, target: "_blank", rel: "noreferrer", className: "underline", children: pubResult.repoUrl })
           ] })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("details", { className: "text-xs text-neutral-600 border-t border-sy-325032/20 pt-3", open: !!site.domain.trim(), "data-site-domain-guide": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("summary", { className: "cursor-pointer font-semibold text-neutral-800", children: [
+            "Brancher votre nom de domaine (ex. ",
+            domWww,
+            ") : 3 \xE9tapes"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("div", { className: "mt-2 space-y-3", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("p", { className: "font-semibold text-neutral-800", children: "1. Chez votre registrar (IONOS, OVH, Gandi\u2026) : la zone DNS" }),
+              /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("p", { children: "Ouvrez la gestion du domaine, rubrique \xAB DNS \xBB (ou \xAB Zone DNS \xBB). Supprimez d'abord les enregistrements A, AAAA ou CNAME cr\xE9\xE9s par d\xE9faut pour \xAB @ \xBB et \xAB www \xBB, puis ajoutez ces cinq lignes (ce sont les adresses officielles de GitHub Pages) :" }),
+              /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("div", { className: "mt-2 overflow-x-auto", children: /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("table", { className: "w-full text-left border border-neutral-200 rounded-lg bg-white", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("tr", { className: "bg-neutral-100 text-neutral-700", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("th", { className: "px-2 py-1.5", children: "Type" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("th", { className: "px-2 py-1.5", children: "Nom d'h\xF4te" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("th", { className: "px-2 py-1.5", children: "Valeur" })
+                ] }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("tbody", { className: "font-mono text-neutral-900", children: [
+                  ["185.199.108.153", "185.199.109.153", "185.199.110.153", "185.199.111.153"].map((ip) => /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("tr", { className: "border-t border-neutral-200", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("td", { className: "px-2 py-1.5", children: "A" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("td", { className: "px-2 py-1.5", children: "@" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("td", { className: "px-2 py-1.5", children: ip })
+                  ] }, ip)),
+                  /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("tr", { className: "border-t border-neutral-200", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("td", { className: "px-2 py-1.5", children: "CNAME" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("td", { className: "px-2 py-1.5", children: "www" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("td", { className: "px-2 py-1.5", children: [
+                      ghOwner,
+                      ".github.io"
+                    ] })
+                  ] })
+                ] })
+              ] }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("p", { className: "mt-1", children: [
+                "\xAB @ \xBB d\xE9signe le domaine lui-m\xEAme (",
+                domRoot,
+                "). Si le registrar demande un \xAB TTL \xBB, laissez la valeur propos\xE9e."
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("p", { className: "font-semibold text-neutral-800", children: "2. Dans Gestyria" }),
+              /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("ol", { className: "list-decimal pl-5 space-y-1", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("li", { children: [
+                  "Site web > R\xE9glages > \xAB Nom de domaine \xBB : saisissez ",
+                  /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("strong", { children: domWww }),
+                  " (avec \xAB www \xBB), puis enregistrez."
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("li", { children: "Cliquez sur \xAB Publier le site \xBB ci-dessus : le fichier CNAME est envoy\xE9 avec le site, et c'est lui qui relie le domaine \xE0 GitHub." })
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("p", { className: "font-semibold text-neutral-800", children: "3. Sur GitHub : le cadenas (HTTPS)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("ol", { className: "list-decimal pl-5 space-y-1", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("li", { children: [
+                  "Ouvrez le d\xE9p\xF4t du site > Settings > Pages. Le champ \xAB Custom domain \xBB doit afficher ",
+                  domWww,
+                  " (rechargez la page si besoin ; sinon saisissez-le avec \xAB www \xBB et enregistrez)."
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("li", { children: [
+                  "Attendez que GitHub cr\xE9e le certificat (de quelques minutes \xE0 1 heure), puis cochez ",
+                  /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("strong", { children: "Enforce HTTPS" }),
+                  ". Tant que la case est gris\xE9e, c'est normal."
+                ] })
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)(InfoNote, { children: [
+              "R\xE9sultat : ",
+              domWww,
+              " affiche le site, et ",
+              domRoot,
+              " (sans \xAB www \xBB) redirige automatiquement vers lui. La propagation des DNS peut prendre de quelques minutes \xE0 24 h. Pour v\xE9rifier : ouvrez https://",
+              domWww,
+              " dans un navigateur."
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("p", { children: [
+              "Les adresses du site dans vos e-mails, signatures et fiches (Airbnb, Booking, Google) sont \xE0 mettre \xE0 jour avec https://",
+              domWww,
+              "."
+            ] })
+          ] })
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("div", { className: "p-4 rounded-2xl border border-neutral-200 space-y-3", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("h4", { className: "font-serif font-bold text-sm text-neutral-900", children: "G\xE9n\xE9rer le site (fichier .zip)" }),
+        /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("h4", { className: "font-serif font-bold text-sm text-neutral-900", children: "Autre solution : g\xE9n\xE9rer le site (fichier .zip)" }),
         /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("p", { className: "text-xs text-neutral-600", children: [
-          "Cr\xE9e un dossier compress\xE9 (.zip) avec toutes les pages, le style, les photos, le plan du site et un fichier LISEZMOI. ",
+          "Utile pour un autre h\xE9bergeur que GitHub (OVH, o2switch, IONOS h\xE9bergement\u2026) ou pour garder une copie. Cr\xE9e un dossier compress\xE9 (.zip) avec toutes les pages, le style, les photos, le plan du site et un fichier LISEZMOI. ",
           site.domain ? `Adresse pr\xE9vue : ${siteUrl(site)}` : "Sans nom de domaine, le site reste utilisable : indiquez-le plus tard dans R\xE9glages, puis g\xE9n\xE9rez de nouveau."
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("button", { type: "button", onClick: exportZip, disabled: exporting, className: "flex items-center gap-1.5 px-4 py-2.5 text-xs font-bold text-white bg-sy-325032 hover:bg-sy-253d25 rounded-xl cursor-pointer disabled:opacity-50", "data-site-export": true, children: [
@@ -56847,8 +56930,8 @@ Sitemap: ${base}sitemap.xml
           "Derni\xE8re g\xE9n\xE9ration : ",
           new Date(site.lastGeneratedAt).toLocaleString("fr-FR")
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("details", { className: "text-xs text-neutral-600", open: true, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("summary", { className: "cursor-pointer font-semibold text-neutral-800", children: "Mettre le site en ligne, pas \xE0 pas" }),
+        /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("details", { className: "text-xs text-neutral-600", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("summary", { className: "cursor-pointer font-semibold text-neutral-800", children: "Mettre le fichier .zip en ligne, pas \xE0 pas" }),
           /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("div", { className: "mt-2 space-y-3", children: [
             /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("p", { className: "font-semibold text-neutral-800", children: "1. Pr\xE9parer le fichier" }),
@@ -56881,7 +56964,7 @@ Sitemap: ${base}sitemap.xml
               /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("ol", { className: "list-decimal pl-5 space-y-1", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("li", { children: "Achetez le nom chez un registrar (OVH, Gandi, IONOS\u2026) si ce n'est pas d\xE9j\xE0 fait." }),
                 /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("li", { children: "Dans l'application, ouvrez R\xE9glages, saisissez le nom de domaine (ex. www.mondomaine.fr), enregistrez, puis g\xE9n\xE9rez de nouveau le site : le fichier CNAME et le plan du site sont ajout\xE9s." }),
-                /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("li", { children: "Chez Netlify (ou votre h\xE9bergeur), ajoutez ce domaine dans \xAB Domain management \xBB et notez les valeurs DNS demand\xE9es ; chez le registrar, saisissez ces valeurs dans la zone DNS. La propagation prend de quelques minutes \xE0 24 h." })
+                /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("li", { children: "Chez Netlify (ou votre h\xE9bergeur), ajoutez ce domaine dans \xAB Domain management \xBB et notez les valeurs DNS demand\xE9es ; chez le registrar, saisissez ces valeurs dans la zone DNS. La propagation prend de quelques minutes \xE0 24 h. Pour GitHub Pages, le tableau DNS est dans le guide \xAB Brancher votre nom de domaine \xBB ci-dessus." })
               ] })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("div", { children: [
@@ -56954,7 +57037,7 @@ Sitemap: ${base}sitemap.xml
           est.website,
           ")"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime125.jsx)(InfoNote, { children: "Le nom de domaine s'ach\xE8te chez un registrar (OVH, Gandi, IONOS\u2026) ; vous le faites ensuite pointer vers l'h\xE9bergement du site. Il sert ici aux adresses canoniques, au plan du site (sitemap.xml) et au fichier CNAME. Sans nom de domaine, vous pouvez pr\xE9visualiser le site et t\xE9l\xE9charger les fichiers." })
+        /* @__PURE__ */ (0, import_jsx_runtime125.jsx)(InfoNote, { children: "Le nom de domaine s'ach\xE8te chez un registrar (OVH, Gandi, IONOS\u2026) ; vous le faites ensuite pointer vers l'h\xE9bergement du site. Il sert ici aux adresses canoniques, au plan du site (sitemap.xml) et au fichier CNAME. Sans nom de domaine, vous pouvez pr\xE9visualiser le site et t\xE9l\xE9charger les fichiers. Saisissez-le avec \xAB www \xBB : le domaine sans \xAB www \xBB redirige tout seul vers lui. Le tableau DNS \xE0 recopier chez votre registrar est dans Aper\xE7u et g\xE9n\xE9ration, guide \xAB Brancher votre nom de domaine \xBB." })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime125.jsxs)(Card3, { title: "Titre, logo et r\xE9f\xE9rencement", children: [
         /* @__PURE__ */ (0, import_jsx_runtime125.jsxs)("div", { className: "grid sm:grid-cols-2 gap-3", children: [
