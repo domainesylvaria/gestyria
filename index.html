@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v205</title>
-  <meta name="application-name" content="Gestyria v205" />
+  <title>Gestyria v206</title>
+  <meta name="application-name" content="Gestyria v206" />
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -6312,93 +6312,16 @@ footer{background:#111}
   };
 
   // src/services/googleAuth.ts
-  var import_app = __require("firebase/app");
-  var import_auth = __require("firebase/auth");
-
-  // firebase-applet-config.json
-  var firebase_applet_config_default = {
-    projectId: "gen-lang-client-0867756286",
-    appId: "1:584686350302:web:e871cafbc41dfa7dbeb74f",
-    apiKey: "AIzaSyBn_-06wnlS6NqAn0KGOoX-nH09FNfwnDo",
-    authDomain: "gen-lang-client-0867756286.firebaseapp.com",
-    storageBucket: "gen-lang-client-0867756286.firebasestorage.app",
-    messagingSenderId: "584686350302",
-    measurementId: "",
-    oAuthClientId: "584686350302-t8vdmuq445bpsu3fh1jnno2ils281a0v.apps.googleusercontent.com",
-    recaptchaSiteKey: ""
-  };
-
-  // src/services/googleAuth.ts
-  var app = null;
-  var auth = null;
-  try {
-    if (typeof import_app.getApps === "function") {
-      app = (0, import_app.getApps)().length > 0 ? (0, import_app.getApp)() : (0, import_app.initializeApp)(firebase_applet_config_default);
-      auth = (0, import_auth.getAuth)(app);
-    }
-  } catch (e) {
-    console.warn("Firebase non disponible dans cet environnement :", e);
-  }
-  var provider = null;
-  try {
-    if (typeof import_auth.GoogleAuthProvider === "function") {
-      provider = new import_auth.GoogleAuthProvider();
-      provider.addScope("https://www.googleapis.com/auth/spreadsheets");
-      provider.addScope("https://www.googleapis.com/auth/drive.file");
-      provider.setCustomParameters({ prompt: "select_account" });
-    }
-  } catch (e) {
-  }
-  var cachedAccessToken = null;
-  var isSigningIn = false;
-  var initAuth = (onAuthSuccess, onAuthFailure) => {
-    if (!auth) {
-      if (onAuthFailure) onAuthFailure();
-      return () => {
-      };
-    }
-    return (0, import_auth.onAuthStateChanged)(auth, async (user) => {
-      if (user) {
-        if (cachedAccessToken) {
-          if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-        } else if (!isSigningIn) {
-          cachedAccessToken = null;
-          if (onAuthFailure) onAuthFailure();
-        }
-      } else {
-        cachedAccessToken = null;
-        if (onAuthFailure) onAuthFailure();
-      }
-    });
+  var initAuth = (_onAuthSuccess, onAuthFailure) => {
+    if (onAuthFailure) onAuthFailure();
+    return () => {
+    };
   };
   var signInWithGoogle = async () => {
-    if (!auth || !provider) {
-      throw new Error("Google Auth indisponible dans cet environnement.");
-    }
-    try {
-      isSigningIn = true;
-      const result = await (0, import_auth.signInWithPopup)(auth, provider);
-      const credential = import_auth.GoogleAuthProvider.credentialFromResult(result);
-      if (!credential?.accessToken) {
-        throw new Error("Jeton d'acc\xE8s non re\xE7u de Google Auth.");
-      }
-      cachedAccessToken = credential.accessToken;
-      return { user: result.user, accessToken: cachedAccessToken };
-    } catch (error) {
-      console.error("Erreur lors de la connexion Google :", error);
-      throw error;
-    } finally {
-      isSigningIn = false;
-    }
+    throw new Error("Connexion Google par fen\xEAtre indisponible : utilisez le connecteur Google Sheets.");
   };
-  var getAccessToken = async () => {
-    return cachedAccessToken;
-  };
+  var getAccessToken = async () => null;
   var signOutFromGoogle = async () => {
-    if (auth) {
-      await (0, import_auth.signOut)(auth);
-    }
-    cachedAccessToken = null;
   };
 
   // src/modules/menage/store.ts
@@ -6686,7 +6609,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "205";
+  var APP_VERSION = "206";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -8662,7 +8585,7 @@ footer{background:#111}
     ["path", { d: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2", key: "975kel" }],
     ["circle", { cx: "12", cy: "7", r: "4", key: "17ys0d" }]
   ];
-  var User2 = createLucideIcon("user", __iconNode165);
+  var User = createLucideIcon("user", __iconNode165);
 
   // node_modules/lucide-react/dist/esm/icons/users.js
   var __iconNode166 = [
@@ -12769,7 +12692,7 @@ ${body}
             !compact && (who || openIssues > 0 || action) && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-center justify-between gap-2 mt-2", children: [
               /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "flex items-center gap-2 min-w-0 text-[11px] text-neutral-500", children: [
                 who && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "flex items-center gap-0.5 truncate", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(User2, { className: "w-3 h-3 shrink-0" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(User, { className: "w-3 h-3 shrink-0" }),
                   who
                 ] }),
                 openIssues > 0 && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { className: "flex items-center gap-0.5 text-orange-700 font-semibold", children: [
@@ -13306,10 +13229,23 @@ ${body}
   }
   var SHEET_PULLED_KEY = "domaine_sylvaria_sheet_pulled_url_v1";
   var SHEET_PENDING_KEY = "domaine_sylvaria_sheet_pending_v1";
-  function markSheetPulled(webhookUrl) {
+  var SHEET_REVISION_KEY = "domaine_sylvaria_sheet_revision_v1";
+  function markSheetPulled(webhookUrl, revision) {
     const sanitized = sanitizeAppsScriptUrl(webhookUrl);
-    if (!sanitized.error && sanitized.url) localStorage.setItem(SHEET_PULLED_KEY, sanitized.url);
+    if (sanitized.error || !sanitized.url) return;
+    localStorage.setItem(SHEET_PULLED_KEY, sanitized.url);
+    if (typeof revision === "string") localStorage.setItem(SHEET_REVISION_KEY, JSON.stringify({ url: sanitized.url, revision }));
+    else localStorage.removeItem(SHEET_REVISION_KEY);
   }
+  function storedSheetRevision(url) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SHEET_REVISION_KEY) || "null");
+      return saved && saved.url === url && typeof saved.revision === "string" ? saved.revision : void 0;
+    } catch {
+      return void 0;
+    }
+  }
+  var SHEET_CONFLICT_MESSAGE = "Enregistrement refus\xE9 : un autre appareil a enregistr\xE9 des donn\xE9es depuis votre derni\xE8re lecture. Rien n'a \xE9t\xE9 \xE9crit. Cliquez sur \xAB T\xE9l\xE9charger \xBB pour relire le Google Sheet (une copie de vos r\xE9servations de cet appareil est gard\xE9e), puis refaites votre modification.";
   function hasPulledFromSheet(webhookUrl) {
     const sanitized = sanitizeAppsScriptUrl(webhookUrl || getStoredAppsScriptUrl() || "");
     return !sanitized.error && !!sanitized.url && localStorage.getItem(SHEET_PULLED_KEY) === sanitized.url;
@@ -13350,10 +13286,10 @@ ${body}
       } catch {
         return null;
       }
-      if (data && data.status === "error" && data.code === "cle_requise") {
+      if (data && data.status === "error" && (data.code === "cle_requise" || data.code === "protection_requise")) {
         localStorage.removeItem(SHEET_PULLED_KEY);
         try {
-          window.dispatchEvent(new CustomEvent("domaine_sylvaria_connector_locked"));
+          window.dispatchEvent(new CustomEvent("domaine_sylvaria_connector_locked", { detail: { code: data.code } }));
         } catch {
         }
         return null;
@@ -13367,7 +13303,9 @@ ${body}
           reservations: Array.isArray(data.reservations) ? data.reservations : void 0,
           externalReviews: Array.isArray(data.externalReviews) ? data.externalReviews : void 0,
           visitReasons: Array.isArray(data.visitReasons) ? data.visitReasons : void 0,
-          appStores: data.appStores && typeof data.appStores === "object" ? data.appStores : void 0
+          appStores: data.appStores && typeof data.appStores === "object" ? data.appStores : void 0,
+          // Connecteur V36 : version des données lues (vide si le classeur n'a jamais été enregistré par l'application)
+          revision: data.source === "storage" && typeof data.lastUpdated === "string" ? data.lastUpdated : data.source === "sheet" ? "" : void 0
         };
       }
     } catch (err) {
@@ -13906,16 +13844,41 @@ ${body}
       setPendingSheetChanges(true);
       throw new Error(SHEET_NOT_PULLED_MESSAGE);
     }
-    const payload = prepareSheetsPayload(reservations, externalReviews, visitReasons);
+    const payload = { ...prepareSheetsPayload(reservations, externalReviews, visitReasons) };
+    const baseRevision = storedSheetRevision(url);
+    if (baseRevision !== void 0) payload.baseRevision = baseRevision;
     try {
-      await fetch(url, {
+      const res2 = await fetch(url, {
         method: "POST",
-        mode: "no-cors",
         headers: {
           "Content-Type": "text/plain;charset=utf-8"
         },
         body: JSON.stringify(payload)
       });
+      if (!res2.ok) throw new Error(`Le connecteur Google a r\xE9pondu par une erreur (${res2.status}) : rien n'est confirm\xE9.`);
+      let answer = null;
+      try {
+        answer = JSON.parse(await res2.text());
+      } catch {
+        throw new Error("R\xE9ponse illisible du connecteur Google : l'enregistrement n'est pas confirm\xE9 (d\xE9ploiement \xAB Tout le monde \xBB ? connecteur \xE0 jour ?).");
+      }
+      if (answer?.status === "conflict") {
+        throw new Error(SHEET_CONFLICT_MESSAGE);
+      }
+      if (answer?.status === "error" && (answer.code === "cle_requise" || answer.code === "protection_requise")) {
+        localStorage.removeItem(SHEET_PULLED_KEY);
+        try {
+          window.dispatchEvent(new CustomEvent("domaine_sylvaria_connector_locked", { detail: { code: answer.code } }));
+        } catch {
+        }
+        throw new Error(answer.message || "Le connecteur Google refuse cet appareil (cl\xE9 manquante ou protection \xE0 activer).");
+      }
+      if (answer?.status === "error") throw new Error(answer.message || "Le connecteur Google a refus\xE9 l'enregistrement.");
+      if (answer?.status === "partial") {
+        throw new Error(`Enregistrement partiel dans Google Sheets : ${Array.isArray(answer.errors) ? answer.errors.join(" / ") : "voir le connecteur"}.`);
+      }
+      if (answer?.status !== "success") throw new Error("Le connecteur Google n'a pas confirm\xE9 l'enregistrement.");
+      if (typeof answer.revision === "string") localStorage.setItem(SHEET_REVISION_KEY, JSON.stringify({ url, revision: answer.revision }));
       setStoredAppsScriptUrl(url);
       setPendingSheetChanges(false);
       return {
@@ -13935,7 +13898,7 @@ ${body}
   }
   function getAppsScriptCode() {
     return `// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V35)
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - DOMAINE SYLVARIA (V36)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -14015,6 +13978,7 @@ ${body}
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
 // V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Domaine Sylvaria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V36 : (1) la protection par cl\xE9 est OBLIGATOIRE : sans cl\xE9 enregistr\xE9e, le connecteur ne lit ni n'\xE9crit plus rien (seule la pose de la premi\xE8re cl\xE9 est possible, depuis Param\xE9trage > Personnes et acc\xE8s) et la cl\xE9 ne peut plus \xEAtre retir\xE9e ; (2) l'enregistrement r\xE9pond \xAB conflict \xBB (sans rien \xE9crire) quand un autre appareil a enregistr\xE9 depuis la derni\xE8re lecture, et renvoie la nouvelle \xAB revision \xBB. Aucune nouvelle autorisation.
 // V35 : les nuits o\xF9 l'\xE9tablissement est ferm\xE9 (Param\xE9trage > Ouverture et fermetures) sont ajout\xE9es au calendrier iCal d'export : Airbnb, Booking et les autres plateformes les voient indisponibles. Aucune nouvelle autorisation.
 // V34 : modification et suppression d'une commande de repas par l'administratrice (actions "mealOrderAdmin" avec orderId, et "mealOrderDelete"). Aucune nouvelle autorisation.
 // V33 : une r\xE9servation du site annul\xE9e ou supprim\xE9e dans l'application lib\xE8re ses nuits sur le site (d\xE9cision \xAB released \xBB, sans e-mail au client). Aucune nouvelle autorisation.
@@ -14659,6 +14623,17 @@ function doPost(e) {
     try {
       previous = loadAppData_(ss);
     } catch(errPrev) {}
+    // V36 : l'appareil indique la version des donn\xE9es qu'il a lue (baseRevision) ; si un autre appareil a enregistr\xE9 depuis,
+    // rien n'est \xE9crit (sinon ses r\xE9servations seraient \xE9cras\xE9es) et l'application relit d'abord le classeur.
+    var currentRevision = previous && previous.lastUpdated ? String(previous.lastUpdated) : "";
+    if (typeof data.baseRevision === "string" && currentRevision && data.baseRevision !== currentRevision) {
+      return ContentService.createTextOutput(JSON.stringify({
+        status: "conflict",
+        revision: currentRevision,
+        message: "Un autre appareil a enregistr\xE9 des donn\xE9es depuis votre derni\xE8re lecture : rien n'a \xE9t\xE9 \xE9crit."
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    var newRevision = new Date().toISOString();
     // Un envoi sans liste de r\xE9servations ne vide jamais celles d\xE9j\xE0 enregistr\xE9es
     var reservationsList = Array.isArray(data.reservationsRaw) ? data.reservationsRaw
       : ((previous && previous.reservationsList) || []);
@@ -14671,7 +14646,7 @@ function doPost(e) {
         reviewsList: reviewsList,
         visitReasons: visitReasonsList,
         appStores: mergeAppStores_(previous && previous.appStores, data.appStores),
-        lastUpdated: new Date().toISOString()
+        lastUpdated: newRevision
       });
     } catch(errStore) {
       errors.push("Copie des donn\xE9es : " + errStore);
@@ -14703,6 +14678,7 @@ function doPost(e) {
       spreadsheetId: ss.getId(),
       spreadsheetUrl: ss.getUrl(),
       count: reservationsList.length,
+      revision: newRevision,
       errors: errors
     })).setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
@@ -14720,7 +14696,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 35;
+var CONNECTOR_VERSION = 36;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Domaine Sylvaria - Photos m\xE9nage";
@@ -14859,10 +14835,9 @@ function afficherAdresseAdministratrice() {
   Logger.log("Adresse \xE0 coller dans l'app (Param\xE9trage > Google Sheets) : " + ScriptApp.getService().getUrl() + "?cle=" + key);
 }
 
-// Retire la protection par cl\xE9 (l'adresse sans cl\xE9 fonctionne de nouveau partout)
+// V36 : la protection par cl\xE9 est obligatoire, elle ne se retire plus
 function retirerProtection() {
-  PropertiesService.getScriptProperties().deleteProperty(ADMIN_KEY_PROP);
-  Logger.log("Protection retir\xE9e.");
+  Logger.log("La protection par cl\xE9 est obligatoire depuis la V36 : elle ne peut plus \xEAtre retir\xE9e. Pour changer de cl\xE9, utilisez Param\xE9trage > Personnes et acc\xE8s dans l'application.");
 }
 
 function jsonOutput_(obj, callback) {
@@ -14878,10 +14853,10 @@ function adminKey_() {
   return PropertiesService.getScriptProperties().getProperty(ADMIN_KEY_PROP) || "";
 }
 
-// Sans cl\xE9 enregistr\xE9e, le connecteur fonctionne comme avant la V10 (adresse seule)
+// V36 : la cl\xE9 est obligatoire. Sans cl\xE9 enregistr\xE9e, rien n'est ouvert \xE0 l'administratrice (seule la pose de la premi\xE8re cl\xE9 est possible)
 function isAdminRequest_(e, data) {
   var key = adminKey_();
-  if (!key) return true;
+  if (!key) return false;
   var given = (e && e.parameter && e.parameter.cle) || (data && data.cle) || "";
   return String(given) === key;
 }
@@ -14917,6 +14892,14 @@ function peopleEmails_(settings, moduleId) {
 }
 
 function keyRequiredResponse_() {
+  if (!adminKey_()) {
+    return {
+      status: "error",
+      code: "protection_requise",
+      reservations: [],
+      message: "Connecteur non prot\xE9g\xE9 : dans l'application, ouvrez Param\xE9trage > Personnes et acc\xE8s et cliquez sur \xAB Prot\xE9ger mes donn\xE9es \xBB (une cl\xE9 est obligatoire)."
+    };
+  }
   return {
     status: "error",
     code: "cle_requise",
@@ -15054,13 +15037,11 @@ function routePostV10_(e, data) {
       return deletePhoto_(data.fileId);
     }
     if (action === "setAdminKey") {
-      if (!isAdminRequest_(e, data)) return keyRequiredResponse_();
+      // V36 : sans cl\xE9 enregistr\xE9e, la premi\xE8re cl\xE9 peut \xEAtre pos\xE9e (installation) ; ensuite, seule l'ancienne cl\xE9 permet d'en changer
+      if (adminKey_() && !isAdminRequest_(e, data)) return keyRequiredResponse_();
       var props = PropertiesService.getScriptProperties();
       var next = String(data.newKey || "");
-      if (next === "") {
-        props.deleteProperty(ADMIN_KEY_PROP);
-        return { status: "success", version: CONNECTOR_VERSION, protected: false };
-      }
+      if (next === "") return { status: "error", message: "La protection par cl\xE9 est obligatoire : elle ne peut plus \xEAtre retir\xE9e." };
       if (!/^[A-Za-z0-9]{24,64}$/.test(next)) return { status: "error", message: "Cl\xE9 invalide." };
       props.setProperty(ADMIN_KEY_PROP, next);
       return { status: "success", version: CONNECTOR_VERSION, protected: true };
@@ -17891,7 +17872,7 @@ function purgeRequestPolice_(ss, todayIso) {
   });
   return purged;
 }
-// ===== FIN DU CONNECTEUR (V35) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== FIN DU CONNECTEUR (V36) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
 
@@ -22680,20 +22661,6 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
         setBusy(false);
       }
     };
-    const unprotect = async () => {
-      if (!window.confirm("Retirer la protection ? L'adresse sans cl\xE9 redonnera acc\xE8s \xE0 toutes les donn\xE9es.")) return;
-      setBusy(true);
-      try {
-        await connectorPost({ action: "setAdminKey", newKey: "" }, { url });
-        switchUrl(baseConnectorUrl(url));
-        onToast("Protection retir\xE9e : l'adresse habituelle fonctionne de nouveau sur tous vos appareils.");
-        load(true);
-      } catch (err) {
-        onToast(err?.message || "Op\xE9ration impossible.");
-      } finally {
-        setBusy(false);
-      }
-    };
     const box = "mt-5 p-3.5 rounded-xl border";
     if (state2.kind === "none") return null;
     if (state2.kind === "loading")
@@ -22736,27 +22703,24 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
       ] }) : !info.admin ? /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { className: "text-[11px] text-orange-800 mt-1", children: "Le connecteur est prot\xE9g\xE9, mais l'adresse de cet appareil n'a pas la cl\xE9 : collez l'adresse compl\xE8te (avec \xAB ?cle=\u2026 \xBB) dans Param\xE9trage > Google Sheets." }) : /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(import_jsx_runtime16.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("p", { className: "text-[11px] text-neutral-600 mt-1", children: "Donn\xE9es prot\xE9g\xE9es. Sur vos autres appareils, utilisez cette adresse (Param\xE9trage > Google Sheets). Ne la donnez \xE0 personne." }),
         /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "mt-2 px-2.5 py-2 bg-white border border-neutral-200 rounded-lg text-[11px] font-mono text-neutral-700 break-all select-all", children: url }),
-        /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("div", { className: "flex flex-wrap items-center gap-2 mt-2", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
-            "button",
-            {
-              type: "button",
-              onClick: async () => {
-                if (await copyText(url)) {
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2e3);
-                }
-              },
-              className: `${smallButton} text-sy-325032 bg-white border-sy-cad7cd hover:bg-sy-f4f7f4`,
-              children: [
-                copied ? /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Check, { className: "w-3.5 h-3.5" }) : /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Copy, { className: "w-3.5 h-3.5" }),
-                " ",
-                copied ? "Copi\xE9e" : "Copier l'adresse"
-              ]
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("button", { type: "button", onClick: unprotect, disabled: busy, className: "text-[11px] font-semibold text-neutral-500 hover:text-red-700 hover:underline cursor-pointer", children: "Retirer la protection" })
-        ] })
+        /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "flex flex-wrap items-center gap-2 mt-2", children: /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(
+          "button",
+          {
+            type: "button",
+            onClick: async () => {
+              if (await copyText(url)) {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2e3);
+              }
+            },
+            className: `${smallButton} text-sy-325032 bg-white border-sy-cad7cd hover:bg-sy-f4f7f4`,
+            children: [
+              copied ? /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Check, { className: "w-3.5 h-3.5" }) : /* @__PURE__ */ (0, import_jsx_runtime16.jsx)(Copy, { className: "w-3.5 h-3.5" }),
+              " ",
+              copied ? "Copi\xE9e" : "Copier l'adresse"
+            ]
+          }
+        ) })
       ] })
     ] });
   };
@@ -34041,7 +34005,7 @@ Cordialement`
       /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [
         /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(Field, { label: "Intitul\xE9 *", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(TextInput, { value: doc.title, onChange: (title) => set({ title }), placeholder: "Ex. Assurance multirisque, Contrat chaudi\xE8re" }) }),
         /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(Field, { label: "Cat\xE9gorie", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(Select, { value: doc.categoryId, onChange: (categoryId) => set({ categoryId }), options: categories.map((x) => ({ value: x.id, label: x.name })) }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(Field, { label: "Organisme ou prestataire", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(TextInput, { value: doc.provider, onChange: (provider2) => set({ provider: provider2 }) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(Field, { label: "Organisme ou prestataire", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(TextInput, { value: doc.provider, onChange: (provider) => set({ provider }) }) }),
         /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(Field, { label: "R\xE9f\xE9rence (n\xB0 de contrat, de police\u2026)", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(TextInput, { value: doc.reference, onChange: (reference) => set({ reference }) }) }),
         /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(Field, { label: "Date du document", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(DateInput2, { value: doc.issueDate, onChange: (issueDate) => set({ issueDate }) }) }),
         /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(Field, { label: "Date d'expiration", children: /* @__PURE__ */ (0, import_jsx_runtime54.jsx)(DateInput2, { value: doc.expiryDate, onChange: (expiryDate) => set({ expiryDate }) }) }),
@@ -58076,7 +58040,7 @@ Cette action supprimera la facture du registre et la retirera du Google Sheet.`;
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime133.jsxs)("div", { className: "bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3.5", children: [
           /* @__PURE__ */ (0, import_jsx_runtime133.jsxs)("div", { className: "flex items-center gap-2 text-emerald-900 font-semibold text-sm border-b border-slate-200 pb-2", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime133.jsx)(User2, { className: "w-4 h-4 text-emerald-700" }),
+            /* @__PURE__ */ (0, import_jsx_runtime133.jsx)(User, { className: "w-4 h-4 text-emerald-700" }),
             /* @__PURE__ */ (0, import_jsx_runtime133.jsx)("span", { children: "1. Coordonn\xE9es du contact (mises \xE0 jour sur la facture)" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime133.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [
@@ -60730,7 +60694,7 @@ ${establishment}`;
                   )
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: "relative", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(User2, { className: "w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(User, { className: "w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2" }),
                   /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(
                     "input",
                     {
@@ -63424,7 +63388,7 @@ ${establishment}`;
         }
       } catch (err) {
         console.warn("Synchro Google Sheets en arri\xE8re-plan :", err);
-        if (err?.message === SHEET_NOT_PULLED_MESSAGE) showToast(SHEET_NOT_PULLED_MESSAGE);
+        if (typeof err?.message === "string" && err.message) showToast(err.message);
       } finally {
         setIsSyncing(false);
       }
@@ -63444,9 +63408,15 @@ ${establishment}`;
     }, [reservations, externalReviews, triggerBackgroundSync]);
     (0, import_react141.useEffect)(() => {
       let warned = false;
-      const onLocked = () => {
+      const onLocked = (ev) => {
         if (warned) return;
         warned = true;
+        if (ev.detail?.code === "protection_requise") {
+          window.alert(
+            "Votre connecteur Google n'est pas encore prot\xE9g\xE9 par une cl\xE9, et elle est d\xE9sormais obligatoire.\n\nOuvrez Param\xE9trage > Personnes et acc\xE8s, puis cliquez sur \xAB Prot\xE9ger mes donn\xE9es \xBB. D'ici l\xE0, rien n'est lu ni enregistr\xE9 dans le Google Sheet depuis cet appareil."
+          );
+          return;
+        }
         window.alert(
           "Votre connecteur Google est maintenant prot\xE9g\xE9 par une cl\xE9.\n\nSur cet appareil, collez la nouvelle adresse (celle qui se termine par \xAB ?cle=\u2026 \xBB) dans Param\xE9trage > Google Sheets. Elle est affich\xE9e dans Param\xE9trage > Personnes et acc\xE8s sur l'appareil qui a activ\xE9 la protection.\n\nD'ici l\xE0, rien n'est enregistr\xE9 dans le Google Sheet depuis cet appareil."
         );
@@ -63521,7 +63491,7 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
         }
         applyRemoteSettings(remote.appStores?.settings);
         applyRemoteDeviceStores(remote.appStores);
-        markSheetPulled(webhookUrl);
+        markSheetPulled(webhookUrl, remote.revision);
         const localOnly = sheetIsEmpty && localReservations.length > 0;
         setPendingSheetChanges(localOnly);
         const imports = await fetchIcalImports(webhookUrl);
