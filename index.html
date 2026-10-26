@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v212</title>
-  <meta name="application-name" content="Gestyria v212" />
+  <title>Gestyria v213</title>
+  <meta name="application-name" content="Gestyria v213" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -7853,7 +7853,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "212";
+  var APP_VERSION = "213";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -12032,8 +12032,8 @@ footer{background:#111}
       newParagraph("Les enfants disposent de plusieurs espaces de jeux. Des jeux sont disponibles dans le salon pour les petits-d\xE9jeuners ou \xE0 l\u2019ext\xE9rieur dans coffre banc. Merci de remettre les jouets \xE0 leur place apr\xE8s les avoir utilis\xE9s et \xE0 ne pas sortir dehors les jouets pr\xE9vues pour l\u2019int\xE9rieur et inversement."),
       newHeading("Poubelles"),
       newParagraph("Des poubelles m\xE9nag\xE8res sont mises \xE0 votre disposition dans les chambres et dans l\u2019espace petit-d\xE9jeuner."),
-      newParagraph("Les poubelles pour le verre et le carton/plastique/aluminium sont dans l\u2019espace petit-d\xE9jeuner. Merci d\u2019y jeter uniquement les d\xE9chets provenant de vos consommations au domaine Sylvaria."),
-      newParagraph("Merci de repartir avec les d\xE9chets que vous apportez. Des sacs poubelles sont disponibles dans l\u2019un des tiroirs du buffet. Les conteneurs pour les verres et carton sont situ\xE9e au centre-ville de Lassay-sur-Croisne."),
+      newParagraph(`Les poubelles pour le verre et le carton/plastique/aluminium sont dans l\u2019espace petit-d\xE9jeuner. Merci d\u2019y jeter uniquement les d\xE9chets provenant de vos consommations \xE0 ${getSettings().establishment.name || "l\u2019\xE9tablissement"}.`),
+      newParagraph(`Merci de repartir avec les d\xE9chets que vous apportez. Des sacs poubelles sont disponibles dans l\u2019un des tiroirs du buffet. Les conteneurs pour les verres et carton sont situ\xE9e au centre-ville de ${getSettings().establishment.city || "(\xE0 compl\xE9ter)"}.`),
       newParagraph("Les d\xE9chets sont jeter \xE0 la main c\u2019est pour cela que pour les carton/plastique/aluminium il est indiqu\xE9 sur la poubelle de ne jeter que les gros d\xE9chets. Ne pas y jeter de petits emballages comme des emballages de bonbon.")
     ];
     return d;
@@ -19845,6 +19845,9 @@ function purgeRequestPolice_(ss, todayIso) {
               className: "w-full h-full object-contain",
               onError: () => setCustomLogoUrl(null)
             }
+          ) : !isFirstEstablishment() ? (
+            // Établissement ajouté : pas le blason du Domaine, un repère neutre en attendant son logo (clic > importer)
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "w-full h-full rounded-xl flex items-center justify-center bg-sy-e9efea text-sy-325032", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(Building2, { className: "w-3/5 h-3/5" }) })
           ) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("svg", { viewBox: "0 0 400 400", xmlns: "http://www.w3.org/2000/svg", className: "w-full h-full aspect-square object-contain block", children: [
             /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("defs", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("path", { id: "arcTopOfficial", d: "M 65,125 A 155,155 0 0,1 335,125", fill: "none" }),
@@ -37146,7 +37149,7 @@ ${line("Date d'arriv\xE9e", fr(r.checkIn))}${line("Date de d\xE9part pr\xE9vue",
     return /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "min-h-screen flex items-center justify-center bg-neutral-100 p-4", "data-lock-screen": true, children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("form", { onSubmit: submit, className: "w-full max-w-xs bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 space-y-4 text-center", children: [
       /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Lock, { className: "w-8 h-8 mx-auto text-sy-325032" }),
       /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h1", { className: "font-serif font-bold text-lg text-neutral-900", children: name || "Domaine Sylvaria" }),
+        /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h1", { className: "font-serif font-bold text-lg text-neutral-900", children: name || "Votre \xE9tablissement" }),
         /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { className: "text-xs text-neutral-500", children: "Entrez votre code pour ouvrir l'application." })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
@@ -38509,7 +38512,7 @@ Cliquer pour modifier le tarif` : void 0,
           " ",
           year
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("p", { className: "text-xs text-neutral-500", children: "Vue jour par jour des nuit\xE9es occup\xE9es au Domaine Sylvaria" })
+        /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("p", { className: "text-xs text-neutral-500", children: "Vue jour par jour des nuit\xE9es occup\xE9es dans l'\xE9tablissement" })
       ] }) }),
       /* @__PURE__ */ (0, import_jsx_runtime69.jsx)("div", { className: "grid grid-cols-7 border-b border-neutral-200 bg-neutral-50 text-xs font-semibold text-neutral-600", children: DAYS_SHORT_FR.map((d, index) => /* @__PURE__ */ (0, import_jsx_runtime69.jsx)(
         "div",
@@ -39526,7 +39529,10 @@ Cliquer pour modifier le tarif` : void 0,
           /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { className: "flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-neutral-500", children: [
               /* @__PURE__ */ (0, import_jsx_runtime71.jsx)(Building, { className: "w-3.5 h-3.5 text-sy-325032" }),
-              /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("span", { children: "Domaine Sylvaria \xB7 Analyse financi\xE8re mensuelle" })
+              /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("span", { children: [
+                settings.establishment.name,
+                " \xB7 Analyse financi\xE8re mensuelle"
+              ] })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { className: "flex flex-wrap items-center gap-3 mt-1", children: [
               /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("h2", { className: "text-3xl font-bold font-serif text-neutral-900 tracking-tight", children: [
@@ -39552,7 +39558,7 @@ Cliquer pour modifier le tarif` : void 0,
                 )
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("p", { className: "text-xs text-neutral-500 mt-1", children: "R\xE9capitulatif automatique g\xE9n\xE9r\xE9 pour la Chambre Figuier et la Chambre Magnolia" })
+            /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("p", { className: "text-xs text-neutral-500 mt-1", children: "R\xE9capitulatif automatique g\xE9n\xE9r\xE9 pour vos h\xE9bergements" })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)("div", { className: "flex items-center gap-2 no-print", children: [
             /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)(
@@ -40910,7 +40916,10 @@ Cliquer pour modifier le tarif` : void 0,
           /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("div", { className: "w-full max-w-full min-w-0", children: [
             /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("div", { className: "flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-neutral-500 truncate", children: [
               /* @__PURE__ */ (0, import_jsx_runtime72.jsx)(Building, { className: "w-3.5 h-3.5 text-sy-325032 shrink-0" }),
-              /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("span", { className: "truncate", children: "Domaine Sylvaria \xB7 Analyse financi\xE8re annuelle" })
+              /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("span", { className: "truncate", children: [
+                settings.establishment.name,
+                " \xB7 Analyse financi\xE8re annuelle"
+              ] })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("div", { className: "flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-4 mt-2 w-full max-w-full", children: [
               /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("h2", { className: "text-2xl sm:text-3xl font-bold font-serif text-neutral-900 tracking-tight shrink-0", children: [
@@ -41158,7 +41167,7 @@ Cliquer pour modifier le tarif` : void 0,
               {
                 onClick: () => setChartMode("rooms"),
                 className: `px-3 py-1.5 rounded-lg transition-all cursor-pointer ${chartMode === "rooms" ? "bg-white text-neutral-900 shadow-xs font-semibold" : "text-neutral-600 hover:text-neutral-900"}`,
-                children: "Figuier vs Magnolia"
+                children: "Par h\xE9bergement"
               }
             ),
             extraRows.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)(
@@ -42598,7 +42607,10 @@ Cliquer pour modifier le tarif` : void 0,
           /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("div", { className: "flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-800", children: [
               /* @__PURE__ */ (0, import_jsx_runtime73.jsx)(Building, { className: "w-4 h-4 text-emerald-700" }),
-              /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("span", { children: "Domaine Sylvaria \xB7 Tableau de Bord Ex\xE9cutif" })
+              /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("span", { children: [
+                settings.establishment.name,
+                " \xB7 Tableau de Bord Ex\xE9cutif"
+              ] })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("div", { className: "flex items-center gap-3 mt-2", children: [
               /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)("h2", { className: "text-2xl sm:text-3xl font-bold font-serif text-neutral-900 tracking-tight", children: [
@@ -43340,7 +43352,10 @@ Cliquer pour modifier le tarif` : void 0,
           /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-neutral-500", children: [
               /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(Building, { className: "w-3.5 h-3.5 text-sy-325032" }),
-              /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("span", { children: "Domaine Sylvaria \xB7 Tableau de bord de gestion" })
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("span", { children: [
+                getSettings().establishment.name,
+                " \xB7 Tableau de bord de gestion"
+              ] })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("h2", { className: "text-2xl sm:text-3xl font-bold font-serif text-neutral-900 tracking-tight mt-1", children: "Tableau de synth\xE8se" }),
             /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "text-xs text-neutral-500 mt-0.5", children: "Vue financi\xE8re exhaustive avec calculs automatis\xE9s des revenus, co\xFBts directs, co\xFBts indirects et marges globales" })
@@ -43942,7 +43957,10 @@ Cliquer pour modifier le tarif` : void 0,
         /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("div", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("div", { className: "flex items-center gap-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("span", { className: "p-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200/60", children: /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(Award, { className: "w-5 h-5 text-amber-600" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("h1", { className: "text-xl sm:text-2xl font-bold font-serif text-neutral-900", children: "Avis & \xC9valuations du Domaine Sylvaria" })
+            /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("h1", { className: "text-xl sm:text-2xl font-bold font-serif text-neutral-900", children: [
+              "Avis & \xC9valuations \xB7 ",
+              settings.establishment.name
+            ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("p", { className: "text-xs sm:text-sm text-neutral-600 mt-1 max-w-2xl font-sans", children: "Consolidation et analyse de la r\xE9putation du domaine : notes globales, avis par chambre et statistiques d\xE9taill\xE9es par site de r\xE9servation." })
         ] }),
@@ -44079,7 +44097,8 @@ Cliquer pour modifier le tarif` : void 0,
               /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("div", { className: "flex items-center justify-between", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("span", { className: "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-amber-100 text-amber-900", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime75.jsx)(Globe, { className: "w-3.5 h-3.5 text-amber-700" }),
-                  "Domaine Sylvaria complet"
+                  settings.establishment.name,
+                  " complet"
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("span", { className: "text-xs font-mono font-semibold text-neutral-500", children: [
                   stats.byRoom.all.count,
@@ -44840,7 +44859,7 @@ Cliquer pour modifier le tarif` : void 0,
   }) => {
     const r = c.reservation;
     const [copied, setCopied] = (0, import_react82.useState)(false);
-    const est = settings.establishment.name || "Domaine Sylvaria";
+    const est = settings.establishment.name || "Votre \xE9tablissement";
     const book = readWelcomeBook(settings);
     const bookReady = isModuleEnabled("welcomeBook", settings) && isPublished(book) && (book.publication.survey || book.publication.guestbook);
     const email = (r.guestEmail || "").trim();
@@ -45590,7 +45609,7 @@ Cliquer pour modifier le tarif` : void 0,
     const alerts = alertReviews(unifiedReviews2, metas2, rv);
     const todo = unifiedReviews2.filter((r) => statusOf(metas2, r) === "todo").length;
     const due = rv.requests.enabled ? requestCandidates(reservations, metas2, rv, todayIso()).filter((c) => c.state === "due").length : 0;
-    const establishment = settings.establishment.name || "Domaine Sylvaria";
+    const establishment = settings.establishment.name || "Votre \xE9tablissement";
     const bookEnabled = isModuleEnabled("welcomeBook", settings);
     const tabs = [
       { id: "overview", label: "Vue d'ensemble", icon: LayoutDashboard },
@@ -56176,7 +56195,7 @@ Sitemap: ${base}sitemap.xml
   function readme(site, name) {
     const d = site.domain;
     return [
-      `Site de ${name} \u2014 g\xE9n\xE9r\xE9 par l'application Domaine Sylvaria`,
+      `Site de ${name} \u2014 g\xE9n\xE9r\xE9 par l'application ${APP_NAME}`,
       "",
       "Contenu du dossier : une page HTML par rubrique, style.css, site.js, le dossier assets (photos) et, avec un nom de domaine, sitemap.xml, robots.txt et CNAME.",
       "",
@@ -59483,7 +59502,10 @@ Cette action supprimera la facture du registre et la retirera du Google Sheet.`;
           /* @__PURE__ */ (0, import_jsx_runtime135.jsx)("div", { className: "p-2.5 bg-sy-325032 text-white rounded-xl shadow-xs", children: /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(FileText, { className: "w-5 h-5" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime135.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime135.jsx)("h2", { className: "text-xl sm:text-2xl font-serif font-bold text-neutral-900", children: "Gestion de la Facturation" }),
-            /* @__PURE__ */ (0, import_jsx_runtime135.jsx)("p", { className: "text-xs text-neutral-500 mt-0.5", children: "Registre officiel des factures \xE9dit\xE9es pour le Domaine Sylvaria" })
+            /* @__PURE__ */ (0, import_jsx_runtime135.jsxs)("p", { className: "text-xs text-neutral-500 mt-0.5", children: [
+              "Registre officiel des factures \xE9dit\xE9es pour ",
+              getSettings().establishment.name
+            ] })
           ] })
         ] }) }),
         /* @__PURE__ */ (0, import_jsx_runtime135.jsx)("div", { className: "flex items-center gap-2", children: /* @__PURE__ */ (0, import_jsx_runtime135.jsxs)(
@@ -61583,7 +61605,7 @@ ${establishment}`;
     const book = readWelcomeBook(settings);
     const published = isModuleEnabled("welcomeBook", settings) && isPublished(book);
     const content = readMeals(settings);
-    const est = settings.establishment.name || "Domaine Sylvaria";
+    const est = settings.establishment.name || "Votre \xE9tablissement";
     const link = (mode) => () => {
       const token = stayTokenOf(reservation.id, true);
       return token ? stayLink(token, book.publication.publicId, mode) : null;
@@ -62531,7 +62553,8 @@ ${establishment}`;
           /* @__PURE__ */ (0, import_jsx_runtime142.jsxs)("div", { children: [
             /* @__PURE__ */ (0, import_jsx_runtime142.jsx)("h3", { className: "font-serif font-bold text-neutral-900 text-lg", children: initialData ? "Modifier la r\xE9servation" : "Nouvelle r\xE9servation" }),
             /* @__PURE__ */ (0, import_jsx_runtime142.jsxs)("p", { className: "text-xs text-neutral-500 font-sans", children: [
-              "Domaine Sylvaria \xB7 ",
+              settings.establishment.name,
+              " \xB7 ",
               ROOMS[roomId].name,
               " (",
               ROOMS[roomId].capacity,
@@ -64640,7 +64663,7 @@ ${establishment}`;
         reservation.guestEmail ? `Email : ${reservation.guestEmail}` : "",
         reservation.notes ? `Commentaires / Notes : ${reservation.notes}` : ""
       ].filter(Boolean).join("\n");
-      const location = "Domaine Sylvaria";
+      const location = getSettings().establishment.name || "\xC9tablissement";
       const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${startStr}/${endStr}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}`;
       window.open(url, "_blank", "noopener,noreferrer");
     };
