@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v210</title>
-  <meta name="application-name" content="Gestyria v210" />
+  <title>Gestyria v211</title>
+  <meta name="application-name" content="Gestyria v211" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -7570,7 +7570,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "210";
+  var APP_VERSION = "211";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -20587,9 +20587,6 @@ function purgeRequestPolice_(ss, todayIso) {
     const b = lumOf(textHex);
     return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   }
-  function rgbToHex([r, g, b]) {
-    return `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
-  }
 
   // src/core/theme/themes.ts
   var PALETTES = palettes_default;
@@ -21455,20 +21452,13 @@ function purgeRequestPolice_(ss, todayIso) {
     /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(SecondaryButton, { onClick: onReset, children: "Annuler" }),
     /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(PrimaryButton, { onClick: onSave, disabled: !dirty, children: "Enregistrer" })
   ] });
-  var PREVIEW_SHADES = ["fafbf9", "e9efea", "cad7cd", "em-200", "em-500", "52796f", "325032", "em-800", "253d25", "1e3222"];
   var EstablishmentSection = ({ settings, onToast }) => {
     const [draft, setDraft] = (0, import_react22.useState)(settings.establishment);
     const dirty = JSON.stringify(draft) !== JSON.stringify(settings.establishment);
     const set = (patch) => setDraft({ ...draft, ...patch });
-    const themeColor = normalizeHex(draft.themeColor) || DEFAULT_THEME_COLOR;
-    const palette = buildPalette(themeColor);
-    (0, import_react22.useEffect)(() => {
-      if (getAppearance().theme === "classic") applyAppearance("classic", themeColor);
-    }, [themeColor]);
-    (0, import_react22.useEffect)(() => () => applySavedAppearance(getSettings().establishment.themeColor), []);
     return /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(SectionTitle, { title: "Informations g\xE9n\xE9rales", description: "Identit\xE9 et coordonn\xE9es de l'\xE9tablissement." }),
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(InfoNote, { children: "Le nom et la ligne de pr\xE9sentation s'affichent dans l'en-t\xEAte de l'application. Les coordonn\xE9es, le SIRET, le statut et la mention de TVA sont repris sur les factures." }),
+      /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(InfoNote, { children: "Le nom et la ligne de pr\xE9sentation s'affichent dans l'en-t\xEAte de l'application. Les coordonn\xE9es, le SIRET, le statut et la mention de TVA sont repris sur les factures. La couleur de l'application se r\xE8gle dans Apparence." }),
       /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [
         /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Field, { label: "Nom de l'\xE9tablissement", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(TextInput, { value: draft.name, onChange: (v) => set({ name: v }) }) }),
         /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Field, { label: "Statut juridique", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(TextInput, { value: draft.legalStatus, onChange: (v) => set({ legalStatus: v }) }) }),
@@ -21482,35 +21472,6 @@ function purgeRequestPolice_(ss, todayIso) {
         /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Field, { label: "Site internet", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(TextInput, { value: draft.website, onChange: (v) => set({ website: v }) }) }),
         /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Field, { label: "SIRET", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(TextInput, { value: draft.siret, onChange: (v) => set({ siret: v }) }) }),
         /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(Field, { label: "Mention TVA", children: /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(TextInput, { value: draft.vatMention, onChange: (v) => set({ vatMention: v }) }) })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "mt-5 p-3.5 rounded-xl border border-neutral-200 bg-white", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "font-serif font-bold text-sm text-neutral-900", children: "Couleur principale de l'application" }),
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("p", { className: "text-[11px] text-neutral-500 mt-0.5 mb-2.5", children: "Boutons, onglets, bandeaux et toutes leurs nuances (fonds clairs, survols, bordures) sont recalcul\xE9s \xE0 partir de cette couleur. L'aper\xE7u est imm\xE9diat ; enregistrez pour la garder." }),
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("div", { className: "flex flex-wrap items-center gap-3", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(ColorInput, { value: themeColor, onChange: (v) => set({ themeColor: v }) }),
-          themeColor !== DEFAULT_THEME_COLOR && /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
-            "button",
-            {
-              type: "button",
-              onClick: () => set({ themeColor: DEFAULT_THEME_COLOR }),
-              className: "text-[11px] font-semibold text-sy-325032 hover:underline cursor-pointer",
-              children: "Revenir au vert d'origine"
-            }
-          )
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime10.jsx)("div", { className: "flex flex-wrap gap-1 mt-3", title: "Nuances calcul\xE9es", children: PREVIEW_SHADES.map((name) => /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
-          "span",
-          {
-            className: "w-6 h-6 rounded-md border border-black/10",
-            style: { background: rgbToHex(palette[name]) },
-            title: rgbToHex(palette[name]).toUpperCase()
-          },
-          name
-        )) }),
-        contrastWithWhite(themeColor) < 4.5 && /* @__PURE__ */ (0, import_jsx_runtime10.jsxs)("p", { className: "mt-2 text-[11px] text-amber-700 font-semibold flex items-center gap-1", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(TriangleAlert, { className: "w-3.5 h-3.5 shrink-0" }),
-          "Couleur claire : les textes blancs sur les boutons risquent d'\xEAtre peu lisibles."
-        ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime10.jsx)(
         SaveBar,
