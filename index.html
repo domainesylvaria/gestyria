@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v221</title>
-  <meta name="application-name" content="Gestyria v221" />
+  <title>Gestyria v222</title>
+  <meta name="application-name" content="Gestyria v222" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -7940,7 +7940,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "221";
+  var APP_VERSION = "222";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -37030,6 +37030,9 @@ Cordialement`
     const [a, setA] = (0, import_react69.useState)(() => answersFromSettings(getSettings()));
     const [theme, setTheme] = (0, import_react69.useState)(() => getAppearance().theme);
     const [error, setError] = (0, import_react69.useState)("");
+    const fileRef = (0, import_react69.useRef)(null);
+    const [restore, setRestore] = (0, import_react69.useState)(null);
+    const [restoreMsg, setRestoreMsg] = (0, import_react69.useState)("");
     const locked = reservationsCount > 0;
     const set = (patch) => setA((prev) => ({ ...prev, ...patch }));
     (0, import_react69.useEffect)(() => {
@@ -37053,6 +37056,29 @@ Cordialement`
       setAppearance({ theme, colors: getAppearance().colors }, getSettings().establishment.themeColor);
       markSetupDone();
       onClose(true);
+    };
+    const onBackupFile = async (files) => {
+      const f = files && files[0];
+      if (fileRef.current) fileRef.current.value = "";
+      if (!f) return;
+      const parsed = parseBackup(await f.text());
+      if (!parsed.ok) {
+        setRestore(null);
+        setRestoreMsg(parsed.error);
+        return;
+      }
+      setRestoreMsg("");
+      setRestore({ name: f.name, keys: parsed.keys, file: parsed.file });
+    };
+    const doRestore = () => {
+      if (!restore) return;
+      try {
+        applyBackup(restore.file);
+        setRestoreMsg("Sauvegarde restaur\xE9e. Rechargement\u2026");
+        window.setTimeout(() => window.location.reload(), 800);
+      } catch {
+        setRestoreMsg("Restauration impossible (m\xE9moire de l'appareil pleine ?).");
+      }
     };
     const skip = () => {
       markSetupDone();
@@ -37099,6 +37125,31 @@ Cordialement`
               /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(Check, { className: "w-4 h-4 text-sy-325032 shrink-0 mt-0.5" }),
               " Vous pouvez passer une question et y revenir plus tard."
             ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "p-4 rounded-2xl border border-neutral-200 bg-neutral-50 space-y-2", "data-setup-restore": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("p", { className: "text-sm font-semibold text-neutral-900", children: "Vous utilisiez d\xE9j\xE0 Gestyria ?" }),
+            /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("p", { className: "text-xs text-neutral-600", children: "Reprenez vos r\xE9servations et vos r\xE9glages \xE0 partir d'un fichier de sauvegarde (nom du type \xAB sauvegarde-gestyria-\u2026.json \xBB, souvent dans le dossier T\xE9l\xE9chargements)." }),
+            /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("button", { type: "button", onClick: () => fileRef.current?.click(), className: "flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-sy-325032 bg-white border border-sy-325032/40 hover:bg-sy-e9efea rounded-xl cursor-pointer", "data-setup-restore-btn": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime62.jsx)(RotateCcw, { className: "w-3.5 h-3.5" }),
+              " Restaurer une sauvegarde"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("input", { ref: fileRef, type: "file", accept: "application/json,.json,.txt,text/plain", className: "hidden", onChange: (e) => onBackupFile(e.target.files), "data-setup-restore-file": true }),
+            restore && /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "p-3 rounded-xl bg-amber-50 border border-amber-200 space-y-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("p", { className: "text-xs text-amber-900", children: [
+                "Remplacer les donn\xE9es de cet appareil par celles de \xAB ",
+                restore.name,
+                " \xBB (",
+                restore.keys,
+                " jeux de donn\xE9es, faite le ",
+                new Date(restore.file.createdAt).toLocaleDateString("fr-FR"),
+                ") ?"
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "flex gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("button", { type: "button", onClick: doRestore, className: "px-3 py-2 text-xs font-bold text-white bg-sy-325032 rounded-xl cursor-pointer", "data-setup-restore-go": true, children: "Oui, restaurer" }),
+                /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("button", { type: "button", onClick: () => setRestore(null), className: "px-3 py-2 text-xs font-semibold text-neutral-700 bg-white border border-neutral-200 rounded-xl cursor-pointer", children: "Annuler" })
+              ] })
+            ] }),
+            restoreMsg && /* @__PURE__ */ (0, import_jsx_runtime62.jsx)("p", { className: "text-xs text-red-700", role: "alert", children: restoreMsg })
           ] })
         ] }),
         step === 1 && /* @__PURE__ */ (0, import_jsx_runtime62.jsxs)("div", { className: "space-y-4", children: [
@@ -58565,6 +58616,7 @@ Sitemap: ${base}sitemap.xml
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime131.jsx)("input", { ref: fileRef, type: "file", accept: "application/json,.json,.txt,text/plain", className: "hidden", "data-backup-file": true, onChange: (e) => onFile(e.target.files) })
           ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime131.jsx)("p", { className: "text-[10px] text-neutral-500", children: "Vos donn\xE9es sont enregistr\xE9es dans le navigateur de cet appareil : un nettoyeur (CCleaner\u2026) ou \xAB effacer les donn\xE9es de navigation \xBB les supprime. Excluez ce site du nettoyage et gardez une sauvegarde ailleurs." }),
           /* @__PURE__ */ (0, import_jsx_runtime131.jsx)("p", { className: "text-[10px] text-neutral-500", children: "Le fichier contient toutes les donn\xE9es (r\xE9servations, clients, personnel, registres\u2026) et l'adresse du connecteur : \xE0 garder confidentiel." }),
           /* @__PURE__ */ (0, import_jsx_runtime131.jsx)(CloudBackupPanel, { onToast, onRestore: (name, parsed) => setRestore({ name, keys: parsed.keys, file: parsed }) }),
           restore && /* @__PURE__ */ (0, import_jsx_runtime131.jsxs)("div", { className: "p-3 rounded-xl bg-red-50 border border-red-200 space-y-2", "data-restore-confirm": true, children: [
@@ -65873,6 +65925,12 @@ ${establishment}`;
   }
   function MainApp() {
     const [reservations, setReservations] = (0, import_react144.useState)(() => loadReservations());
+    (0, import_react144.useEffect)(() => {
+      try {
+        void navigator.storage?.persist?.();
+      } catch {
+      }
+    }, []);
     const [setupOpen, setSetupOpen] = (0, import_react144.useState)(
       () => isFreshInstall({ hasSavedSettings: hasSavedSettings(), reservationsCount: reservations.length, hasConnector: !!getStoredAppsScriptUrl() })
     );
