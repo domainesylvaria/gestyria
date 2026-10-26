@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v229</title>
-  <meta name="application-name" content="Gestyria v229" />
+  <title>Gestyria v230</title>
+  <meta name="application-name" content="Gestyria v230" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -7977,7 +7977,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "229";
+  var APP_VERSION = "230";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -7986,15 +7986,15 @@ footer{background:#111}
   var LAST_BACKUP_KEY = "domaine_sylvaria_last_backup_v1";
   var isAppKey = (k) => (k.startsWith("domaine_sylvaria") || k.startsWith("sylvaria_")) && k !== LAST_BACKUP_KEY && !/sheet_pulled|sheet_pending|cloud_backup/.test(k);
   var backupExtras = {};
-  function registerBackupExtra(key, read4) {
-    backupExtras[key] = read4;
+  function registerBackupExtra(key, read5) {
+    backupExtras[key] = read5;
   }
   function collectEntries(storage = localStorage) {
     const out = {};
     if (storage === localStorage) {
-      Object.entries(backupExtras).forEach(([k, read4]) => {
+      Object.entries(backupExtras).forEach(([k, read5]) => {
         try {
-          const v = read4();
+          const v = read5();
           if (v !== void 0) out[k] = v;
         } catch {
         }
@@ -23563,6 +23563,7 @@ Cette action est d\xE9finitive. Pensez \xE0 une sauvegarde de cet \xE9tablisseme
   var import_react27 = __require("react");
 
   // src/modules/importplateformes/parse.ts
+  var XLSX2 = __toESM(__require("xlsx"), 1);
   function decodeText(bytes) {
     let text;
     try {
@@ -23610,10 +23611,9 @@ Cette action est d\xE9finitive. Pensez \xE0 une sauvegarde de cet \xE9tablisseme
   async function readTable(file) {
     const bytes = new Uint8Array(await file.arrayBuffer());
     if (/\.(xlsx|xlsm|xls|ods)$/i.test(file.name)) {
-      const XLSX6 = await import("xlsx");
-      const book = XLSX6.read(bytes, { type: "array", cellDates: true });
+      const book = XLSX2.read(bytes, { type: "array", cellDates: true });
       for (const name of book.SheetNames) {
-        const grid = XLSX6.utils.sheet_to_json(book.Sheets[name], { header: 1, raw: false, dateNF: "yyyy-mm-dd", defval: "" });
+        const grid = XLSX2.utils.sheet_to_json(book.Sheets[name], { header: 1, raw: false, dateNF: "yyyy-mm-dd", defval: "" });
         const rows = grid.map((r) => r.map((c) => String(c ?? "")));
         if (rows.some((r) => r.some((c) => c.trim() !== ""))) return rows.filter((r) => r.some((c) => c.trim() !== ""));
       }
@@ -23647,29 +23647,29 @@ Cette action est d\xE9finitive. Pensez \xE0 une sauvegarde de cet \xE9tablisseme
   };
   var REQUIRED_FIELDS = ["checkIn", "checkOut", "listing"];
   function norm(value) {
-    return String(value ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/#/g, " nb ").replace(/%/g, " pct ").replace(/[^a-z0-9]+/g, " ").trim();
+    return String(value ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/&nbsp;/g, " ").replace(/#/g, " nb ").replace(/%/g, " pct ").replace(/[^a-z0-9]+/g, " ").trim();
   }
   var PATTERNS = [
     ["ref", /^(code de confirmation|confirmation code|numero de reservation|numero de confirmation|book number|booking number|reservation number|reservation id|n de reservation)/],
-    ["booker", /^(reserve par|booked by)/],
-    ["bookedOn", /^(reserve le|reserve|booked on|booked|date de reservation|date de creation|booking date)$/],
+    ["booker", /^(reserve par|reservee par|booked by)/],
+    ["bookedOn", /^(reserve le|reservee le|reserve|reservee|booked on|booked|date de reservation|date de creation|booking date)$/],
     ["status", /^(statut|status|etat)( de la reservation)?$/],
-    ["guests", /^(personnes|persons|nombre de personnes|nb (de )?personnes|nb of guests|guests|voyageurs)$/],
+    ["guests", /^(personnes|persons|nombre de personnes|nb( d| de| des)? personnes|nb of guests|guests|voyageurs)$/],
     ["guest", /^(nom du voyageur|nom des voyageurs|nom du client|nom des clients|nom du ou des clients|nom de l invite|guest names?$|guest$|voyageur$|client$|invite$)/],
     ["email", /(e mail|email|courriel)/],
     ["phone", /^(contacter|contact|telephone|phone|tel|numero de telephone|portable)/],
     ["checkIn", /^(date de debut|start date|arrivee|date d arrivee|check in|checkin|arrival)/],
     ["checkOut", /^(date de fin|end date|depart|date de depart|check out|checkout|departure)/],
-    ["nights", /^(nb (de )?nuits|nb of nights|nombre de nuits|nuits|nights|duree)/],
-    ["adults", /^(nb (d )?adultes?|nb of adults|adultes?|adults?)$/],
-    ["children", /^(nb (d )?enfants?|nb of children|enfants?|children)$/],
-    ["babies", /^(nb (de )?bebes?|nb of infants|bebes?|infants?|babies)$/],
-    ["listing", /^(annonce|listing|nom de l hebergement|hebergement|type d unite|unit type|unit|property|logement|nom du logement|chambre|room)/],
-    ["commissionPct", /^commission pct/],
+    ["nights", /^(nb( d| de| des)? nuits|nb of nights|nombre de nuits|nuits|nights|duree)/],
+    ["adults", /^(nb( d| de| des)? adultes?|nb of adults|adultes?|adults?)$/],
+    ["children", /^(nb( d| de| des)? enfants?|nb of children|enfants?|children)$/],
+    ["babies", /^(nb( d| de| des)? bebes?|nb of infants|bebes?|infants?|babies)$/],
+    ["listing", /^(annonce|listing|nom de l hebergement|type d hebergement|type d unite|unit type|unit|property|logement|nom du logement|chambre|room)|^hebergement$/],
+    ["commissionPct", /^(commission pct|pct comm)/],
     ["commission", /^(montant de la commission|commission amount|commission|frais de service|service fee)/],
-    ["amount", /^(revenus|earnings|prix|price|montant total|total price|montant|amount|total)$/],
+    ["amount", /^(revenus|earnings|prix|price|tarif|montant total|total price|montant|amount|total)$/],
     ["notes", /^(demandes? speciales?|special requests?|remarks|notes?|commentaires?)/],
-    ["country", /^(pays|country|nationalite|residence)/]
+    ["country", /^(pays|country|booker country|nationalite|residence)/]
   ];
   function mapColumns(headers) {
     const map = {};
@@ -24194,7 +24194,8 @@ Cette action est d\xE9finitive. Pensez \xE0 une sauvegarde de cet \xE9tablisseme
               ] })
             ] }, key)) })
           ] }),
-          missing.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(import_jsx_runtime16.Fragment, { children: [
+          missing.length === 0 && stays.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "p-3 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-900", children: "Ce fichier ne contient aucune r\xE9servation (seulement la ligne d'en-t\xEAtes). Refaites l'export depuis la plateforme en choisissant une p\xE9riode ou un statut qui contient des r\xE9servations." }),
+          missing.length === 0 && stays.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)(import_jsx_runtime16.Fragment, { children: [
             /* @__PURE__ */ (0, import_jsx_runtime16.jsx)("div", { className: "flex flex-wrap gap-2 text-[11px] font-semibold", children: ["create", "complete", "uptodate", "markCancelled", "conflict", "noRoom", "cancelledIgnored", "requestIgnored", "invalid"].filter((a) => count(a) > 0).map((a) => /* @__PURE__ */ (0, import_jsx_runtime16.jsxs)("span", { className: `px-2 py-1 rounded-lg ${TONES[a] || "bg-neutral-100 text-neutral-600"}`, children: [
               count(a),
               " \xB7 ",
@@ -30211,10 +30212,10 @@ ${establishmentName}`;
   var import_react51 = __require("react");
 
   // src/modules/etablissement/reports.ts
-  var XLSX3 = __toESM(__require("xlsx"), 1);
+  var XLSX4 = __toESM(__require("xlsx"), 1);
 
   // src/modules/admin/exports.ts
-  var XLSX2 = __toESM(__require("xlsx"), 1);
+  var XLSX3 = __toESM(__require("xlsx"), 1);
   function csvCell(value, sep) {
     if (value === null || value === void 0) return "";
     if (typeof value === "number") return String(value).replace(".", ",");
@@ -30279,15 +30280,15 @@ ${establishmentName}`;
     download(`documents_${todayIso2()}.csv`, `\uFEFF${text}`, "text/csv;charset=utf-8");
   }
   function exportDocsExcel(docs3, admin) {
-    const wb = XLSX2.utils.book_new();
+    const wb = XLSX3.utils.book_new();
     const add = (name, rows, widths) => {
-      const ws = XLSX2.utils.aoa_to_sheet(rows);
+      const ws = XLSX3.utils.aoa_to_sheet(rows);
       ws["!cols"] = widths.map((wch) => ({ wch }));
-      XLSX2.utils.book_append_sheet(wb, ws, name);
+      XLSX3.utils.book_append_sheet(wb, ws, name);
     };
     add("Documents", docRows(docs3, admin), [32, 26, 16, 18, 22, 14, 14, 14, 12, 18, 24, 30, 36]);
     add("\xC9ch\xE9ances", dueRows(docs3, admin), [32, 26, 24, 14, 22]);
-    XLSX2.writeFile(wb, `documents_${todayIso2()}.xlsx`);
+    XLSX3.writeFile(wb, `documents_${todayIso2()}.xlsx`);
   }
 
   // src/modules/etablissement/reports.ts
@@ -30450,11 +30451,11 @@ ${establishmentName}`;
     download(`${slug2(r.title)}_${todayIso2()}.csv`, `\uFEFF${lines2.map((l) => l.map((c) => csvCell(c, sep)).join(sep)).join("\r\n")}`, "text/csv;charset=utf-8");
   }
   function exportReportExcel(r) {
-    const wb = XLSX3.utils.book_new();
-    const ws = XLSX3.utils.aoa_to_sheet([[r.title], [r.period], [r.note], [], r.head, ...r.rows]);
+    const wb = XLSX4.utils.book_new();
+    const ws = XLSX4.utils.aoa_to_sheet([[r.title], [r.period], [r.note], [], r.head, ...r.rows]);
     ws["!cols"] = r.head.map(() => ({ wch: 22 }));
-    XLSX3.utils.book_append_sheet(wb, ws, r.title.slice(0, 31));
-    XLSX3.writeFile(wb, `${slug2(r.title)}_${todayIso2()}.xlsx`);
+    XLSX4.utils.book_append_sheet(wb, ws, r.title.slice(0, 31));
+    XLSX4.writeFile(wb, `${slug2(r.title)}_${todayIso2()}.xlsx`);
   }
   var slug2 = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 
@@ -35515,7 +35516,7 @@ ${m.message}
   };
 
   // src/modules/rentabilite/exports.ts
-  var XLSX4 = __toESM(__require("xlsx"), 1);
+  var XLSX5 = __toESM(__require("xlsx"), 1);
   var fileDate = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   function slug3(text) {
     return text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "periode";
@@ -35608,16 +35609,16 @@ ${m.message}
     downloadCsv(`depenses_${slug3(label2)}_${fileDate()}.csv`, expenseRows(expenses2, prof.categories, roomNames), prof.exportSeparator);
   }
   function exportExcel(stats, compare, expenses2, prof, roomNames) {
-    const wb = XLSX4.utils.book_new();
+    const wb = XLSX5.utils.book_new();
     const add = (name, rows, widths) => {
-      const ws = XLSX4.utils.aoa_to_sheet(rows);
+      const ws = XLSX5.utils.aoa_to_sheet(rows);
       ws["!cols"] = widths.map((wch) => ({ wch }));
-      XLSX4.utils.book_append_sheet(wb, ws, name);
+      XLSX5.utils.book_append_sheet(wb, ws, name);
     };
     add("Synth\xE8se", summaryRows(stats, compare, prof), [44, 20, 20, 40]);
     add("H\xE9bergements", roomRows(stats), [26, 18, 16, 18, 14, 16, 26]);
     add("D\xE9penses", expenseRows(expenses2, prof.categories, roomNames), [12, 12, 28, 10, 34, 24, 22, 30, 12]);
-    XLSX4.writeFile(wb, `rentabilite_${slug3(stats.period.label)}_${fileDate()}.xlsx`);
+    XLSX5.writeFile(wb, `rentabilite_${slug3(stats.period.label)}_${fileDate()}.xlsx`);
   }
 
   // src/modules/rentabilite/ExpensesPanel.tsx
@@ -46897,7 +46898,7 @@ Cliquer pour modifier le tarif` : void 0,
   var import_react87 = __require("react");
 
   // src/modules/avis/exports.ts
-  var XLSX5 = __toESM(__require("xlsx"), 1);
+  var XLSX6 = __toESM(__require("xlsx"), 1);
   var fileDate2 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   function csvCell3(value, sep) {
     if (value === null || value === void 0) return "";
@@ -46955,15 +46956,15 @@ Cliquer pour modifier le tarif` : void 0,
     download3(`avis_${fileDate2()}.csv`, `\uFEFF${text}`, "text/csv;charset=utf-8");
   }
   function exportReviewsExcel(reviews, metas2, rv, stats, label2) {
-    const wb = XLSX5.utils.book_new();
+    const wb = XLSX6.utils.book_new();
     const add = (name, rows, widths) => {
-      const ws = XLSX5.utils.aoa_to_sheet(rows);
+      const ws = XLSX6.utils.aoa_to_sheet(rows);
       ws["!cols"] = widths.map((wch) => ({ wch }));
-      XLSX5.utils.book_append_sheet(wb, ws, name);
+      XLSX6.utils.book_append_sheet(wb, ws, name);
     };
     add("Avis", reviewRows(reviews, metas2, rv), [12, 22, 16, 18, 20, 10, 50, 28, 22, 50, 12, 10, 30]);
     add("Sujets", themeRows(stats, label2), [28, 12, 20, 28, 14]);
-    XLSX5.writeFile(wb, `avis_${fileDate2()}.xlsx`);
+    XLSX6.writeFile(wb, `avis_${fileDate2()}.xlsx`);
   }
 
   // src/modules/avis/ThemesPanel.tsx
@@ -55337,13 +55338,13 @@ Cliquer pour modifier le tarif` : void 0,
   var Editable = ({ html, plain, onCommit, style, onFocus, onEnter, autoFocus, label: label2, placeholder }) => {
     const ref = (0, import_react122.useRef)(null);
     const initial = (0, import_react122.useRef)(plain ? escapeText(html) : html);
-    const read4 = () => {
+    const read5 = () => {
       const el = ref.current;
       if (!el) return "";
       return plain ? (el.innerText || "").replace(/\n$/, "") : sanitizeHtml(el.innerHTML);
     };
     const commit = () => {
-      const v = read4();
+      const v = read5();
       if (v !== html) onCommit(v);
     };
     (0, import_react122.useLayoutEffect)(() => {
