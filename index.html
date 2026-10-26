@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v219</title>
-  <meta name="application-name" content="Gestyria v219" />
+  <title>Gestyria v220</title>
+  <meta name="application-name" content="Gestyria v220" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -5852,6 +5852,10 @@ footer{background:#111}
     }
   };
   var EXTRA_BOARDER_OPTION_ID = "pensionnaire_supp";
+  function firstRoomId(settings) {
+    const list3 = [...settings.accommodations].sort((a, b) => (a.order || 0) - (b.order || 0));
+    return (list3.find((a) => a.active) || list3[0])?.id || "figuier";
+  }
   function buildRooms(settings) {
     const rooms = {};
     settings.accommodations.forEach((a) => {
@@ -5893,7 +5897,7 @@ footer{background:#111}
         id: s.id,
         name: s.name,
         subtitle: legacy?.subtitle || s.description,
-        capacity: `1 \xE0 ${max} pensionnaires`,
+        capacity: `1 \xE0 ${max} ${s.unit === "animal" ? "pensionnaires" : "unit\xE9s"}`,
         minAdults: 1,
         maxAdults: max,
         basePrice: s.price,
@@ -7936,7 +7940,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "219";
+  var APP_VERSION = "220";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -19308,7 +19312,7 @@ function purgeRequestPolice_(ss, todayIso) {
     reservations.forEach((r) => {
       const room = ROOMS[r.roomId] || { name: r.roomId };
       const kind = Object.prototype.hasOwnProperty.call(ROOMS, r.roomId) ? rowKindOf(r.roomId) : "accommodation";
-      const category = kind === "service" ? r.roomId === "pension" ? "Pension canine" : ROOMS[r.roomId]?.name || "Service" : kind === "resource" ? ROOMS[r.roomId]?.name || "Ressource" : "Chambre d'h\xF4tes";
+      const category = kind === "service" ? r.roomId === "pension" && ROOMS[r.roomId]?.name === "Pension" ? "Pension canine" : ROOMS[r.roomId]?.name || "Service" : kind === "resource" ? ROOMS[r.roomId]?.name || "Ressource" : "Chambre d'h\xF4tes";
       const totalPers = (r.adultsCount || 0) + (r.childrenCount || 0) + (r.babiesCount || 0);
       const taxAmount = r.touristTaxAmount !== void 0 ? r.touristTaxAmount : r.touristTax || 0;
       const taxStatusLabel = r.touristTaxStatus === "prise_en_charge" ? "Prise en charge plateforme" : r.touristTaxStatus === "non_prise_en_compte" ? "Non prise en compte" : "\xC0 d\xE9clarer OT";
@@ -37887,7 +37891,7 @@ ${line("Date d'arriv\xE9e", fr(r.checkIn))}${line("Date de d\xE9part pr\xE9vue",
     [...settings.accommodations].sort(byOrder4).forEach((a) => add(a.id, "accommodation", a.active && a.showInPlanning));
     [...settings.resources].sort(byOrder4).forEach((r) => add(r.id, "resource", r.active && r.showInPlanning));
     [...settings.services].filter((s) => s.showInPlanning).sort(byOrder4).forEach((s) => add(s.id, "service", s.active));
-    Object.keys(LEGACY_KINDS).forEach((id) => add(id, LEGACY_KINDS[id], true));
+    Object.keys(LEGACY_KINDS).forEach((id) => add(id, LEGACY_KINDS[id], false));
     return includeHidden ? rows : rows.filter((r) => r.visible);
   }
   function statsRows(settings, hasData) {
@@ -44352,7 +44356,7 @@ Cliquer pour modifier le tarif` : void 0,
       const today5 = /* @__PURE__ */ new Date();
       return today5.toISOString().split("T")[0];
     });
-    const [roomId, setRoomId] = (0, import_react81.useState)("magnolia");
+    const [roomId, setRoomId] = (0, import_react81.useState)(() => firstRoomId(getSettings()));
     const [guestRating, setGuestRating] = (0, import_react81.useState)(5);
     const [guestComment, setGuestComment] = (0, import_react81.useState)("");
     const [hostRating, setHostRating] = (0, import_react81.useState)(5);
@@ -44367,7 +44371,7 @@ Cliquer pour modifier le tarif` : void 0,
       setSourceDetails(found.sourceDetails || "");
       setAuthorName(found.authorName || "");
       setDate(found.date || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
-      setRoomId(found.roomId || "magnolia");
+      setRoomId(found.roomId || firstRoomId(getSettings()));
       setGuestRating(found.guestRating || 5);
       setGuestComment(found.guestComment || "");
       setHostRating(found.hostRating || 5);
@@ -62393,10 +62397,10 @@ ${establishment}`;
   // src/components/ReservationModal.tsx
   var import_jsx_runtime143 = __require("react/jsx-runtime");
   var LEGACY_CARD_LOOKS = {
-    figuier: { selected: look("border-slate-400 bg-slate-50 ring-2 ring-slate-400/25 shadow-xs"), dot: look("bg-slate-400"), text: look("text-slate-700"), tagline: "terrasse verger" },
-    magnolia: { selected: look("border-sy-325032 bg-sy-fafbf9 ring-2 ring-sy-325032/25 shadow-xs"), dot: look("bg-sy-325032"), text: look("text-sy-325032"), tagline: "suite parc" },
-    piscine: { selected: look("border-sky-400 bg-sky-50 ring-2 ring-sky-400/25 shadow-xs"), dot: look("bg-sky-400"), text: look("text-sky-700"), tagline: "espace d\xE9tente" },
-    pension: { selected: look("border-[#C2884E] bg-[#FBF7F2] ring-2 ring-[#C2884E]/25 shadow-xs"), dot: look("bg-[#C2884E]"), text: look("text-[#8C5220]"), tagline: "h\xE9bergement" }
+    figuier: { selected: look("border-slate-400 bg-slate-50 ring-2 ring-slate-400/25 shadow-xs"), dot: look("bg-slate-400"), text: look("text-slate-700") },
+    magnolia: { selected: look("border-sy-325032 bg-sy-fafbf9 ring-2 ring-sy-325032/25 shadow-xs"), dot: look("bg-sy-325032"), text: look("text-sy-325032") },
+    piscine: { selected: look("border-sky-400 bg-sky-50 ring-2 ring-sky-400/25 shadow-xs"), dot: look("bg-sky-400"), text: look("text-sky-700") },
+    pension: { selected: look("border-[#C2884E] bg-[#FBF7F2] ring-2 ring-[#C2884E]/25 shadow-xs"), dot: look("bg-[#C2884E]"), text: look("text-[#8C5220]") }
   };
   function cardLook(row) {
     if (LEGACY_CARD_LOOKS[row.id]) return LEGACY_CARD_LOOKS[row.id];
@@ -62413,7 +62417,7 @@ ${establishment}`;
     onClose,
     onSave,
     initialData,
-    defaultRoomId = "figuier",
+    defaultRoomId = firstRoomId(getSettings()),
     defaultDate,
     allReservations,
     isOfficialVersion = false
@@ -63028,8 +63032,9 @@ ${establishment}`;
         setErrorMsg("Veuillez indiquer au moins 1 chien pour la r\xE9servation en pension.");
         return;
       }
-      if (roomId === "magnolia" && adultsCount > 2) {
-        setErrorMsg("La Chambre Magnolia est limit\xE9e \xE0 1 ou 2 adultes.");
+      const capRoom = ROOMS[roomId];
+      if (!isBlocked2 && capRoom && !isServiceRow(roomId) && !isResourceRow(roomId) && adultsCount > capRoom.maxAdults) {
+        setErrorMsg(`${capRoom.name} est limit\xE9(e) \xE0 ${capRoom.maxAdults} adulte${capRoom.maxAdults > 1 ? "s" : ""} au maximum.`);
         return;
       }
       if (!isBlocked2 && numericMealsAmount > 0 && numericMealsCost <= 0) {
@@ -63252,8 +63257,12 @@ ${establishment}`;
                         priceUnit(row, settings)
                       ] }) : /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)(import_jsx_runtime143.Fragment, { children: [
                         euro5(room.basePrice),
-                        " / nuit ",
-                        /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("span", { className: "font-normal text-neutral-500", children: "(1 pensionnaire)" })
+                        " / ",
+                        priceUnit(row, settings),
+                        settings.services.find((x) => x.id === row.id)?.unit === "animal" && /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)(import_jsx_runtime143.Fragment, { children: [
+                          " ",
+                          /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("span", { className: "font-normal text-neutral-500", children: "(1 pensionnaire)" })
+                        ] })
                       ] }) }),
                       /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)("p", { className: "text-[11px] text-neutral-500 mt-1", children: [
                         room.capacity,
@@ -63646,10 +63655,19 @@ ${establishment}`;
                       value: adultsCount,
                       onChange: (e) => handleAdultsChange(Number(e.target.value)),
                       className: "w-full py-1.5 px-2 text-xs bg-white border border-neutral-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-sy-325032 cursor-pointer font-medium",
-                      children: roomId === "magnolia" ? /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)(import_jsx_runtime143.Fragment, { children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("option", { value: 1, children: "1 adulte" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("option", { value: 2, children: "2 adultes (max)" })
-                      ] }) : isResourceRow(roomId) ? /* @__PURE__ */ (0, import_jsx_runtime143.jsx)(import_jsx_runtime143.Fragment, { children: Array.from({ length: 12 }).map((_, i) => /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)("option", { value: i + 1, children: [
+                      children: !isResourceRow(roomId) && !isServiceRow(roomId) && ROOMS[roomId].minAdults < ROOMS[roomId].baseGuestsCount ? (
+                        // Hébergement qui accepte moins de personnes que son tarif de base (ex. 1 adulte pour une chambre de 2)
+                        /* @__PURE__ */ (0, import_jsx_runtime143.jsx)(import_jsx_runtime143.Fragment, { children: Array.from({ length: Math.max(0, ROOMS[roomId].maxAdults - ROOMS[roomId].minAdults + 1) }).map((_, i) => {
+                          const n = ROOMS[roomId].minAdults + i;
+                          const base = ROOMS[roomId].baseGuestsCount;
+                          return /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)("option", { value: n, children: [
+                            n,
+                            " adulte",
+                            n > 1 ? "s" : "",
+                            n === ROOMS[roomId].maxAdults && n <= base ? " (max)" : n > base ? ` (+${euro5((n - base) * ROOMS[roomId].extraGuestPrice, "")}\u20AC)` : ""
+                          ] }, n);
+                        }) })
+                      ) : isResourceRow(roomId) ? /* @__PURE__ */ (0, import_jsx_runtime143.jsx)(import_jsx_runtime143.Fragment, { children: Array.from({ length: 12 }).map((_, i) => /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)("option", { value: i + 1, children: [
                         i + 1,
                         " personne",
                         i > 0 ? "s" : "",
@@ -65225,8 +65243,10 @@ ${establishment}`;
     const room = ROOMS[reservation.roomId] || ROOMS[roomIdClean] || ROOMS.figuier;
     const sourceObj = BOOKING_SOURCES.find((s) => s.id === reservation.bookingSource) || BOOKING_SOURCES[0];
     const rowNameLc = room.name.toLowerCase();
-    const isLightRoom = reservation.roomId === "figuier" || roomIdClean === "figuier";
-    const isMagnolia = reservation.roomId === "magnolia" || roomIdClean === "magnolia";
+    const accent = /^#[0-9a-f]{6}$/i.test(room.accentColor || "") ? room.accentColor : "#325032";
+    const luminance2 = (parseInt(accent.slice(1, 3), 16) * 0.299 + parseInt(accent.slice(3, 5), 16) * 0.587 + parseInt(accent.slice(5, 7), 16) * 0.114) / 255;
+    const isLightRoom = reservation.roomId === "figuier" || roomIdClean === "figuier" || luminance2 > 0.62;
+    const isMagnolia = !["figuier", "piscine", "pension"].includes(roomIdClean);
     const fin = getReservationFinancials(reservation);
     const handleOpenGoogleCalendar = () => {
       if (!reservation) return;
@@ -65967,7 +65987,7 @@ ${establishment}`;
     const [viewingReservation, setViewingReservation] = (0, import_react144.useState)(null);
     const [invoiceConfigReservation, setInvoiceConfigReservation] = (0, import_react144.useState)(null);
     const [invoiceViewReservation, setInvoiceViewReservation] = (0, import_react144.useState)(null);
-    const [modalDefaultRoom, setModalDefaultRoom] = (0, import_react144.useState)("figuier");
+    const [modalDefaultRoom, setModalDefaultRoom] = (0, import_react144.useState)(() => firstRoomId(getSettings()));
     const [modalDefaultDate, setModalDefaultDate] = (0, import_react144.useState)(now.toISOString().slice(0, 10));
     const [toastMessage, setToastMessage] = (0, import_react144.useState)(null);
     const toastTimer = (0, import_react144.useRef)(null);
@@ -66342,7 +66362,7 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       setSelectedYear(Math.max(2026, today5.getFullYear()));
       setSelectedMonth(today5.getMonth());
     };
-    const handleOpenNewReservation = (roomId = "figuier", defaultDate) => {
+    const handleOpenNewReservation = (roomId = firstRoomId(settings), defaultDate) => {
       setEditingReservation(null);
       setModalDefaultRoom(roomId);
       if (defaultDate) {
@@ -66358,7 +66378,7 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       if (guestData.guestName) {
         setEditingReservation({
           id: "",
-          roomId: "figuier",
+          roomId: firstRoomId(settings),
           guestName: guestData.guestName,
           guestPhone: guestData.guestPhone || "",
           guestPhone2: guestData.guestPhone2 || "",
@@ -66380,7 +66400,7 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       } else {
         setEditingReservation(null);
       }
-      setModalDefaultRoom("figuier");
+      setModalDefaultRoom(firstRoomId(settings));
       setModalDefaultDate(dayStr);
       setIsModalOpen(true);
     };
