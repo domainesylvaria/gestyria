@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v263</title>
-  <meta name="application-name" content="Gestyria v263" />
+  <title>Gestyria v264</title>
+  <meta name="application-name" content="Gestyria v264" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8536,7 +8536,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "263";
+      APP_VERSION = "264";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -65232,7 +65232,8 @@ ${who}<div class="row"><div><label for="r-nat">Nationalit\xE9</label><input id="
               h2 += "</div>";
             });
             if (on("allergens") && menu.allergenNote) h2 += `<div class="note small">${esc3(menu.allergenNote)}</div>`;
-            h2 += `<p>${linkTo(pageByKind("booking") || pageByKind("contact"), "R\xE9server un repas avec mon s\xE9jour")}</p></div></section>`;
+            const aloneLink = menu.orderAudience === "public" ? bookLink(ctx.publicId, null, ctx.connectorUrl) : null;
+            h2 += `<p>${linkTo(pageByKind("booking") || pageByKind("contact"), "R\xE9server un repas avec mon s\xE9jour")}${aloneLink ? ` <a class="btn ghost" href="${esc3(aloneLink + "&vue=repas")}" rel="noopener">Commander un repas seul</a>` : ""}</p></div></section>`;
           } else {
             h2 += '<section class="block"><div class="wrap narrow"><p class="muted">La carte sera bient\xF4t disponible.</p></div></section>';
           }
@@ -65414,6 +65415,7 @@ Sitemap: ${base}sitemap.xml
     "src/modules/siteweb/generate.ts"() {
       "use strict";
       init_app();
+      init_links();
       init_cancellation();
       init_rateCalendar();
       init_pricing();
