@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v261</title>
-  <meta name="application-name" content="Gestyria v261" />
+  <title>Gestyria v262</title>
+  <meta name="application-name" content="Gestyria v262" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8527,7 +8527,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "261";
+      APP_VERSION = "262";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -36133,7 +36133,7 @@ ${stock.map((s) => `- ${s.name}${s.place ? ` (${s.place})` : ""} : ${String(s.ga
     copy[other.i] = item2;
     return copy;
   }
-  var import_react57, import_react_dom3, import_jsx_runtime44, timeInput2, newId6, IconButton2, Chip2, SourceBadge, ItemPhoto, ItemEditor, ItemRow, DishPicker, MomentSettings, MealsView;
+  var import_react57, import_react_dom3, import_jsx_runtime44, timeInput2, newId6, IconButton2, Chip2, SourceBadge, CategoryInput, ItemPhoto, ItemEditor, ItemRow, DishPicker, MomentSettings, MealsView;
   var init_MealsView = __esm({
     "src/modules/repas/MealsView.tsx"() {
       "use strict";
@@ -36191,6 +36191,41 @@ ${stock.map((s) => `- ${s.name}${s.place ? ` (${s.place})` : ""} : ${String(s.ga
         }
       );
       SourceBadge = () => /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("span", { className: "px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-sky-50 text-sky-800 border border-sky-100 shrink-0", children: "Source : Ingr\xE9dients" });
+      CategoryInput = ({
+        value,
+        listId,
+        categories,
+        onCommit,
+        className
+      }) => {
+        const [draft, setDraft] = (0, import_react57.useState)(value);
+        (0, import_react57.useEffect)(() => setDraft(value), [value]);
+        const commit = (v) => {
+          if (v !== value) onCommit(v);
+        };
+        return /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)(import_jsx_runtime44.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(
+            "input",
+            {
+              type: "text",
+              list: listId,
+              value: draft,
+              onChange: (e) => {
+                const v = e.target.value;
+                setDraft(v);
+                if (!e.nativeEvent.inputType && categories.includes(v)) commit(v);
+              },
+              onBlur: () => commit(draft),
+              onKeyDown: (e) => {
+                if (e.key === "Enter") commit(draft);
+              },
+              placeholder: "Ex. Plats, Boissons\u2026",
+              className
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("datalist", { id: listId, children: categories.map((c) => /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("option", { value: c }, c)) })
+        ] });
+      };
       ItemPhoto = ({
         photo,
         onChange,
@@ -36279,20 +36314,7 @@ ${stock.map((s) => `- ${s.name}${s.place ? ` (${s.place})` : ""} : ${String(s.ga
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [
             /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(Field, { label: "Nom montr\xE9 aux voyageurs", hint: linked ? `Nom dans Ingr\xE9dients : ${r.dish?.name || item2.dishName}` : void 0, children: /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(TextInput, { value: item2.name, onChange: (v) => onChange({ name: v }), placeholder: r.dish?.name || item2.dishName || "Ex. Omelette du jardin" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)(Field, { label: "Cat\xE9gorie", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(
-                "input",
-                {
-                  type: "text",
-                  list: listId,
-                  value: item2.category,
-                  onChange: (e) => onChange({ category: e.target.value }),
-                  placeholder: "Ex. Plats, Boissons\u2026",
-                  className: timeInput2
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("datalist", { id: listId, children: categories.map((c) => /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("option", { value: c }, c)) })
-            ] })
+            /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(Field, { label: "Cat\xE9gorie", children: /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(CategoryInput, { value: item2.category, listId, categories, onCommit: (v) => onChange({ category: v }), className: timeInput2 }) })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(Field, { label: "Description (facultatif)", children: /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(TextArea, { value: item2.description, onChange: (v) => onChange({ description: v }), placeholder: "Ce que contient le plat, d'o\xF9 viennent les produits\u2026" }) }),
           /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(Field, { label: "Photo du produit (facultatif)", hint: "Montr\xE9e en vignette sur la carte du livret ; le voyageur peut l'agrandir.", group: true, children: /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(ItemPhoto, { photo: item2.photo, onChange: (id) => onChange({ photo: id }), onAdded: onPhotoAdded, onToast }) }),
