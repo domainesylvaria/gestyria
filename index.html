@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v241</title>
-  <meta name="application-name" content="Gestyria v241" />
+  <title>Gestyria v242</title>
+  <meta name="application-name" content="Gestyria v242" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -5080,7 +5080,9 @@ footer{background:#111}
       ];
       HOSTED_TABS = {
         report: "profitability",
-        annual: "profitability"
+        annual: "profitability",
+        utilities: "profitability"
+        // Énergie et eau : rangé dans Rentabilité (les factures y sont saisies) quand les deux modules sont actifs
       };
     }
   });
@@ -8219,7 +8221,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "241";
+      APP_VERSION = "242";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -14834,6 +14836,25 @@ footer{background:#111}
     const start = dayNumber2(`${month}-01`);
     const end = dayNumber2(m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`);
     return reservations.filter((r) => !r.isBlocked && r.reservationStatus !== "cancelled" && !/ferm|bloq/i.test(r.guestName || "")).reduce((n, r) => n + Math.max(0, Math.min(end, dayNumber2(r.checkOut)) - Math.max(start, dayNumber2(r.checkIn))), 0);
+  }
+  function costCheck(map, expenses2, today6, categoryId = "energy") {
+    const to = today6;
+    const from = isoOf(dayNumber2(today6) - 365);
+    const spent = Math.round(expenses2.filter((e) => e.categoryId === categoryId && e.date >= from && e.date <= to).reduce((n, e) => n + (e.amount || 0), 0) * 100) / 100;
+    let estimated = 0;
+    let pricedMeters = 0;
+    const monthSet = /* @__PURE__ */ new Set();
+    const fromMonth = from.slice(0, 7);
+    meters(map).filter((m) => !m.archived && m.price !== null).forEach((m) => {
+      const complete = monthlySeries(readingsOf(map, m.id)).months.filter((u) => u.complete && u.month >= fromMonth && u.month < to.slice(0, 7));
+      if (complete.length === 0) return;
+      pricedMeters++;
+      complete.forEach((u) => {
+        estimated += u.qty * m.price;
+        monthSet.add(u.month);
+      });
+    });
+    return { from, to, spent, estimated: Math.round(estimated * 100) / 100, pricedMeters, months: monthSet.size };
   }
   function utilityAlerts(map, today6) {
     const out = [];
@@ -40956,7 +40977,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
         const m = /^(\d{4})-(\d{2})$/.exec(v);
         return m ? { year: Number(m[1]), month: Number(m[2]) - 1 } : null;
       };
-      ProfitabilityView = ({ reservations, externalReviews = [], onToast, monthly, annual }) => {
+      ProfitabilityView = ({ reservations, externalReviews = [], onToast, monthly, annual, energy }) => {
         const settings = useSettings();
         const prof = getProfitability(settings);
         const expenses2 = useExpenses();
@@ -40971,7 +40992,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
           window.addEventListener("domaine_sylvaria_profitability_view", onView);
           return () => window.removeEventListener("domaine_sylvaria_profitability_view", onView);
         }, []);
-        const shownTab = tab === "monthly" && !monthly || tab === "annual" && !annual ? "summary" : tab;
+        const shownTab = tab === "monthly" && !monthly || tab === "annual" && !annual || tab === "energy" && !energy ? "summary" : tab;
         const [mode, setMode] = (0, import_react68.useState)(prof.defaultPeriod);
         const [anchor, setAnchor] = (0, import_react68.useState)({ year: now.getFullYear(), month: now.getMonth() });
         const [customStart, setCustomStart] = (0, import_react68.useState)({ year: now.getFullYear(), month: 0 });
@@ -41004,6 +41025,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
           ...monthly ? [{ id: "monthly", label: "Analyse mensuelle", icon: CalendarRange }] : [],
           ...annual ? [{ id: "annual", label: "Analyse annuelle", icon: ChartColumn }] : [],
           { id: "expenses", label: `D\xE9penses${periodExpenses.length ? ` (${periodExpenses.length})` : ""}`, icon: Receipt },
+          ...energy ? [{ id: "energy", label: "\xC9nergie et eau", icon: Gauge }] : [],
           { id: "assets", label: "Amortissements", icon: Hammer },
           { id: "settings", label: "R\xE9glages", icon: Settings2 }
         ];
@@ -41030,7 +41052,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
                 t.id
               );
             }) }),
-            shownTab !== "settings" && shownTab !== "monthly" && shownTab !== "annual" && /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "flex flex-wrap items-center gap-2 pt-2 border-t border-neutral-100", children: [
+            shownTab !== "settings" && shownTab !== "monthly" && shownTab !== "annual" && shownTab !== "energy" && /* @__PURE__ */ (0, import_jsx_runtime58.jsxs)("div", { className: "flex flex-wrap items-center gap-2 pt-2 border-t border-neutral-100", children: [
               /* @__PURE__ */ (0, import_jsx_runtime58.jsx)("div", { className: "flex rounded-xl border border-neutral-200 overflow-hidden", children: MODES.map((m) => /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(
                 "button",
                 {
@@ -41094,6 +41116,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
           shownTab === "custom" && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(CustomPanel, { settings, prof, reservations, externalReviews, viewPeriod: period, onToast }),
           shownTab === "monthly" && monthly,
           shownTab === "annual" && annual,
+          shownTab === "energy" && energy,
           shownTab === "settings" && /* @__PURE__ */ (0, import_jsx_runtime58.jsx)(SettingsPanel, { settings, prof, onToast })
         ] });
       };
@@ -65120,13 +65143,16 @@ Sitemap: ${base}sitemap.xml
   });
 
   // src/modules/energie/UtilitiesView.tsx
-  var import_react137, import_jsx_runtime134, input5, frDate12, fmt4, monthLabel2, NumberField, MeterCard, UtilitiesView;
+  var import_react137, import_jsx_runtime134, input5, frDate12, fmt4, monthLabel2, NumberField, MeterCard, CostCheckCard, UtilitiesView;
   var init_UtilitiesView = __esm({
     "src/modules/energie/UtilitiesView.tsx"() {
       "use strict";
       import_react137 = __require("react");
       init_lucide_react();
       init_csv();
+      init_settingsStore();
+      init_store4();
+      init_content12();
       init_store11();
       import_jsx_runtime134 = __require("react/jsx-runtime");
       input5 = "text-xs border border-neutral-300 rounded-lg px-2.5 py-1.5 bg-white";
@@ -65290,8 +65316,44 @@ Sitemap: ${base}sitemap.xml
           ] })
         ] });
       };
+      CostCheckCard = ({ map }) => {
+        const expenses2 = useExpenses();
+        const today6 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const c = costCheck(map, Object.values(expenses2), today6);
+        if (c.pricedMeters === 0 && c.spent === 0) return null;
+        const gap = c.estimated > 0 && c.spent > 0 ? Math.round((c.spent - c.estimated) / c.estimated * 100) : null;
+        return /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "p-3 rounded-2xl bg-white border border-neutral-200 text-xs space-y-1", "data-cost-check": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("p", { className: "font-bold text-neutral-900", children: "Relev\xE9s et d\xE9penses (12 derniers mois)" }),
+          /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("p", { children: [
+            "D\xE9penses \xAB \xC9nergie et eau \xBB saisies dans Rentabilit\xE9 : ",
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("b", { className: "font-mono", children: [
+              fmt4(c.spent),
+              " \u20AC"
+            ] })
+          ] }),
+          c.pricedMeters > 0 ? /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("p", { children: [
+            "Valeur des relev\xE9s aux prix saisis (",
+            c.months,
+            " mois complet",
+            c.months > 1 ? "s" : "",
+            ") : ",
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("b", { className: "font-mono", children: [
+              fmt4(c.estimated),
+              " \u20AC"
+            ] }),
+            gap !== null && /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("span", { className: "text-neutral-600", children: [
+              " \u2014 \xE9cart de ",
+              gap > 0 ? "+" : "",
+              gap,
+              " % (abonnements et taxes inclus dans les factures)"
+            ] })
+          ] }) : /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("p", { className: "text-neutral-500", children: "Saisissez un prix par unit\xE9 sur un compteur pour comparer aux factures." }),
+          /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("p", { className: "text-[10px] text-neutral-500", children: "Indicatif. La rentabilit\xE9 se calcule uniquement avec les d\xE9penses saisies : les relev\xE9s n\u2019y sont jamais ajout\xE9s (pas de double compte)." })
+        ] });
+      };
       UtilitiesView = ({ reservations, onToast }) => {
         const map = useUtilities();
+        const profitabilityOn = isModuleEnabled("profitability", useSettings());
         const list3 = meters(map);
         const active2 = list3.filter((m) => !m.archived);
         const today6 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
@@ -65326,6 +65388,7 @@ Sitemap: ${base}sitemap.xml
             ] }, p.name)) })
           ] }),
           active2.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", children: "Aucun compteur. Ajoutez-en un avec les boutons ci-dessus (eau, \xE9lectricit\xE9, gaz\u2026), puis notez son index. Un m\xEAme type peut \xEAtre ajout\xE9 plusieurs fois (par exemple un compteur d\u2019eau pour la piscine)." }),
+          profitabilityOn && /* @__PURE__ */ (0, import_jsx_runtime134.jsx)(CostCheckCard, { map }),
           active2.map((m) => /* @__PURE__ */ (0, import_jsx_runtime134.jsx)(MeterCard, { meter: m, readings: readingsOf(map, m.id), reservations, onToast }, m.id)),
           list3.some((m) => m.archived) && /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("p", { className: "text-[11px] text-neutral-500", children: [
             "Compteurs retir\xE9s : ",
@@ -73850,7 +73913,7 @@ ${annex}
   });
   function openHostedView(tab, host) {
     if (host === "meals") requestMealsView("ingredients");
-    else if (host === "profitability") requestProfitabilityView(tab === "annual" ? "annual" : "monthly");
+    else if (host === "profitability") requestProfitabilityView(tab === "annual" ? "annual" : tab === "utilities" ? "energy" : "monthly");
   }
   function App() {
     if (staffAccess) return /* @__PURE__ */ (0, import_jsx_runtime153.jsx)(StaffApp, { code: staffAccess.code, connectorUrl: staffAccess.connectorUrl });
@@ -74914,7 +74977,8 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
                   },
                   isOfficialVersion
                 }
-              ) : void 0
+              ) : void 0,
+              energy: isModuleEnabled("utilities", settings) ? /* @__PURE__ */ (0, import_jsx_runtime153.jsx)(UtilitiesView, { reservations: effectiveReservations, onToast: showToast }) : void 0
             }
           )
         ] }, `content-${dataVersion}`)
