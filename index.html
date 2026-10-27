@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v260</title>
-  <meta name="application-name" content="Gestyria v260" />
+  <title>Gestyria v261</title>
+  <meta name="application-name" content="Gestyria v261" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8527,7 +8527,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "260";
+      APP_VERSION = "261";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -64392,9 +64392,9 @@ p{margin:0 0 1em}
 .skip{position:absolute;left:-999px;top:0;background:#fff;padding:8px 12px;z-index:50}.skip:focus{left:8px;top:8px}
 :focus-visible{outline:3px solid var(--c);outline-offset:2px}
 .top{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
-.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:64px}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:64px;padding-top:6px;padding-bottom:6px}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink);font-family:Georgia,serif;font-weight:600;font-size:1.15rem}
-.brand img{height:38px;width:auto;mix-blend-mode:multiply}
+.brand img{height:64px;width:auto;mix-blend-mode:multiply}
 .burger{display:none;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;font-size:1rem;cursor:pointer}
 nav ul{display:flex;gap:4px;list-style:none;margin:0;padding:0;flex-wrap:wrap}
 nav a{display:block;padding:8px 12px;border-radius:999px;text-decoration:none;color:var(--ink);font-size:.95rem}
@@ -65507,8 +65507,13 @@ Sitemap: ${base}sitemap.xml
   }
   function savePublishToken(token) {
     try {
-      if (token) localStorage.setItem(TOKEN_KEY, token);
-      else localStorage.removeItem(TOKEN_KEY);
+      if (token) {
+        localStorage.setItem(TOKEN_KEY, token);
+        try {
+          void navigator.storage?.persist?.();
+        } catch {
+        }
+      } else localStorage.removeItem(TOKEN_KEY);
     } catch {
     }
   }
@@ -65837,7 +65842,8 @@ Sitemap: ${base}sitemap.xml
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)("label", { className: "block text-[11px] font-semibold text-neutral-700 sm:col-span-2", children: [
                 "Jeton GitHub (gard\xE9 dans cet appareil seulement, jamais synchronis\xE9 ni sauvegard\xE9)",
-                /* @__PURE__ */ (0, import_jsx_runtime136.jsx)("input", { type: "password", autoComplete: "off", value: pubToken, onChange: (e) => updateToken(e.target.value), className: "mt-1 w-full text-xs border border-neutral-200 rounded-lg p-2 bg-white", placeholder: "ghp_\u2026" })
+                /* @__PURE__ */ (0, import_jsx_runtime136.jsx)("input", { type: "password", autoComplete: "off", value: pubToken, onChange: (e) => updateToken(e.target.value), className: "mt-1 w-full text-xs border border-neutral-200 rounded-lg p-2 bg-white", placeholder: "ghp_\u2026" }),
+                /* @__PURE__ */ (0, import_jsx_runtime136.jsx)("span", { className: `block mt-1 font-normal ${pubToken.trim() ? "text-neutral-500" : "text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-2"}`, children: pubToken.trim() ? "Un nettoyeur de navigateur (CCleaner, \xAB effacer les donn\xE9es de navigation \xBB\u2026) efface ce jeton : gardez-le aussi dans un gestionnaire de mots de passe ou excluez ce site du nettoyage." : "Jeton absent de cet appareil (il a peut-\xEAtre \xE9t\xE9 effac\xE9 par un nettoyage du navigateur). Recollez-le ici : vous pouvez en recr\xE9er un si vous ne l\u2019avez plus (voir \xAB Comment obtenir le jeton GitHub \xBB ci-dessous)." })
               ] })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime136.jsxs)("details", { className: "text-xs text-neutral-600", children: [
