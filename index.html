@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v245</title>
-  <meta name="application-name" content="Gestyria v245" />
+  <title>Gestyria v246</title>
+  <meta name="application-name" content="Gestyria v246" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8309,7 +8309,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "245";
+      APP_VERSION = "246";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -15263,7 +15263,7 @@ footer{background:#111}
       rows: dues(members, settings, today6).map((d) => [d.member.name, d.title, STATE_LABEL[d.state], d.date ? frDate2(d.date) : "", d.validUntil ? frDate2(d.validUntil) : "", d.days === null ? "" : d.days])
     };
   }
-  var DEFAULT_TYPES, todayIso6, frDate2, newId5, STATE_LABEL, trainingTitle;
+  var DEFAULT_TYPES, todayIso6, frDate2, newId5, isOccasional, STATE_LABEL, trainingTitle;
   var init_content13 = __esm({
     "src/modules/personnel/content.ts"() {
       "use strict";
@@ -15278,6 +15278,7 @@ footer{background:#111}
       todayIso6 = (d = /* @__PURE__ */ new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       frDate2 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
       newId5 = (p) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+      isOccasional = (m) => m.contract === "occasional";
       STATE_LABEL = {
         expired: "Expir\xE9e",
         soon: "\xC0 renouveler",
@@ -65005,7 +65006,8 @@ Sitemap: ${base}sitemap.xml
     if (s.kind !== "work") return 0;
     const a = toMinutes(s.start);
     const b = toMinutes(s.end);
-    return a !== null && b !== null && b > a ? b - a : 0;
+    if (a !== null && b !== null) return b > a ? b - a : 0;
+    return typeof s.hours === "number" && isFinite(s.hours) && s.hours > 0 ? Math.round(s.hours * 60) : 0;
   }
   function shiftsOn(map, memberId, date) {
     return shiftsOf(map, memberId).filter((s) => s.date === date).sort((a, b) => (a.start || "").localeCompare(b.start || ""));
@@ -65014,7 +65016,9 @@ Sitemap: ${base}sitemap.xml
     if (!s.memberId) return "Choisissez la personne.";
     if (!/^\d{4}-\d{2}-\d{2}$/.test(s.date)) return "Indiquez la date.";
     if (s.kind === "work") {
-      if (toMinutes(s.start) === null || toMinutes(s.end) === null) return "Indiquez l\u2019heure de d\xE9but et de fin.";
+      const typed = (s.start || "").trim() !== "" || (s.end || "").trim() !== "";
+      if (!typed) return s.hours && s.hours > 0 ? null : "Indiquez les horaires, ou le nombre d\u2019heures travaill\xE9es.";
+      if (!hasTimes(s)) return "Indiquez l\u2019heure de d\xE9but et de fin.";
       if (shiftMinutes(s) === 0) return "L\u2019heure de fin doit \xEAtre apr\xE8s l\u2019heure de d\xE9but.";
     }
     return null;
@@ -65049,21 +65053,22 @@ Sitemap: ${base}sitemap.xml
     const out = [];
     const days2 = weekDates(monday);
     const workOn = (d) => shiftsOn(map, memberId, d).filter((s) => shiftMinutes(s) > 0);
+    const timedOn = (d) => workOn(d).filter(hasTimes);
     days2.forEach((d) => {
-      const list3 = workOn(d);
+      const list3 = timedOn(d);
       for (let i = 0; i < list3.length; i++) {
         for (let j = i + 1; j < list3.length; j++) {
           if (toMinutes(list3[i].start) < toMinutes(list3[j].end) && toMinutes(list3[j].start) < toMinutes(list3[i].end)) out.push({ kind: "overlap", date: d, text: `Deux cr\xE9neaux se chevauchent le ${frDay(d)}.` });
         }
       }
-      const minutes = list3.reduce((n, s) => n + shiftMinutes(s), 0);
+      const minutes = workOn(d).reduce((n, s) => n + shiftMinutes(s), 0);
       if (minutes > MAX_DAY_MINUTES) out.push({ kind: "day", date: d, text: `Plus de 10 h de travail le ${frDay(d)} (${hoursText(minutes)}).` });
     });
     const week = weekTotals(map, memberId, monday).minutes;
     if (week > MAX_WEEK_MINUTES) out.push({ kind: "week", date: monday, text: `Plus de 48 h dans la semaine (${hoursText(week)}).` });
     for (let i = 0; i < days2.length; i++) {
-      const today6 = workOn(days2[i]);
-      const next = workOn(i + 1 < days2.length ? days2[i + 1] : addDays3(days2[i], 1));
+      const today6 = timedOn(days2[i]);
+      const next = timedOn(i + 1 < days2.length ? days2[i + 1] : addDays3(days2[i], 1));
       if (today6.length === 0 || next.length === 0) continue;
       const lastEnd = Math.max(...today6.map((s) => toMinutes(s.end)));
       const firstStart = Math.min(...next.map((s) => toMinutes(s.start)));
@@ -65095,23 +65100,43 @@ Sitemap: ${base}sitemap.xml
       ["Personne", ...days2.map((d) => d.split("-").reverse().join("/")), "Total (h)"],
       ...members.map((m) => [
         m.name,
-        ...days2.map((d) => shiftsOn(map, m.id, d).map((s) => s.kind === "work" ? `${s.start}-${s.end} ${TASK_LABEL[s.task]}` : KIND_LABEL4[s.kind]).join(" ; ")),
+        ...days2.map((d) => shiftsOn(map, m.id, d).map((s) => s.kind === "work" ? `${hasTimes(s) ? `${s.start}-${s.end}` : `${s.hours} h`} ${TASK_LABEL[s.task]}` : KIND_LABEL4[s.kind]).join(" ; ")),
         Math.round(weekTotals(map, m.id, monday).minutes / 60 * 100) / 100
       ])
     ];
   }
-  function monthRows(map, members, month) {
-    const { from, to } = monthRange2(month);
+  function bilan(map, members, from, to) {
+    const lines2 = members.map((m) => {
+      const t = totals(map, m.id, from, to);
+      const rate = typeof m.hourlyRate === "number" && m.hourlyRate > 0 ? m.hourlyRate : null;
+      return { id: m.id, name: m.name, occasional: !!m.occasional, minutes: t.minutes, workDays: t.workDays, rate, amount: rate === null ? null : round27(t.minutes / 60 * rate) };
+    }).filter((l) => l.minutes > 0);
+    return {
+      from,
+      to,
+      lines: lines2,
+      minutes: lines2.reduce((n, l) => n + l.minutes, 0),
+      amount: round27(lines2.reduce((n, l) => n + (l.amount || 0), 0)),
+      withoutRate: lines2.filter((l) => l.rate === null).length
+    };
+  }
+  function yearByMonth(map, members, year) {
+    return Array.from({ length: 12 }, (_, i) => {
+      const month = `${year}-${String(i + 1).padStart(2, "0")}`;
+      const { from, to } = monthRange2(month);
+      const b = bilan(map, members, from, to);
+      return { month, minutes: Object.fromEntries(b.lines.map((l) => [l.id, l.minutes])), total: b.minutes, amount: b.amount };
+    });
+  }
+  function bilanRows(b) {
     return [
-      [`Heures du mois ${month} (indicatif : \xE0 rapprocher des bulletins de paie)`],
-      ["Personne", "Heures travaill\xE9es", "Jours travaill\xE9s", "Jours de cong\xE9", "Jours de maladie", "Jours de repos"],
-      ...members.map((m) => {
-        const t = totals(map, m.id, from, to);
-        return [m.name, Math.round(t.minutes / 60 * 100) / 100, t.workDays, t.leaveDays, t.sickDays, t.offDays];
-      })
+      [`Bilan des heures du ${b.from.split("-").reverse().join("/")} au ${b.to.split("-").reverse().join("/")} (indicatif : \xE0 rapprocher des bulletins de paie ou des d\xE9clarations)`],
+      ["Personne", "Contrat", "Heures travaill\xE9es", "Jours travaill\xE9s", "Co\xFBt horaire (\u20AC)", "Montant \xE0 r\xE9gler (\u20AC)"],
+      ...b.lines.map((l) => [l.name, l.occasional ? "Occasionnel" : "R\xE9gulier", round27(l.minutes / 60), l.workDays, l.rate, l.amount]),
+      ["Total", null, round27(b.minutes / 60), null, null, b.amount]
     ];
   }
-  var KIND_LABEL4, TASK_LABEL, MAX_DAY_MINUTES, MAX_WEEK_MINUTES, MIN_REST_MINUTES, DAY4, dayNumber3, isoOf3, addDays3, weekDates, hoursText, shiftsOf, weekTotals, overtimeMinutes, frDay;
+  var KIND_LABEL4, TASK_LABEL, MAX_DAY_MINUTES, MAX_WEEK_MINUTES, MIN_REST_MINUTES, DAY4, dayNumber3, isoOf3, addDays3, weekDates, hasTimes, hoursText, shiftsOf, weekTotals, overtimeMinutes, frDay, round27;
   var init_shifts = __esm({
     "src/modules/personnel/shifts.ts"() {
       "use strict";
@@ -65125,6 +65150,7 @@ Sitemap: ${base}sitemap.xml
       isoOf3 = (n) => new Date(n * DAY4).toISOString().slice(0, 10);
       addDays3 = (iso, n) => isoOf3(dayNumber3(iso) + n);
       weekDates = (monday) => Array.from({ length: 7 }, (_, i) => addDays3(monday, i));
+      hasTimes = (s) => toMinutes(s.start) !== null && toMinutes(s.end) !== null;
       hoursText = (minutes) => {
         const h2 = Math.floor(minutes / 60);
         const m = Math.round(minutes % 60);
@@ -65134,11 +65160,12 @@ Sitemap: ${base}sitemap.xml
       weekTotals = (map, memberId, monday) => totals(map, memberId, monday, addDays3(monday, 6));
       overtimeMinutes = (workedMinutes, weeklyHours) => weeklyHours && weeklyHours > 0 ? Math.max(0, workedMinutes - Math.round(weeklyHours * 60)) : 0;
       frDay = (iso) => iso.split("-").reverse().slice(0, 2).join("/");
+      round27 = (n) => Math.round(n * 100) / 100;
     }
   });
 
   // src/modules/personnel/PlanningView.tsx
-  var import_react137, import_jsx_runtime134, DAY_NAMES, field2, frShort, KIND_TONE, ShiftForm, PlanningView;
+  var import_react137, import_jsx_runtime134, DAY_NAMES, field2, frShort, KIND_TONE, ShiftForm, PlanningView, eur5, hText, BilanPanel;
   var init_PlanningView = __esm({
     "src/modules/personnel/PlanningView.tsx"() {
       "use strict";
@@ -65150,6 +65177,7 @@ Sitemap: ${base}sitemap.xml
       init_tasks();
       init_orders();
       init_store12();
+      init_content13();
       init_shiftStore();
       init_shifts();
       import_jsx_runtime134 = __require("react/jsx-runtime");
@@ -65164,12 +65192,14 @@ Sitemap: ${base}sitemap.xml
       };
       ShiftForm = ({ initial, isNew, members, onClose, onToast }) => {
         const [s, setS] = (0, import_react137.useState)(initial);
+        const [byHours, setByHours] = (0, import_react137.useState)(!!initial.hours && !initial.start && !initial.end);
         const set = (p) => setS((x) => ({ ...x, ...p }));
         const save = () => {
-          const err = validateShift(s);
+          const prepared = s.kind !== "work" ? { ...s, start: "", end: "", hours: null } : byHours ? { ...s, start: "", end: "" } : { ...s, hours: null };
+          const err = validateShift(prepared);
           if (err) return onToast(err);
           try {
-            saveShift({ ...s, start: s.kind === "work" ? s.start : "", end: s.kind === "work" ? s.end : "" });
+            saveShift(prepared);
           } catch {
             return onToast("Enregistrement impossible : la m\xE9moire de l\u2019appareil est pleine.");
           }
@@ -65196,14 +65226,26 @@ Sitemap: ${base}sitemap.xml
               /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("select", { value: s.task, onChange: (e) => set({ task: e.target.value }), className: `${field2} w-full`, "data-shift-task": true, children: Object.keys(TASK_LABEL).map((k) => /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("option", { value: k, children: TASK_LABEL[k] }, k)) })
             ] })
           ] }),
-          s.kind === "work" && /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "grid grid-cols-2 gap-3 max-w-xs", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("label", { className: "block", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "De" }),
-              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { type: "time", value: s.start, onChange: (e) => set({ start: e.target.value }), className: `${field2} w-full`, "data-shift-start": true })
+          s.kind === "work" && /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "space-y-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "flex gap-1.5", role: "radiogroup", "aria-label": "Saisie du travail", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("button", { type: "button", role: "radio", "aria-checked": !byHours, onClick: () => setByHours(false), className: `px-3 py-1.5 text-xs font-semibold rounded-lg border cursor-pointer ${!byHours ? "bg-sy-325032 text-white border-sy-325032" : "bg-white border-neutral-200"}`, "data-shift-mode": "times", children: "Horaires pr\xE9cis" }),
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("button", { type: "button", role: "radio", "aria-checked": byHours, onClick: () => setByHours(true), className: `px-3 py-1.5 text-xs font-semibold rounded-lg border cursor-pointer ${byHours ? "bg-sy-325032 text-white border-sy-325032" : "bg-white border-neutral-200"}`, "data-shift-mode": "hours", children: "Nombre d\u2019heures seulement" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("label", { className: "block", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "\xC0" }),
-              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { type: "time", value: s.end, onChange: (e) => set({ end: e.target.value }), className: `${field2} w-full`, "data-shift-end": true })
+            byHours ? /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("label", { className: "block max-w-[10rem]", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "Heures travaill\xE9es" }),
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { value: s.hours ?? "", onChange: (e) => {
+                const n = parseFloat(e.target.value.replace(",", "."));
+                set({ hours: isFinite(n) && n > 0 ? n : null });
+              }, inputMode: "decimal", placeholder: "ex. 3,5", className: `${field2} w-full font-mono`, "data-shift-hours": true })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "grid grid-cols-2 gap-3 max-w-xs", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("label", { className: "block", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "De" }),
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { type: "time", value: s.start, onChange: (e) => set({ start: e.target.value }), className: `${field2} w-full`, "data-shift-start": true })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("label", { className: "block", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "\xC0" }),
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { type: "time", value: s.end, onChange: (e) => set({ end: e.target.value }), className: `${field2} w-full`, "data-shift-end": true })
+              ] })
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { value: s.note, onChange: (e) => set({ note: e.target.value }), placeholder: "Note (facultatif)", "aria-label": "Note", className: `${field2} w-full` }),
@@ -65264,9 +65306,27 @@ Sitemap: ${base}sitemap.xml
             onToast("Enregistrement impossible : la m\xE9moire de l\u2019appareil est pleine.");
           }
         };
-        if (active2.length === 0) {
-          return /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", "data-planning-empty": true, children: "Ajoutez d\u2019abord les personnes de l\u2019\xE9quipe (onglet \xC9quipe) : le planning s\u2019appuie sur leurs fiches." });
-        }
+        const hasShiftThisWeek = (id) => Object.values(shifts2).some((s) => s.memberId === id && s.date >= monday && s.date <= days2[6]);
+        const rowMembers = active2.filter((m) => !isOccasional(m) || hasShiftThisWeek(m.id));
+        const extrasAvailable = active2.filter((m) => isOccasional(m) && !hasShiftThisWeek(m.id));
+        const [newExtra, setNewExtra] = (0, import_react137.useState)(null);
+        const addExtra = () => {
+          if (!newExtra || !newExtra.name.trim()) return onToast("Indiquez le nom de la personne.");
+          const rate = parseFloat(newExtra.rate.replace(",", "."));
+          try {
+            const saved = saveMember({ ...newMember(), name: newExtra.name.trim(), contract: "occasional", hourlyRate: isFinite(rate) && rate > 0 ? rate : null });
+            setNewExtra(null);
+            onToast(`${saved.name} ajout\xE9(e) comme personne occasionnelle : elle n\u2019appara\xEEt dans la grille que les semaines o\xF9 elle travaille.`);
+            const date = today6 >= monday && today6 <= days2[6] ? today6 : monday;
+            setForm({ shift: newShift(saved.id, date), isNew: true });
+          } catch {
+            onToast("Enregistrement impossible : la m\xE9moire de l\u2019appareil est pleine.");
+          }
+        };
+        const addExtraToWeek = (id) => {
+          const date = today6 >= monday && today6 <= days2[6] ? today6 : monday;
+          setForm({ shift: { ...newShift(id, date), start: "", end: "", hours: 2 }, isNew: true });
+        };
         return /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "space-y-3", "data-planning": true, children: [
           /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200 p-3 flex flex-wrap items-center justify-between gap-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "flex items-center gap-1.5", children: [
@@ -65291,8 +65351,28 @@ Sitemap: ${base}sitemap.xml
               ] })
             ] })
           ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "flex flex-wrap items-center gap-2 text-xs", "data-extras": true, children: [
+            extrasAvailable.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("label", { className: "flex items-center gap-1.5", children: [
+              "Ajouter \xE0 cette semaine :",
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("select", { value: "", onChange: (e) => e.target.value && addExtraToWeek(e.target.value), className: field2, "aria-label": "Ajouter une personne occasionnelle \xE0 la semaine", "data-add-extra-week": true, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("option", { value: "", children: "Personne occasionnelle\u2026" }),
+                extrasAvailable.map((m) => /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("option", { value: m.id, children: m.name }, m.id))
+              ] })
+            ] }),
+            newExtra ? /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("span", { className: "flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-neutral-50 border border-neutral-200", "data-extra-form": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { value: newExtra.name, onChange: (e) => setNewExtra({ ...newExtra, name: e.target.value }), placeholder: "Nom et pr\xE9nom", "aria-label": "Nom de la personne occasionnelle", className: field2, "data-extra-name": true }),
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { value: newExtra.rate, onChange: (e) => setNewExtra({ ...newExtra, rate: e.target.value.replace(/[^0-9.,]/g, "") }), inputMode: "decimal", placeholder: "Co\xFBt horaire \u20AC", "aria-label": "Co\xFBt horaire", className: `${field2} w-28 font-mono`, "data-extra-rate": true }),
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("button", { type: "button", onClick: addExtra, className: "px-3 py-1.5 font-bold text-white bg-sy-325032 rounded-lg cursor-pointer", "data-extra-save": true, children: "Ajouter et saisir ses heures" }),
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("button", { type: "button", onClick: () => setNewExtra(null), className: "px-2 py-1.5 text-neutral-600 cursor-pointer", children: "Annuler" })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("button", { type: "button", onClick: () => setNewExtra({ name: "", rate: "" }), className: "flex items-center gap-1 px-2.5 py-2 font-semibold border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer", "data-new-extra": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)(Plus, { className: "w-3.5 h-3.5" }),
+              " Nouvelle personne occasionnelle"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("span", { className: "text-[11px] text-neutral-500", children: "Pour quelques heures, pas toutes les semaines : saisissez simplement le nombre d\u2019heures travaill\xE9es." })
+          ] }),
           form && /* @__PURE__ */ (0, import_jsx_runtime134.jsx)(ShiftForm, { initial: form.shift, isNew: form.isNew, members: active2, onClose: () => setForm(null), onToast }, form.shift.id),
-          /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("div", { className: "bg-white rounded-2xl border border-neutral-200 overflow-x-auto", children: /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("table", { className: "w-full text-[11px] border-collapse min-w-[44rem]", "data-planning-grid": true, children: [
+          rowMembers.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("div", { className: "p-6 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", "data-planning-empty": true, children: active2.length === 0 ? "Ajoutez les personnes de l\u2019\xE9quipe (onglet \xC9quipe) ou une personne occasionnelle ci-dessus : le planning s\u2019appuie sur leurs fiches." : "Aucune personne r\xE9guli\xE8re : ajoutez-en dans l\u2019onglet \xC9quipe, ou choisissez une personne occasionnelle pour cette semaine." }),
+          /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("div", { className: `bg-white rounded-2xl border border-neutral-200 overflow-x-auto ${rowMembers.length === 0 ? "hidden" : ""}`, children: /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("table", { className: "w-full text-[11px] border-collapse min-w-[44rem]", "data-planning-grid": true, children: [
             /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("tr", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("th", { className: "text-left font-bold text-neutral-700 border-b border-neutral-300 px-2 py-2 w-40", children: "Personne" }),
               days2.map((d, i) => /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("th", { className: `text-left font-bold border-b border-neutral-300 px-2 py-2 align-top ${d === today6 ? "bg-amber-50" : ""}`, children: [
@@ -65313,13 +65393,13 @@ Sitemap: ${base}sitemap.xml
               ] }, d)),
               /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("th", { className: "text-right font-bold text-neutral-700 border-b border-neutral-300 px-2 py-2 w-28", children: "Semaine" })
             ] }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("tbody", { children: active2.map((m) => {
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("tbody", { children: rowMembers.map((m) => {
               const t = weekTotals(shifts2, m.id, monday);
               const extra = overtimeMinutes(t.minutes, m.weeklyHours);
               return /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("tr", { "data-planning-row": m.id, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("td", { className: "border-b border-neutral-100 px-2 py-1.5 align-top", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("div", { className: "font-semibold text-neutral-900 text-xs", children: m.name }),
-                  /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("label", { className: "text-[10px] text-neutral-500 flex items-center gap-1", children: [
+                  isOccasional(m) ? /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("span", { className: "text-[10px] text-sky-800 font-semibold", children: "Occasionnel" }) : /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("label", { className: "text-[10px] text-neutral-500 flex items-center gap-1", children: [
                     "Contrat",
                     /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { defaultValue: m.weeklyHours ?? "", inputMode: "decimal", "aria-label": `Heures par semaine de ${m.name}`, onBlur: (e) => e.target.value !== String(m.weeklyHours ?? "") && setContract(m, e.target.value), className: "w-10 border border-neutral-200 rounded px-1 py-0.5 text-[10px] font-mono" }, `${m.id}${m.weeklyHours ?? ""}`),
                     " h/sem."
@@ -65327,11 +65407,7 @@ Sitemap: ${base}sitemap.xml
                 ] }),
                 days2.map((d) => /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: `border-b border-neutral-100 px-1 py-1 align-top ${d === today6 ? "bg-amber-50/40" : ""}`, children: /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "space-y-1", children: [
                   shiftsOn(shifts2, m.id, d).map((s) => /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("button", { type: "button", onClick: () => setForm({ shift: s, isNew: false }), className: `block w-full text-left px-1.5 py-1 rounded-md border cursor-pointer ${KIND_TONE[s.kind]}`, "data-shift": s.id, children: s.kind === "work" ? /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)(import_jsx_runtime134.Fragment, { children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("b", { children: [
-                      s.start,
-                      "\u2013",
-                      s.end
-                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("b", { children: hasTimes(s) ? `${s.start}\u2013${s.end}` : `${String(s.hours).replace(".", ",")} h` }),
                     /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("span", { className: "block text-[10px]", children: TASK_LABEL[s.task] })
                   ] }) : /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("b", { children: KIND_LABEL4[s.kind] }) }, s.id)),
                   /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("button", { type: "button", "aria-label": `Ajouter un cr\xE9neau pour ${m.name} le ${frShort(d)}`, onClick: () => setForm({ shift: newShift(m.id, d), isNew: true }), className: "w-full text-neutral-300 hover:text-sy-325032 hover:bg-neutral-50 rounded-md cursor-pointer flex justify-center", "data-add-shift": `${m.id}|${d}`, children: /* @__PURE__ */ (0, import_jsx_runtime134.jsx)(Plus, { className: "w-3.5 h-3.5" }) })
@@ -65373,20 +65449,124 @@ Sitemap: ${base}sitemap.xml
             ] }, i)),
             /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("p", { className: "text-[10px] text-amber-800", children: "Rep\xE8res du Code du travail (10 h par jour, 48 h par semaine, 11 h de repos) : \xE0 v\xE9rifier selon votre convention et vos contrats." })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-month-summary": true, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("h3", { className: "text-sm font-bold text-neutral-900", children: "Heures du mois" }),
-              /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "flex items-center gap-2", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { type: "month", value: month, onChange: (e) => e.target.value && setMonth(e.target.value), className: field2, "aria-label": "Mois" }),
-                /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("button", { type: "button", onClick: () => downloadCsv(`heures_${month}.csv`, monthRows(shifts2, active2, month), ";"), className: "flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer", "data-month-export": true, children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime134.jsx)(Download, { className: "w-3.5 h-3.5" }),
-                  " CSV pour la paie"
-                ] })
-              ] })
+          /* @__PURE__ */ (0, import_jsx_runtime134.jsx)(BilanPanel, { members, shifts: shifts2, onToast })
+        ] });
+      };
+      eur5 = (n) => `${(Math.round(n * 100) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \u20AC`;
+      hText = (minutes) => `${String(Math.round(minutes / 60 * 100) / 100).replace(".", ",")} h`;
+      BilanPanel = ({ members, shifts: shifts2, onToast }) => {
+        const today6 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+        const [range, setRange] = (0, import_react137.useState)(() => monthRange2(today6.slice(0, 7)));
+        const [year, setYear] = (0, import_react137.useState)(parseInt(today6.slice(0, 4), 10));
+        const list3 = (0, import_react137.useMemo)(() => members.map((m) => ({ id: m.id, name: m.name, occasional: isOccasional(m), hourlyRate: m.hourlyRate })), [members]);
+        const b = (0, import_react137.useMemo)(() => bilan(shifts2, list3, range.from, range.to), [shifts2, list3, range]);
+        const byMonth = (0, import_react137.useMemo)(() => yearByMonth(shifts2, list3, year), [shifts2, list3, year]);
+        const withHours = list3.filter((m) => byMonth.some((mo) => mo.minutes[m.id]));
+        const setPreset = (kind) => {
+          if (kind === "month") setRange(monthRange2(today6.slice(0, 7)));
+          else if (kind === "previous") setRange(monthRange2(addDays3(`${today6.slice(0, 7)}-01`, -1).slice(0, 7)));
+          else setRange({ from: `${today6.slice(0, 4)}-01-01`, to: `${today6.slice(0, 4)}-12-31` });
+        };
+        const setRate = (id, v) => {
+          const m = members.find((x) => x.id === id);
+          if (!m) return;
+          const n = parseFloat(v.replace(",", "."));
+          try {
+            saveMember({ ...m, hourlyRate: isFinite(n) && n > 0 ? n : null });
+          } catch {
+            onToast("Enregistrement impossible : la m\xE9moire de l\u2019appareil est pleine.");
+          }
+        };
+        const btn9 = "px-2.5 py-1.5 text-xs font-semibold border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer";
+        return /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200 p-3 sm:p-4 space-y-3", "data-bilan": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("h3", { className: "text-sm font-bold text-neutral-900", children: "Bilan des heures et montant \xE0 r\xE9gler" }),
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("button", { type: "button", onClick: () => downloadCsv(`bilan-heures_${range.from}_${range.to}.csv`, bilanRows(b), ";"), disabled: b.lines.length === 0, className: `${btn9} flex items-center gap-1 disabled:opacity-40`, "data-bilan-export": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)(Download, { className: "w-3.5 h-3.5" }),
+              " CSV"
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "flex flex-wrap items-end gap-2 text-xs", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("button", { type: "button", onClick: () => setPreset("month"), className: btn9, "data-bilan-preset": "month", children: "Ce mois" }),
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("button", { type: "button", onClick: () => setPreset("previous"), className: btn9, "data-bilan-preset": "previous", children: "Mois pr\xE9c\xE9dent" }),
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("button", { type: "button", onClick: () => setPreset("year"), className: btn9, "data-bilan-preset": "year", children: "Cette ann\xE9e" }),
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("label", { className: "flex items-center gap-1", children: [
+              "Du ",
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { type: "date", value: range.from, onChange: (e) => e.target.value && setRange((r) => ({ ...r, from: e.target.value })), className: field2, "data-bilan-from": true })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("table", { className: "w-full text-[11px] border-collapse", children: /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("tbody", { children: monthRows(shifts2, active2, month).slice(2).map((r, i) => /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("tr", { children: r.map((c, j) => /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: `border-b border-neutral-100 px-2 py-1 ${j === 0 ? "font-semibold text-neutral-900" : "font-mono text-neutral-700"}`, children: j === 1 ? `${String(c).replace(".", ",")} h` : String(c) }, j)) }, i)) }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("p", { className: "text-[10px] text-neutral-500", children: "Indicatif : \xE0 rapprocher des bulletins de paie et du d\xE9compte des cong\xE9s de votre comptable ou de votre logiciel de paie." })
-          ] })
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("label", { className: "flex items-center gap-1", children: [
+              "au ",
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { type: "date", value: range.to, onChange: (e) => e.target.value && setRange((r) => ({ ...r, to: e.target.value })), className: field2, "data-bilan-to": true })
+            ] })
+          ] }),
+          b.lines.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("p", { className: "text-xs text-neutral-500", "data-bilan-empty": true, children: "Aucune heure travaill\xE9e sur cette p\xE9riode." }) : /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("div", { className: "overflow-x-auto", children: /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("table", { className: "w-full text-[11px] border-collapse", "data-bilan-table": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("tr", { children: ["Personne", "Heures", "Jours", "Co\xFBt horaire", "Montant \xE0 r\xE9gler"].map((h2) => /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("th", { className: "text-left font-bold text-neutral-700 border-b border-neutral-300 px-2 py-1 whitespace-nowrap", children: h2 }, h2)) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("tbody", { children: [
+              b.lines.map((l) => /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("tr", { "data-bilan-row": l.id, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("td", { className: "border-b border-neutral-100 px-2 py-1.5 font-semibold text-neutral-900", children: [
+                  l.name,
+                  l.occasional && /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("span", { className: "ml-1.5 text-[10px] font-semibold text-sky-800", children: "occasionnel" })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "border-b border-neutral-100 px-2 py-1.5 font-mono", children: hText(l.minutes) }),
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "border-b border-neutral-100 px-2 py-1.5 font-mono", children: l.workDays }),
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "border-b border-neutral-100 px-2 py-1.5", children: /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { defaultValue: l.rate ?? "", inputMode: "decimal", placeholder: "\u20AC / h", "aria-label": `Co\xFBt horaire de ${l.name}`, onBlur: (e) => e.target.value !== String(l.rate ?? "") && setRate(l.id, e.target.value), className: "w-20 border border-neutral-200 rounded px-1.5 py-0.5 font-mono", "data-rate-input": l.id }, `${l.id}${l.rate ?? ""}`) }),
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "border-b border-neutral-100 px-2 py-1.5 font-mono font-bold", "data-bilan-amount": l.id, children: l.amount === null ? /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("span", { className: "font-normal text-neutral-400", children: "\u2014" }) : eur5(l.amount) })
+              ] }, l.id)),
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("tr", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "px-2 py-1.5 font-bold", children: "Total" }),
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "px-2 py-1.5 font-mono font-bold", "data-bilan-total-hours": true, children: hText(b.minutes) }),
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", {}),
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", {}),
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "px-2 py-1.5 font-mono font-bold", "data-bilan-total-amount": true, children: eur5(b.amount) })
+              ] })
+            ] })
+          ] }) }),
+          b.withoutRate > 0 && /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("p", { className: "text-[11px] text-amber-800", "data-bilan-norate": true, children: [
+            b.withoutRate,
+            " personne",
+            b.withoutRate > 1 ? "s" : "",
+            " sans co\xFBt horaire : saisissez-le dans la colonne \xAB Co\xFBt horaire \xBB pour obtenir le montant \xE0 r\xE9gler."
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("details", { className: "text-xs", "data-bilan-months": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("summary", { className: "cursor-pointer font-semibold text-neutral-700", children: [
+              "Mois par mois (",
+              year,
+              ")"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("div", { className: "pt-2 space-y-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("label", { className: "flex items-center gap-1", children: [
+                "Ann\xE9e ",
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("input", { type: "number", value: year, onChange: (e) => setYear(parseInt(e.target.value, 10) || year), className: `${field2} w-24`, "aria-label": "Ann\xE9e" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("div", { className: "overflow-x-auto", children: /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("table", { className: "w-full text-[11px] border-collapse", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("tr", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("th", { className: "text-left font-bold border-b border-neutral-300 px-2 py-1", children: "Mois" }),
+                  withHours.map((m) => /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("th", { className: "text-right font-bold border-b border-neutral-300 px-2 py-1 whitespace-nowrap", children: m.name }, m.id)),
+                  /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("th", { className: "text-right font-bold border-b border-neutral-300 px-2 py-1", children: "Total" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("th", { className: "text-right font-bold border-b border-neutral-300 px-2 py-1", children: "Montant" })
+                ] }) }),
+                /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("tbody", { children: [
+                  byMonth.map((mo) => /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("tr", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("td", { className: "border-b border-neutral-100 px-2 py-1 font-semibold", children: [
+                      mo.month.slice(5),
+                      "/",
+                      mo.month.slice(0, 4)
+                    ] }),
+                    withHours.map((m) => /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "border-b border-neutral-100 px-2 py-1 text-right font-mono", children: mo.minutes[m.id] ? hText(mo.minutes[m.id]) : "\u2014" }, m.id)),
+                    /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "border-b border-neutral-100 px-2 py-1 text-right font-mono font-bold", children: mo.total ? hText(mo.total) : "\u2014" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "border-b border-neutral-100 px-2 py-1 text-right font-mono", children: mo.amount ? eur5(mo.amount) : "\u2014" })
+                  ] }, mo.month)),
+                  /* @__PURE__ */ (0, import_jsx_runtime134.jsxs)("tr", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "px-2 py-1 font-bold", children: "Ann\xE9e" }),
+                    withHours.map((m) => /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "px-2 py-1 text-right font-mono font-bold", children: hText(byMonth.reduce((n, mo) => n + (mo.minutes[m.id] || 0), 0)) }, m.id)),
+                    /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "px-2 py-1 text-right font-mono font-bold", children: hText(byMonth.reduce((n, mo) => n + mo.total, 0)) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("td", { className: "px-2 py-1 text-right font-mono font-bold", children: eur5(byMonth.reduce((n, mo) => n + mo.amount, 0)) })
+                  ] })
+                ] })
+              ] }) })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime134.jsx)("p", { className: "text-[10px] text-neutral-500", children: "Montant = heures \xD7 co\xFBt horaire saisi, avant cotisations, cong\xE9s pay\xE9s et indemnit\xE9s \xE9ventuelles. Indicatif : \xE0 rapprocher de la paie, du CESU ou de la facture de la personne." })
         ] });
       };
     }
@@ -65459,6 +65639,12 @@ Sitemap: ${base}sitemap.xml
             /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(Field, { label: "Nom et pr\xE9nom", children: /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(TextInput, { value: m.name, onChange: (v) => set({ name: v }) }) }),
             /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(Field, { label: "Fonction", children: /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(TextInput, { value: m.role, onChange: (v) => set({ role: v }), placeholder: "Cuisine, service, m\xE9nage\u2026" }) }),
             /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(Field, { label: "Date d'entr\xE9e", children: /* @__PURE__ */ (0, import_jsx_runtime135.jsx)("input", { type: "date", value: m.entryDate, onChange: (e) => set({ entryDate: e.target.value }), className: cell4 }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(Field, { label: "Type de contrat", hint: "Occasionnel : quelques heures, pas toutes les semaines (extra, remplacement). Il n'appara\xEEt dans le planning que les semaines o\xF9 il travaille.", children: /* @__PURE__ */ (0, import_jsx_runtime135.jsxs)("select", { value: m.contract || "regular", onChange: (e) => set({ contract: e.target.value }), className: cell4, "data-member-contract": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime135.jsx)("option", { value: "regular", children: "R\xE9gulier (planning chaque semaine)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime135.jsx)("option", { value: "occasional", children: "Occasionnel (quelques heures)" })
+            ] }) }),
+            (m.contract || "regular") === "regular" && /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(Field, { label: "Heures par semaine du contrat", hint: "Facultatif : le planning signale les heures en plus.", children: /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(NumberInput, { optional: true, value: m.weeklyHours ?? void 0, onChange: (v) => set({ weeklyHours: v && v > 0 ? v : null }), suffix: "h" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(Field, { label: "Co\xFBt horaire (\u20AC)", hint: "Facultatif : sert \xE0 calculer le montant \xE0 r\xE9gler dans le bilan des heures.", children: /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(NumberInput, { optional: true, value: m.hourlyRate ?? void 0, onChange: (v) => set({ hourlyRate: v && v > 0 ? v : null }), suffix: "\u20AC/h" }) }),
             /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(Field, { label: "T\xE9l\xE9phone", children: /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(TextInput, { value: m.phone, onChange: (v) => set({ phone: v }) }) }),
             /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(Field, { label: "E-mail", children: /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(TextInput, { value: m.email, onChange: (v) => set({ email: v }) }) }),
             /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(Field, { label: "Notes", children: /* @__PURE__ */ (0, import_jsx_runtime135.jsx)(TextArea, { value: m.notes, onChange: (v) => set({ notes: v }), rows: 2 }) })
@@ -68500,10 +68686,10 @@ ${text}` : text });
       const date = c.invoiceDate || r.checkIn;
       const total2 = c.totalAmount !== void 0 ? c.totalAmount : r.totalAmount || 0;
       const paid = c.paymentState === "acquittee" || c.paymentState === void 0 && r.paymentStatus === "paid";
-      return { r, number: c.invoiceNumber || "FA-PROVISOIRE", date, name: c.guestName || r.guestName || "Client", total: round27(total2), paid };
+      return { r, number: c.invoiceNumber || "FA-PROVISOIRE", date, name: c.guestName || r.guestName || "Client", total: round28(total2), paid };
     }).filter((l) => inPeriod(l.date, period)).sort((a, b) => a.number.localeCompare(b.number, void 0, { numeric: true }));
-    const total = round27(lines2.reduce((n, l) => n + l.total, 0));
-    const paidTotal = round27(lines2.filter((l) => l.paid).reduce((n, l) => n + l.total, 0));
+    const total = round28(lines2.reduce((n, l) => n + l.total, 0));
+    const paidTotal = round28(lines2.filter((l) => l.paid).reduce((n, l) => n + l.total, 0));
     return [
       ["N\xB0 de facture", "Date de facture", "Client", "H\xE9bergement", "Arriv\xE9e", "D\xE9part", "Nuits", "Montant (\u20AC)", "Mention TVA", "R\xE8glement"],
       ...lines2.map((l) => [l.number, l.date, l.name, roomName(String(l.r.roomId)), l.r.checkIn, l.r.checkOut, l.r.nights, l.total, vatMention, l.paid ? "R\xE9gl\xE9e" : "\xC0 r\xE9gler"]),
@@ -68516,9 +68702,9 @@ ${text}` : text });
     const byStatus = /* @__PURE__ */ new Map();
     stays.forEach((r) => {
       const s = TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer;
-      byStatus.set(s, round27((byStatus.get(s) || 0) + (r.touristTaxAmount || 0)));
+      byStatus.set(s, round28((byStatus.get(s) || 0) + (r.touristTaxAmount || 0)));
     });
-    const mine = round27(stays.filter((r) => statusOf4(r) === "a_declarer").reduce((n, r) => n + (r.touristTaxAmount || 0), 0));
+    const mine = round28(stays.filter((r) => statusOf4(r) === "a_declarer").reduce((n, r) => n + (r.touristTaxAmount || 0), 0));
     return [
       ["Arriv\xE9e", "D\xE9part", "Nuits", "H\xE9bergement", "Client", "Adultes", "Enfants", "Taxe (\u20AC)", "Statut", "\xC0 v\xE9rifier"],
       ...stays.map((r) => [
@@ -68529,22 +68715,22 @@ ${text}` : text });
         r.guestName,
         r.adultsCount,
         r.childrenCount,
-        round27(r.touristTaxAmount || 0),
+        round28(r.touristTaxAmount || 0),
         TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer,
         r.touristTaxNeedsVerification ? "Oui" : ""
       ]),
-      [`Total (${stays.length} s\xE9jour${stays.length > 1 ? "s" : ""})`, null, null, null, null, null, null, round27(stays.reduce((n, r) => n + (r.touristTaxAmount || 0), 0)), null, null],
+      [`Total (${stays.length} s\xE9jour${stays.length > 1 ? "s" : ""})`, null, null, null, null, null, null, round28(stays.reduce((n, r) => n + (r.touristTaxAmount || 0), 0)), null, null],
       ...[...byStatus.entries()].map(([s, v]) => [`dont ${s}`, null, null, null, null, null, null, v, null, null]),
       ["\xC0 D\xC9CLARER ET REVERSER PAR VOUS (hors plateformes)", null, null, null, null, null, null, mine, null, null]
     ];
   }
-  var inPeriod, round27, isReal, TAX_STATUS;
+  var inPeriod, round28, isReal, TAX_STATUS;
   var init_accounting = __esm({
     "src/core/export/accounting.ts"() {
       "use strict";
       init_pricing();
       inPeriod = (date, p) => !!date && date >= p.from && date <= p.to;
-      round27 = (n) => Math.round(n * 100) / 100;
+      round28 = (n) => Math.round(n * 100) / 100;
       isReal = (r) => !r.isBlocked && !/ferm|bloq/i.test(r.guestName || "");
       TAX_STATUS = {
         prise_en_charge: "Collect\xE9e et revers\xE9e par la plateforme",
