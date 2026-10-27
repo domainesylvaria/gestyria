@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v262</title>
-  <meta name="application-name" content="Gestyria v262" />
+  <title>Gestyria v263</title>
+  <meta name="application-name" content="Gestyria v263" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -1541,6 +1541,7 @@ var DomaineAppBundle = (() => {
       booking: asText(m.booking),
       groups: (Array.isArray(m.groups) ? m.groups : []).filter((g) => g && typeof g === "object").map((g) => ({
         category: asText(g.category),
+        ...asText(g.note).trim() ? { note: asText(g.note) } : {},
         items: (Array.isArray(g.items) ? g.items : []).filter((i) => i && typeof i === "object" && asText(i.name).trim()).map((i) => ({
           id: asText(i.id),
           name: asText(i.name),
@@ -1879,6 +1880,13 @@ var DomaineAppBundle = (() => {
       bookable: r.bookable !== false,
       deadlineDays: [0, 1, 2].includes(r.deadlineDays) ? r.deadlineDays : 1,
       deadlineTime: asTime(r.deadlineTime),
+      ...r.categoryNotes && typeof r.categoryNotes === "object" ? (() => {
+        const notes = {};
+        Object.entries(r.categoryNotes).forEach(([k, v]) => {
+          if (typeof v === "string" && v.trim()) notes[k] = v;
+        });
+        return Object.keys(notes).length > 0 ? { categoryNotes: notes } : {};
+      })() : {},
       ...fallback?.builtin ? { builtin: true } : {}
     };
   }
@@ -1994,7 +2002,7 @@ var DomaineAppBundle = (() => {
     const tagLabel = (id) => MEAL_TAGS.find((t) => t.id === id).label;
     const ordering = content.ordering.enabled;
     const moments = content.moments.filter((m) => m.enabled).map((m) => {
-      const shown = content.items.filter((i) => i.momentId === m.id && isItemShown(i, dishes)).map((i) => ({ ...i, category: dishes.find((d) => d.id === i.dishId)?.subCategory?.trim() || i.category }));
+      const shown = content.items.filter((i) => i.momentId === m.id && isItemShown(i, dishes)).map((i) => ({ ...i, origCategory: i.category.trim(), category: dishes.find((d) => d.id === i.dishId)?.subCategory?.trim() || i.category }));
       const orderable = ordering && m.bookable;
       return {
         id: m.id,
@@ -2005,6 +2013,7 @@ var DomaineAppBundle = (() => {
         booking: momentBooking(m),
         groups: groupByCategory(shown).map((g) => ({
           category: g.category,
+          ...(m.categoryNotes?.[g.items[0].origCategory] || "").trim() ? { note: m.categoryNotes[g.items[0].origCategory].trim() } : {},
           items: g.items.map((i) => {
             const r = resolveItem(i, dishes);
             return {
@@ -8527,7 +8536,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "262";
+      APP_VERSION = "263";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -32984,6 +32993,7 @@ Cette op\xE9ration est d\xE9finitive.`
               m.intro && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("p", { className: "text-[12px] text-neutral-700 leading-relaxed whitespace-pre-line", children: m.intro }),
               m.groups.map((g, gi) => /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("div", { children: [
                 g.category && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("div", { className: "text-[10px] font-bold uppercase tracking-wider mb-1.5", style: { color }, children: g.category }),
+                g.note && /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("p", { className: "text-[11px] italic text-neutral-600 mb-1.5 whitespace-pre-line", children: g.note }),
                 /* @__PURE__ */ (0, import_jsx_runtime32.jsx)("ul", { className: "space-y-2", children: g.items.map((it) => {
                   const photo = it.photo ? photos2[it.photo] : void 0;
                   return /* @__PURE__ */ (0, import_jsx_runtime32.jsxs)("li", { className: "flex items-start gap-2.5", children: [
@@ -36822,6 +36832,16 @@ ${stock.map((s) => `- ${s.name}${s.place ? ` (${s.place})` : ""} : ${String(s.ga
                     ] }),
                     !m.enabled && items.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("p", { className: "text-[11px] text-neutral-500", children: "\xC0 proposer dans \xAB Horaires et r\xE9glages \xBB." }) : items.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("p", { className: "text-[11px] text-neutral-500 p-3 rounded-xl border border-dashed border-neutral-300 text-center", children: "Aucun plat pour le moment." }) : groupByCategory(items).map((g) => /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("div", { className: "space-y-1.5", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime44.jsx)("div", { className: "text-[10px] font-bold uppercase tracking-wider text-neutral-500 pt-1", children: g.category || "Sans cat\xE9gorie" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(
+                        "input",
+                        {
+                          type: "text",
+                          value: m.categoryNotes?.[g.category] || "",
+                          onChange: (e) => updateMoment(m.id, { categoryNotes: { ...m.categoryNotes || {}, [g.category]: e.target.value } }),
+                          placeholder: "Texte sous ce titre (facultatif), ex. Pour 2 personnes",
+                          className: timeInput2
+                        }
+                      ),
                       g.items.map((item2, index) => {
                         return /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(
                           ItemRow,
@@ -65201,6 +65221,7 @@ ${who}<div class="row"><div><label for="r-nat">Nationalit\xE9</label><input id="
               m.groups.forEach((g) => {
                 if (g.items.length === 0) return;
                 if (g.category) h2 += `<h3>${esc3(g.category)}</h3>`;
+                if (g.note) h2 += `<p class="muted small"><em>${esc3(g.note)}</em></p>`;
                 g.items.forEach((i) => {
                   const pic = on("photos") ? img(i.photo, i.name) : "";
                   const al = on("allergens") && i.allergens.length > 0 ? `<br><span class="muted small">Allerg\xE8nes : ${esc3(i.allergens.join(", "))}</span>` : "";
