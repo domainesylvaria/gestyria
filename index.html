@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v256</title>
-  <meta name="application-name" content="Gestyria v256" />
+  <title>Gestyria v257</title>
+  <meta name="application-name" content="Gestyria v257" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8527,7 +8527,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "256";
+      APP_VERSION = "257";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -15411,11 +15411,201 @@ footer{background:#111}
     }
   });
 
+  // src/modules/personnel/shifts.ts
+  function expandDays(start, end, weekdays) {
+    const out = [];
+    const last = Math.min(dayNumber3(end), dayNumber3(start) + 366);
+    for (let n = dayNumber3(start); n <= last; n++) {
+      if (weekdays[(new Date(n * DAY3).getUTCDay() + 6) % 7]) out.push(isoOf2(n));
+    }
+    return out;
+  }
+  function mondayOf(iso) {
+    const n = dayNumber3(iso);
+    const weekday = (new Date(n * DAY3).getUTCDay() + 6) % 7;
+    return isoOf2(n - weekday);
+  }
+  function toMinutes(hhmm) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec((hhmm || "").trim());
+    if (!m) return null;
+    const h2 = Number(m[1]);
+    const min = Number(m[2]);
+    return h2 <= 24 && min < 60 && h2 * 60 + min <= 24 * 60 ? h2 * 60 + min : null;
+  }
+  function shiftMinutes(s) {
+    if (s.kind !== "work") return 0;
+    const a = toMinutes(s.start);
+    const b = toMinutes(s.end);
+    if (a !== null && b !== null) return b > a ? b - a : 0;
+    return typeof s.hours === "number" && isFinite(s.hours) && s.hours > 0 ? Math.round(s.hours * 60) : 0;
+  }
+  function shiftsOn(map, memberId, date) {
+    return shiftsOf(map, memberId).filter((s) => s.date === date).sort((a, b) => (a.start || "").localeCompare(b.start || ""));
+  }
+  function validateShift(s) {
+    if (!s.memberId) return "Choisissez la personne.";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s.date)) return "Indiquez la date.";
+    if (s.kind === "work") {
+      const typed = (s.start || "").trim() !== "" || (s.end || "").trim() !== "";
+      if (!typed) return s.hours && s.hours > 0 ? null : "Indiquez les horaires, ou le nombre d\u2019heures travaill\xE9es.";
+      if (!hasTimes(s)) return "Indiquez l\u2019heure de d\xE9but et de fin.";
+      if (shiftMinutes(s) === 0) return "L\u2019heure de fin doit \xEAtre apr\xE8s l\u2019heure de d\xE9but.";
+    }
+    return null;
+  }
+  function totals(map, memberId, from, to) {
+    const out = { minutes: 0, workDays: 0, leaveDays: 0, sickDays: 0, offDays: 0 };
+    const worked = /* @__PURE__ */ new Set();
+    const seen = { leave: /* @__PURE__ */ new Set(), sick: /* @__PURE__ */ new Set(), off: /* @__PURE__ */ new Set() };
+    shiftsOf(map, memberId).filter((s) => s.date >= from && s.date <= to).forEach((s) => {
+      if (s.kind === "work") {
+        const m = shiftMinutes(s);
+        if (m > 0) {
+          out.minutes += m;
+          worked.add(s.date);
+        }
+      } else if (s.kind === "leave") seen.leave.add(s.date);
+      else if (s.kind === "sick") seen.sick.add(s.date);
+      else seen.off.add(s.date);
+    });
+    out.workDays = worked.size;
+    out.leaveDays = seen.leave.size;
+    out.sickDays = seen.sick.size;
+    out.offDays = seen.off.size;
+    return out;
+  }
+  function monthRange(month) {
+    const [y, m] = month.split("-").map(Number);
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, "0")}` };
+  }
+  function weekWarnings(map, memberId, monday) {
+    const out = [];
+    const days2 = weekDates(monday);
+    const workOn = (d) => shiftsOn(map, memberId, d).filter((s) => shiftMinutes(s) > 0);
+    const timedOn = (d) => workOn(d).filter(hasTimes);
+    days2.forEach((d) => {
+      const list3 = timedOn(d);
+      for (let i = 0; i < list3.length; i++) {
+        for (let j = i + 1; j < list3.length; j++) {
+          if (toMinutes(list3[i].start) < toMinutes(list3[j].end) && toMinutes(list3[j].start) < toMinutes(list3[i].end)) out.push({ kind: "overlap", date: d, text: `Deux cr\xE9neaux se chevauchent le ${frDay(d)}.` });
+        }
+      }
+      const minutes = workOn(d).reduce((n, s) => n + shiftMinutes(s), 0);
+      if (minutes > MAX_DAY_MINUTES) out.push({ kind: "day", date: d, text: `Plus de 10 h de travail le ${frDay(d)} (${hoursText(minutes)}).` });
+    });
+    const week = weekTotals(map, memberId, monday).minutes;
+    if (week > MAX_WEEK_MINUTES) out.push({ kind: "week", date: monday, text: `Plus de 48 h dans la semaine (${hoursText(week)}).` });
+    for (let i = 0; i < days2.length; i++) {
+      const today6 = timedOn(days2[i]);
+      const next = timedOn(i + 1 < days2.length ? days2[i + 1] : addDays2(days2[i], 1));
+      if (today6.length === 0 || next.length === 0) continue;
+      const lastEnd = Math.max(...today6.map((s) => toMinutes(s.end)));
+      const firstStart = Math.min(...next.map((s) => toMinutes(s.start)));
+      if (24 * 60 - lastEnd + firstStart < MIN_REST_MINUTES) out.push({ kind: "rest", date: days2[i], text: `Moins de 11 h de repos entre le ${frDay(days2[i])} et le lendemain.` });
+    }
+    return out;
+  }
+  function copyWeek(map, fromMonday, toMonday, newId11, now) {
+    const offset = dayNumber3(toMonday) - dayNumber3(fromMonday);
+    const existing = Object.values(map);
+    const out = [];
+    existing.filter((s) => (s.kind === "work" || s.kind === "off") && s.date >= fromMonday && s.date <= addDays2(fromMonday, 6)).forEach((s) => {
+      const date = addDays2(s.date, offset);
+      const dup = [...existing, ...out].some((x) => x.memberId === s.memberId && x.date === date && x.kind === s.kind && x.start === s.start && x.end === s.end && x.task === s.task);
+      if (!dup) out.push({ ...s, id: newId11(), date, updatedAt: now });
+    });
+    return out;
+  }
+  function uncovered(map, date, needs) {
+    const planned = Object.values(map).filter((s) => s.date === date && shiftMinutes(s) > 0);
+    const out = [];
+    if (needs.menage > 0 && !planned.some((s) => s.task === "menage")) out.push("menage");
+    if (needs.repas > 0 && !planned.some((s) => s.task === "repas")) out.push("repas");
+    return out;
+  }
+  function weekRows(map, members, monday, posts = DEFAULT_POSTS) {
+    const days2 = weekDates(monday);
+    return [
+      ["Personne", ...days2.map((d) => d.split("-").reverse().join("/")), "Total (h)"],
+      ...members.map((m) => [
+        m.name,
+        ...days2.map((d) => shiftsOn(map, m.id, d).map((s) => s.kind === "work" ? `${hasTimes(s) ? `${s.start}-${s.end}` : `${s.hours} h`} ${taskName(s.task, posts)}` : KIND_LABEL[s.kind]).join(" ; ")),
+        Math.round(weekTotals(map, m.id, monday).minutes / 60 * 100) / 100
+      ])
+    ];
+  }
+  function bilan(map, members, from, to) {
+    const lines2 = members.map((m) => {
+      const t = totals(map, m.id, from, to);
+      const rate = typeof m.hourlyRate === "number" && m.hourlyRate > 0 ? m.hourlyRate : null;
+      return { id: m.id, name: m.name, occasional: !!m.occasional, minutes: t.minutes, workDays: t.workDays, rate, amount: rate === null ? null : round23(t.minutes / 60 * rate) };
+    }).filter((l) => l.minutes > 0);
+    return {
+      from,
+      to,
+      lines: lines2,
+      minutes: lines2.reduce((n, l) => n + l.minutes, 0),
+      amount: round23(lines2.reduce((n, l) => n + (l.amount || 0), 0)),
+      withoutRate: lines2.filter((l) => l.rate === null).length
+    };
+  }
+  function yearByMonth(map, members, year) {
+    return Array.from({ length: 12 }, (_, i) => {
+      const month = `${year}-${String(i + 1).padStart(2, "0")}`;
+      const { from, to } = monthRange(month);
+      const b = bilan(map, members, from, to);
+      return { month, minutes: Object.fromEntries(b.lines.map((l) => [l.id, l.minutes])), total: b.minutes, amount: b.amount };
+    });
+  }
+  function bilanRows(b) {
+    return [
+      [`Bilan des heures du ${b.from.split("-").reverse().join("/")} au ${b.to.split("-").reverse().join("/")} (indicatif : \xE0 rapprocher des bulletins de paie ou des d\xE9clarations)`],
+      ["Personne", "Contrat", "Heures travaill\xE9es", "Jours travaill\xE9s", "Co\xFBt horaire (\u20AC)", "Montant \xE0 r\xE9gler (\u20AC)"],
+      ...b.lines.map((l) => [l.name, l.occasional ? "Occasionnel" : "R\xE9gulier", round23(l.minutes / 60), l.workDays, l.rate, l.amount]),
+      ["Total", null, round23(b.minutes / 60), null, null, b.amount]
+    ];
+  }
+  var KIND_LABEL, TASK_LABEL, DEFAULT_POSTS, FIXED_POST_IDS, taskName, MAX_DAY_MINUTES, MAX_WEEK_MINUTES, MIN_REST_MINUTES, DAY3, dayNumber3, isoOf2, addDays2, weekDates, hasTimes, hoursText, shiftsOf, weekTotals, overtimeMinutes, frDay, round23;
+  var init_shifts = __esm({
+    "src/modules/personnel/shifts.ts"() {
+      "use strict";
+      KIND_LABEL = { work: "Travail", leave: "Cong\xE9", sick: "Maladie", off: "Repos" };
+      TASK_LABEL = { menage: "M\xE9nage", repas: "Repas et cuisine", accueil: "Accueil", entretien: "Entretien", autre: "Autre" };
+      DEFAULT_POSTS = Object.entries(TASK_LABEL).map(([id, name]) => ({ id, name }));
+      FIXED_POST_IDS = ["menage", "repas"];
+      taskName = (id, posts = DEFAULT_POSTS) => posts.find((p) => p.id === id)?.name || TASK_LABEL[id] || "Autre";
+      MAX_DAY_MINUTES = 10 * 60;
+      MAX_WEEK_MINUTES = 48 * 60;
+      MIN_REST_MINUTES = 11 * 60;
+      DAY3 = 864e5;
+      dayNumber3 = (iso) => Math.floor(Date.parse(`${iso}T00:00:00Z`) / DAY3);
+      isoOf2 = (n) => new Date(n * DAY3).toISOString().slice(0, 10);
+      addDays2 = (iso, n) => isoOf2(dayNumber3(iso) + n);
+      weekDates = (monday) => Array.from({ length: 7 }, (_, i) => addDays2(monday, i));
+      hasTimes = (s) => toMinutes(s.start) !== null && toMinutes(s.end) !== null;
+      hoursText = (minutes) => {
+        const h2 = Math.floor(minutes / 60);
+        const m = Math.round(minutes % 60);
+        return m ? `${h2} h ${String(m).padStart(2, "0")}` : `${h2} h`;
+      };
+      shiftsOf = (map, memberId) => Object.values(map).filter((s) => s && s.memberId === memberId);
+      weekTotals = (map, memberId, monday) => totals(map, memberId, monday, addDays2(monday, 6));
+      overtimeMinutes = (workedMinutes, weeklyHours) => weeklyHours && weeklyHours > 0 ? Math.max(0, workedMinutes - Math.round(weeklyHours * 60)) : 0;
+      frDay = (iso) => iso.split("-").reverse().slice(0, 2).join("/");
+      round23 = (n) => Math.round(n * 100) / 100;
+    }
+  });
+
   // src/modules/personnel/content.ts
   function readStaffSettings(settings) {
     const raw = settings.modules.staff?.settings || {};
     const types = Array.isArray(raw.types) ? raw.types.filter((t) => t && typeof t.id === "string" && typeof t.name === "string" && t.name.trim()).map((t) => ({ id: t.id, name: t.name, validityMonths: typeof t.validityMonths === "number" && t.validityMonths > 0 ? t.validityMonths : null, required: t.required === true })) : DEFAULT_TYPES.map((t) => ({ ...t }));
-    return { types, alertDays: typeof raw.alertDays === "number" && raw.alertDays >= 0 ? raw.alertDays : 60 };
+    let posts = Array.isArray(raw.posts) ? raw.posts.filter((p) => p && typeof p.id === "string" && typeof p.name === "string" && p.name.trim()).map((p) => ({ id: p.id, name: p.name })) : DEFAULT_POSTS.map((p) => ({ ...p }));
+    FIXED_POST_IDS.forEach((id) => {
+      if (!posts.some((p) => p.id === id)) posts = [...posts, { id, name: TASK_LABEL[id] }];
+    });
+    return { types, alertDays: typeof raw.alertDays === "number" && raw.alertDays >= 0 ? raw.alertDays : 60, posts };
   }
   function addMonths(iso, months) {
     const [y, m, d] = iso.split("-").map(Number);
@@ -15515,6 +15705,7 @@ footer{background:#111}
   var init_content13 = __esm({
     "src/modules/personnel/content.ts"() {
       "use strict";
+      init_shifts();
       DEFAULT_TYPES = [
         { id: "hygiene", name: "Hygi\xE8ne alimentaire (restauration commerciale)", validityMonths: null, required: false },
         { id: "allergens", name: "Allerg\xE8nes", validityMonths: null, required: false },
@@ -27460,7 +27651,7 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
     if (has(/^(numero de reservation|book number|booking number)/) || has(/^(reserve par|booked by)/) || has(/^(type d unite|unit type)/)) return "booking";
     return "";
   }
-  function isoOf2(y, m, d) {
+  function isoOf3(y, m, d) {
     const date = new Date(Date.UTC(y, m - 1, d));
     if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return "";
     return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -27468,21 +27659,21 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
   function parseDate(value) {
     const s = String(value ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
     let m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/.exec(s);
-    if (m) return isoOf2(+m[1], +m[2], +m[3]);
+    if (m) return isoOf3(+m[1], +m[2], +m[3]);
     m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2,4})/.exec(s);
     if (m) {
       const a = +m[1];
       const b = +m[2];
       const y = +m[3] < 100 ? 2e3 + +m[3] : +m[3];
-      return a <= 12 && b > 12 ? isoOf2(y, a, b) : isoOf2(y, b, a);
+      return a <= 12 && b > 12 ? isoOf3(y, a, b) : isoOf3(y, b, a);
     }
     m = /^(\d{1,2})\s+([a-z]+)\.?,?\s+(\d{4})/.exec(s);
-    if (m && MONTHS[m[2]]) return isoOf2(+m[3], MONTHS[m[2]], +m[1]);
+    if (m && MONTHS[m[2]]) return isoOf3(+m[3], MONTHS[m[2]], +m[1]);
     m = /^([a-z]+)\.?\s+(\d{1,2}),?\s+(\d{4})/.exec(s);
-    if (m && MONTHS[m[1]]) return isoOf2(+m[3], MONTHS[m[1]], +m[2]);
+    if (m && MONTHS[m[1]]) return isoOf3(+m[3], MONTHS[m[1]], +m[2]);
     if (/^\d{5}(\.\d+)?$/.test(s)) {
       const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(Number(s)) * 864e5);
-      return isoOf2(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+      return isoOf3(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
     }
     return "";
   }
@@ -27521,7 +27712,7 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
       let nights = parseCount(cell5(r, "nights"));
       if (checkIn && !checkOut && nights > 0) {
         const d = new Date(Date.parse(checkIn + "T00:00:00Z") + nights * 864e5);
-        checkOut = isoOf2(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
+        checkOut = isoOf3(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
       }
       if (checkIn && checkOut) nights = Math.round((Date.parse(checkOut + "T00:00:00Z") - Date.parse(checkIn + "T00:00:00Z")) / 864e5);
       const amount = parseAmount(cell5(r, "amount"));
@@ -33039,23 +33230,23 @@ Cette op\xE9ration est d\xE9finitive.`
       });
     }
     const portions = Math.max(1, d.productQuantity || 1);
-    const unitCost = round23(total / portions);
-    const labor = d.laborMinutes !== void 0 ? round23(d.laborMinutes / 60 * cost.laborRate / portions) : d.moCost || 0;
-    const material = d.materialMinutes !== void 0 ? round23(d.materialMinutes / 60 * cost.materialRate / portions) : d.matCost || 0;
-    const revient = round23(unitCost + labor + material);
+    const unitCost = round24(total / portions);
+    const labor = d.laborMinutes !== void 0 ? round24(d.laborMinutes / 60 * cost.laborRate / portions) : d.moCost || 0;
+    const material = d.materialMinutes !== void 0 ? round24(d.materialMinutes / 60 * cost.materialRate / portions) : d.matCost || 0;
+    const revient = round24(unitCost + labor + material);
     const price = d.sellingPrice || 0;
     return {
       hasLines,
-      total: round23(total),
+      total: round24(total),
       portions,
       unitCost,
       labor,
       material,
       revient,
-      suggestMin: cost.marginMin === null ? null : round23(revient * (1 + cost.marginMin / 100)),
-      suggestMax: cost.marginMax === null ? null : round23(revient * (1 + cost.marginMax / 100)),
-      marginBrut: round23(price - unitCost),
-      marginNet: round23(price - unitCost - labor - material),
+      suggestMin: cost.marginMin === null ? null : round24(revient * (1 + cost.marginMin / 100)),
+      suggestMax: cost.marginMax === null ? null : round24(revient * (1 + cost.marginMax / 100)),
+      marginBrut: round24(price - unitCost),
+      marginNet: round24(price - unitCost - labor - material),
       missing
     };
   }
@@ -33154,7 +33345,7 @@ Cette op\xE9ration est d\xE9finitive.`
     };
     return sorted.length ? [at(""), ...sorted.map(at)] : [];
   }
-  var DEFAULT_SHOPS, num3, round23, round4, normName, priceOf, unitsFor, defaultLineUnit, LINE_UNIT_LABEL, isComputed, kindOf, KIND_LABEL, DISH_CATEGORIES, categoriesFor, usedBy, REF_SHOPS, referenceMissing, uniq, ingredientTypes, subCategoriesFor, sameMap;
+  var DEFAULT_SHOPS, num3, round24, round4, normName, priceOf, unitsFor, defaultLineUnit, LINE_UNIT_LABEL, isComputed, kindOf, KIND_LABEL2, DISH_CATEGORIES, categoriesFor, usedBy, REF_SHOPS, referenceMissing, uniq, ingredientTypes, subCategoriesFor, sameMap;
   var init_content17 = __esm({
     "src/modules/cuisine/content.ts"() {
       "use strict";
@@ -33165,7 +33356,7 @@ Cette op\xE9ration est d\xE9finitive.`
         { id: "leclerc", name: "Leclerc" }
       ];
       num3 = (v) => typeof v === "number" && isFinite(v) ? v : null;
-      round23 = (n) => Math.round(n * 100) / 100;
+      round24 = (n) => Math.round(n * 100) / 100;
       round4 = (n) => Math.round(n * 1e4) / 1e4;
       normName = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/œ/g, "oe").replace(/[^a-z0-9]+/g, " ").trim();
       priceOf = (ing, cost) => priceInfo(ing, cost).price;
@@ -33174,7 +33365,7 @@ Cette op\xE9ration est d\xE9finitive.`
       LINE_UNIT_LABEL = { u: "pi\xE8ce(s)", g: "g", kg: "kg", cl: "cl", l: "l" };
       isComputed = (d) => !!(d.lines && d.lines.length) || d.laborMinutes !== void 0 || d.materialMinutes !== void 0;
       kindOf = (d) => d.kind || "dish";
-      KIND_LABEL = { dish: "Plats et repas", breakfast: "Petit-d\xE9jeuner", picnic: "Pique-nique" };
+      KIND_LABEL2 = { dish: "Plats et repas", breakfast: "Petit-d\xE9jeuner", picnic: "Pique-nique" };
       DISH_CATEGORIES = ["Entr\xE9e", "Plats", "Desserts", "Boissons", "Autres produits"];
       categoriesFor = (kind) => kind === "breakfast" ? ["Petit-d\xE9jeuner"] : kind === "picnic" ? ["Pique-nique"] : DISH_CATEGORIES;
       usedBy = (ingredientId, items) => items.filter((d) => d.lines?.some((l) => l.ingredientId === ingredientId));
@@ -33750,7 +33941,7 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
         const toggleTag = (id) => set({ tags: (d.tags || []).includes(id) ? (d.tags || []).filter((t) => t !== id) : [...d.tags || [], id] });
         const toggleMoment = (id) => set({ momentIds: (d.momentIds || []).includes(id) ? (d.momentIds || []).filter((m) => m !== id) : [...d.momentIds || [], id] });
         return /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { ref: root, className: "bg-white rounded-2xl border border-sy-325032/40 p-3 sm:p-4 space-y-4 scroll-mt-24", "data-recipe-form": true, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("h3", { className: "font-serif font-bold text-base text-neutral-900", children: isNew ? `Nouveau : ${KIND_LABEL[kind].toLowerCase()}` : d.name || "Fiche" }),
+          /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("h3", { className: "font-serif font-bold text-base text-neutral-900", children: isNew ? `Nouveau : ${KIND_LABEL2[kind].toLowerCase()}` : d.name || "Fiche" }),
           /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { className: "grid sm:grid-cols-2 gap-3", children: [
             /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(Field, { label: "Nom", children: /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(TextInput, { value: d.name, onChange: (v) => set({ name: v }) }) }),
             /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(Field, { label: kind === "dish" ? "Nombre de parts obtenues" : "Nombre de personnes (parts)", hint: "Le co\xFBt est calcul\xE9 pour une part.", children: /* @__PURE__ */ (0, import_jsx_runtime36.jsx)(NumberInput, { value: d.productQuantity, onChange: (v) => set({ productQuantity: Math.max(1, v ?? 1) }) }) }),
@@ -33986,7 +34177,7 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
         return /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { className: "space-y-3", children: [
           /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("div", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("h2", { className: "font-serif font-bold text-lg text-neutral-900", children: KIND_LABEL[kind] }),
+              /* @__PURE__ */ (0, import_jsx_runtime36.jsx)("h2", { className: "font-serif font-bold text-lg text-neutral-900", children: KIND_LABEL2[kind] }),
               /* @__PURE__ */ (0, import_jsx_runtime36.jsxs)("p", { className: "text-[11px] text-neutral-500", children: [
                 "Composition, co\xFBt par part, main d'\u0153uvre et mat\xE9riel, prix de vente. Les co\xFBts suivent les prix de la grille (",
                 cost.priceMode === "average" ? "moyenne des magasins" : cost.shops.find((s) => s.id === cost.priceMode)?.name,
@@ -35422,7 +35613,7 @@ ${establishmentName}`;
     const rows = dishes.map((d) => {
       const known = d.price > 0 && d.revient > 0;
       const q = qty.get(d.id) || 0;
-      const margin = known ? round24(d.price - d.revient) : null;
+      const margin = known ? round25(d.price - d.revient) : null;
       return {
         id: d.id,
         name: d.name,
@@ -35430,10 +35621,10 @@ ${establishmentName}`;
         price: d.price,
         revient: d.revient,
         margin,
-        marginPct: known ? round24((d.price - d.revient) / d.price * 100) : null,
+        marginPct: known ? round25((d.price - d.revient) / d.price * 100) : null,
         qty: q,
-        revenue: d.price > 0 ? round24(q * d.price) : null,
-        totalMargin: margin === null ? null : round24(q * margin),
+        revenue: d.price > 0 ? round25(q * d.price) : null,
+        totalMargin: margin === null ? null : round25(q * margin),
         klass: ""
       };
     });
@@ -35451,9 +35642,9 @@ ${establishmentName}`;
       });
     }
     rows.sort((a, b) => b.qty - a.qty || (b.margin ?? -1e9) - (a.margin ?? -1e9) || a.name.localeCompare(b.name, "fr"));
-    return { rows, orders: used, unmatched: Array.from(unmatched, ([name, q]) => ({ name, qty: q })).sort((a, b) => b.qty - a.qty), classified, avgQty: round24(avgQty), avgMargin: round24(avgMargin) };
+    return { rows, orders: used, unmatched: Array.from(unmatched, ([name, q]) => ({ name, qty: q })).sort((a, b) => b.qty - a.qty), classified, avgQty: round25(avgQty), avgMargin: round25(avgMargin) };
   }
-  var CLASS_LABEL, round24, counts;
+  var CLASS_LABEL, round25, counts;
   var init_analysis = __esm({
     "src/modules/repas/analysis.ts"() {
       "use strict";
@@ -35463,7 +35654,7 @@ ${establishmentName}`;
         puzzle: { label: "Rentable, peu command\xE9", advice: "Bonne marge mais peu command\xE9 : mieux le pr\xE9senter ou le sugg\xE9rer." },
         weak: { label: "\xC0 revoir", advice: "Peu command\xE9 et peu rentable : \xE0 repenser ou retirer." }
       };
-      round24 = (n) => Math.round(n * 100) / 100;
+      round25 = (n) => Math.round(n * 100) / 100;
       counts = (status2) => status2 === "confirmed" || status2 === "done";
     }
   });
@@ -35703,9 +35894,9 @@ ${establishmentName}`;
     const needs = [...acc.entries()].map(([id, v]) => {
       const ing = ingredients.find((i) => i.id === id);
       const qty = round32(v.qty);
-      const prices = cost.shops.map((s) => ({ shopId: s.id, shopName: s.name, price: ing.prices?.[s.id] })).filter((p) => typeof p.price === "number" && isFinite(p.price) && p.price >= 0).map((p) => ({ ...p, total: round25(p.price * qty) })).sort((a, b) => a.total - b.total);
+      const prices = cost.shops.map((s) => ({ shopId: s.id, shopName: s.name, price: ing.prices?.[s.id] })).filter((p) => typeof p.price === "number" && isFinite(p.price) && p.price >= 0).map((p) => ({ ...p, total: round26(p.price * qty) })).sort((a, b) => a.total - b.total);
       const best = prices[0] || null;
-      const estimate = best ? best.total : ing.unitPrice > 0 ? round25(ing.unitPrice * qty) : null;
+      const estimate = best ? best.total : ing.unitPrice > 0 ? round26(ing.unitPrice * qty) : null;
       return { ingredientId: id, name: ing.name, unit: ing.unit, qty, dishes: [...v.dishes].sort(), prices, best, estimate };
     });
     needs.sort((a, b) => (a.best?.shopName || "\uFFFF").localeCompare(b.best?.shopName || "\uFFFF", "fr") || a.name.localeCompare(b.name, "fr"));
@@ -35713,7 +35904,7 @@ ${establishmentName}`;
       needs,
       unknown,
       orders: used.length,
-      total: round25(needs.reduce((n, x) => n + (x.estimate || 0), 0)),
+      total: round26(needs.reduce((n, x) => n + (x.estimate || 0), 0)),
       withoutPrice: needs.filter((x) => x.estimate === null).length
     };
   }
@@ -35730,13 +35921,13 @@ ${establishmentName}`;
     lines2.push("", `Total estim\xE9 : ${String(result.total).replace(".", ",")} \u20AC`);
     return lines2.join("\n");
   }
-  var round32, round25, UNIT_LABEL;
+  var round32, round26, UNIT_LABEL;
   var init_shopping = __esm({
     "src/modules/repas/shopping.ts"() {
       "use strict";
       init_content2();
       round32 = (n) => Math.round(n * 1e3) / 1e3;
-      round25 = (n) => Math.round(n * 100) / 100;
+      round26 = (n) => Math.round(n * 100) / 100;
       UNIT_LABEL = { u: "pi\xE8ce(s)", kg: "kg", l: "l" };
     }
   });
@@ -39425,22 +39616,22 @@ ${m.message}
     const index = ref.year * 12 + ref.month + delta;
     return { year: Math.floor(index / 12), month: (index % 12 + 12) % 12 };
   }
-  function monthRange(start, count) {
+  function monthRange2(start, count) {
     return Array.from({ length: count }, (_, i) => shiftMonth(start, i));
   }
   function presetPeriod(preset, anchor) {
     if (preset === "month") return periodFromMonths([anchor], monthLabel(anchor));
     if (preset === "quarter") {
       const start2 = { year: anchor.year, month: Math.floor(anchor.month / 3) * 3 };
-      return periodFromMonths(monthRange(start2, 3), `${Math.floor(anchor.month / 3) + 1}${Math.floor(anchor.month / 3) === 0 ? "er" : "e"} trimestre ${anchor.year}`);
+      return periodFromMonths(monthRange2(start2, 3), `${Math.floor(anchor.month / 3) + 1}${Math.floor(anchor.month / 3) === 0 ? "er" : "e"} trimestre ${anchor.year}`);
     }
-    if (preset === "year") return periodFromMonths(monthRange({ year: anchor.year, month: 0 }, 12), `Ann\xE9e ${anchor.year}`);
+    if (preset === "year") return periodFromMonths(monthRange2({ year: anchor.year, month: 0 }, 12), `Ann\xE9e ${anchor.year}`);
     const start = shiftMonth(anchor, -11);
-    return periodFromMonths(monthRange(start, 12), `12 mois jusqu'\xE0 ${monthLabel(anchor)}`);
+    return periodFromMonths(monthRange2(start, 12), `12 mois jusqu'\xE0 ${monthLabel(anchor)}`);
   }
   function customPeriod(start, end) {
     const count = Math.max(1, Math.min(60, (end.year - start.year) * 12 + end.month - start.month + 1));
-    const months = monthRange(start, count);
+    const months = monthRange2(start, count);
     return periodFromMonths(months, count === 1 ? monthLabel(start) : `${monthLabel(start)} \u2192 ${monthLabel(months[count - 1])}`);
   }
   function comparisonPeriod(period, mode) {
@@ -39542,15 +39733,15 @@ ${m.message}
       months.push({
         label: `${MONTH_NAMES_FR[m.month].slice(0, 4)}. ${String(m.year).slice(2)}`,
         revenue: recap.totalRevenue,
-        expenses: round26(expenseByMonth.get(`${m.year}-${pad2(m.month + 1)}`) || 0),
+        expenses: round27(expenseByMonth.get(`${m.year}-${pad2(m.month + 1)}`) || 0),
         occupancy: avail > 0 ? sold / avail * 100 : null
       });
     });
     stays = countedStays.size;
     const roomLines = Array.from(rooms.values()).filter((l) => l.revenue > 0 || l.nights > 0 || activeLodgingIds.has(l.roomId)).map((l) => ({
       ...l,
-      revenue: round26(l.revenue),
-      roomRevenue: round26(l.roomRevenue),
+      revenue: round27(l.revenue),
+      roomRevenue: round27(l.roomRevenue),
       occupancy: l.isLodging && l.availableNights > 0 ? l.nights / l.availableNights * 100 : null,
       adr: l.isLodging && l.nights > 0 ? l.roomRevenue / l.nights : null,
       revpar: l.isLodging && l.availableNights > 0 ? l.roomRevenue / l.availableNights : null
@@ -39611,28 +39802,28 @@ ${m.message}
       return {
         bucket,
         label: bucket === "" ? "Non r\xE9percut\xE9 dans la fiche de r\xE9servation" : field4 ? field4.label : "Poste supprim\xE9",
-        expenses: round26(v.expenses),
-        depreciation: round26(v.depreciation),
-        total: round26(total),
+        expenses: round27(v.expenses),
+        depreciation: round27(v.depreciation),
+        total: round27(total),
         perNight: bucket !== "" && nightsSold > 0 ? total / nightsSold : null,
         current: field4 ? field4.perNight : null,
         known: !!field4
       };
     }).sort((a, b) => a.bucket === "" ? 1 : b.bucket === "" ? -1 : b.total - a.total);
     const marginDeductions = (prof.deductSocialCharges ? socialCharges : 0) + (prof.deductStayCosts ? stayCosts : 0) + (prof.deductDepreciation ? depreciation : 0) + expensesTotal;
-    const margin = round26(revenue - marginDeductions);
+    const margin = round27(revenue - marginDeductions);
     return {
       period,
-      revenue: round26(revenue),
-      roomRevenue: round26(roomRevenue),
-      mealsRevenue: round26(mealsRevenue),
-      drinksRevenue: round26(drinksRevenue),
-      dogCareRevenue: round26(dogCareRevenue),
-      otherRevenue: round26(Math.max(0, revenue - roomRevenue - mealsRevenue - drinksRevenue - dogCareRevenue)),
-      commissions: round26(commissions),
-      touristTax: round26(touristTax),
-      collected: round26(collected),
-      toCollect: round26(Math.max(0, revenue - collected)),
+      revenue: round27(revenue),
+      roomRevenue: round27(roomRevenue),
+      mealsRevenue: round27(mealsRevenue),
+      drinksRevenue: round27(drinksRevenue),
+      dogCareRevenue: round27(dogCareRevenue),
+      otherRevenue: round27(Math.max(0, revenue - roomRevenue - mealsRevenue - drinksRevenue - dogCareRevenue)),
+      commissions: round27(commissions),
+      touristTax: round27(touristTax),
+      collected: round27(collected),
+      toCollect: round27(Math.max(0, revenue - collected)),
       stays,
       nightsSold,
       availableNights,
@@ -39640,18 +39831,18 @@ ${m.message}
       adr: nightsSold > 0 ? lodgingRoomRevenue / nightsSold : null,
       revpar: noCapacity ? null : lodgingRoomRevenue / availableNights,
       invoicesCount,
-      invoicesTotal: round26(invoicesTotal),
-      invoicesPaid: round26(invoicesPaid),
-      expensesTotal: round26(expensesTotal),
-      expensesPaid: round26(expensesPaid),
-      expensesExcluded: round26(expensesPaid - expensesTotal),
+      invoicesTotal: round27(invoicesTotal),
+      invoicesPaid: round27(invoicesPaid),
+      expensesTotal: round27(expensesTotal),
+      expensesPaid: round27(expensesPaid),
+      expensesExcluded: round27(expensesPaid - expensesTotal),
       expensesCount: periodExpenses.length,
-      expensesFixed: round26(expensesFixed),
-      expensesVariable: round26(expensesVariable),
-      byCategory: Array.from(byCat.values()).map((l) => ({ ...l, amount: round26(l.amount) })).sort((a, b) => b.amount - a.amount),
-      socialCharges: round26(socialCharges),
-      stayCosts: round26(stayCosts),
-      depreciation: round26(depreciation),
+      expensesFixed: round27(expensesFixed),
+      expensesVariable: round27(expensesVariable),
+      byCategory: Array.from(byCat.values()).map((l) => ({ ...l, amount: round27(l.amount) })).sort((a, b) => b.amount - a.amount),
+      socialCharges: round27(socialCharges),
+      stayCosts: round27(stayCosts),
+      depreciation: round27(depreciation),
       costing,
       margin,
       marginPercent: revenue > 0 ? margin / revenue * 100 : null,
@@ -39668,9 +39859,9 @@ ${m.message}
   function revenueTarget(prof, period) {
     const { yearRevenue, monthRevenue } = prof.objectives;
     const perMonth = monthRevenue && monthRevenue > 0 ? monthRevenue : yearRevenue && yearRevenue > 0 ? yearRevenue / 12 : 0;
-    return perMonth > 0 ? round26(perMonth * period.months.length) : null;
+    return perMonth > 0 ? round27(perMonth * period.months.length) : null;
   }
-  var pad2, round26, monthLabel;
+  var pad2, round27, monthLabel;
   var init_compute = __esm({
     "src/modules/rentabilite/compute.ts"() {
       "use strict";
@@ -39678,7 +39869,7 @@ ${m.message}
       init_costFields();
       init_content3();
       pad2 = (n) => String(n).padStart(2, "0");
-      round26 = (n) => Math.round(n * 100) / 100;
+      round27 = (n) => Math.round(n * 100) / 100;
       monthLabel = (m) => `${MONTH_NAMES_FR[m.month]} ${m.year}`;
     }
   });
@@ -39835,7 +40026,7 @@ ${m.message}
     });
     return rows;
   }
-  var TIME, WITH_ROOM, RES_DIMS, TASK_DIMS, MEAL_DIMS, G_RES, G_EXP, G_ASSET, G_REV, G_INV, G_MEAL, G_TASK, G_MIX, GROUP_ORDER, res, MEASURES, MEASURE_BY_ID, DIMS, isTimeDim, DAY3, isoAdd, lastDayOfMonth;
+  var TIME, WITH_ROOM, RES_DIMS, TASK_DIMS, MEAL_DIMS, G_RES, G_EXP, G_ASSET, G_REV, G_INV, G_MEAL, G_TASK, G_MIX, GROUP_ORDER, res, MEASURES, MEASURE_BY_ID, DIMS, isTimeDim, DAY4, isoAdd, lastDayOfMonth;
   var init_datasets = __esm({
     "src/modules/rentabilite/custom/datasets.ts"() {
       "use strict";
@@ -39945,8 +40136,8 @@ ${m.message}
         { id: "issueType", label: "Par type de signalement" }
       ];
       isTimeDim = (d) => d === "month" || d === "quarter" || d === "year";
-      DAY3 = 864e5;
-      isoAdd = (iso, days2) => new Date(Date.parse(`${iso}T00:00:00Z`) + days2 * DAY3).toISOString().slice(0, 10);
+      DAY4 = 864e5;
+      isoAdd = (iso, days2) => new Date(Date.parse(`${iso}T00:00:00Z`) + days2 * DAY4).toISOString().slice(0, 10);
       lastDayOfMonth = (key) => {
         const [y, m] = key.split("-").map(Number);
         return `${key}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0")}`;
@@ -54303,7 +54494,7 @@ Cliquer pour modifier le tarif` : void 0,
   function nextArrival(reservations, roomId, from) {
     return reservations.filter((r) => r.roomId === roomId && !r.isBlocked && r.checkIn >= from).sort((a, b) => a.checkIn.localeCompare(b.checkIn))[0];
   }
-  function addDays2(iso, n) {
+  function addDays3(iso, n) {
     const [y, m, d] = iso.split("-").map(Number);
     return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
   }
@@ -54331,7 +54522,7 @@ Cliquer pour modifier le tarif` : void 0,
         const closed = i.status === "closed" || i.status === "cancelled";
         const stays = (0, import_react99.useMemo)(() => {
           if (!i.areaId) return [];
-          return reservations.filter((r) => r.roomId === i.areaId && !r.isBlocked && r.checkOut >= i.date && r.checkIn <= addDays2(i.date, 60)).sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+          return reservations.filter((r) => r.roomId === i.areaId && !r.isBlocked && r.checkOut >= i.date && r.checkIn <= addDays3(i.date, 60)).sort((a, b) => a.checkIn.localeCompare(b.checkIn));
         }, [reservations, i.areaId, i.date]);
         const next = i.areaId ? nextArrival(reservations, i.areaId, i.date > today6 ? i.date : today6) : void 0;
         const current2 = stays.find((r) => r.checkIn <= i.date && r.checkOut > i.date);
@@ -55662,12 +55853,12 @@ Cliquer pour modifier le tarif` : void 0,
     }
     return parts.join(" ").toLowerCase();
   }
-  var KIND_LABEL2, nameIn;
+  var KIND_LABEL3, nameIn;
   var init_describe = __esm({
     "src/modules/etablissement/describe.ts"() {
       "use strict";
       init_content6();
-      KIND_LABEL2 = {
+      KIND_LABEL3 = {
         equipment: "\xC9quipement",
         task: "Intervention",
         incident: "Incident",
@@ -55725,7 +55916,7 @@ Cliquer pour modifier le tarif` : void 0,
           [reportId, records5, from, to, est, accommodations]
         );
         const exportJournal = () => {
-          const rows = shown.map((r) => [KIND_LABEL2[r.kind], titleOf(r, records5), statusLabel2(r, today6), frDate(dateOf(r)), r.updatedAt.slice(0, 16).replace("T", " ")]);
+          const rows = shown.map((r) => [KIND_LABEL3[r.kind], titleOf(r, records5), statusLabel2(r, today6), frDate(dateOf(r)), r.updatedAt.slice(0, 16).replace("T", " ")]);
           exportReportCsv({ title: "Historique", period: periodText(from, to), head: ["Type", "Libell\xE9", "Statut", "Date", "Derni\xE8re modification"], rows, note: "" });
         };
         const table = (r) => /* @__PURE__ */ (0, import_jsx_runtime99.jsx)("div", { className: "overflow-x-auto", children: /* @__PURE__ */ (0, import_jsx_runtime99.jsxs)("table", { className: "w-full text-[11px] border-collapse", children: [
@@ -55788,7 +55979,7 @@ Cliquer pour modifier le tarif` : void 0,
             ] }) : /* @__PURE__ */ (0, import_jsx_runtime99.jsx)("div", { className: "space-y-2", children: shown.map((r) => /* @__PURE__ */ (0, import_jsx_runtime99.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 space-y-1.5", "data-history-row": r.id, children: [
               /* @__PURE__ */ (0, import_jsx_runtime99.jsxs)("button", { type: "button", onClick: () => onOpen(r), className: "w-full text-left flex flex-wrap items-center justify-between gap-2 cursor-pointer", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime99.jsxs)("span", { className: "text-xs text-neutral-900", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime99.jsx)("span", { className: "text-[10px] font-bold uppercase text-neutral-500 mr-1.5", children: KIND_LABEL2[r.kind] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime99.jsx)("span", { className: "text-[10px] font-bold uppercase text-neutral-500 mr-1.5", children: KIND_LABEL3[r.kind] }),
                   /* @__PURE__ */ (0, import_jsx_runtime99.jsx)("span", { className: "font-semibold", children: titleOf(r, records5) || "Sans intitul\xE9" })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime99.jsxs)("span", { className: "flex items-center gap-2 text-[11px] text-neutral-500", children: [
@@ -56464,7 +56655,7 @@ Cliquer pour modifier le tarif` : void 0,
     for (let v = Math.ceil(min / step) * step; v <= max + 1e-9; v += step) out.push(Math.round(v * 1e6) / 1e6);
     return out;
   }
-  function mondayOf(iso) {
+  function mondayOf2(iso) {
     const [y, m, d] = iso.split("-").map(Number);
     const dow = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
     return isoShift2(iso, -dow);
@@ -56474,7 +56665,7 @@ Cliquer pour modifier le tarif` : void 0,
     entries.forEach((e) => {
       const q = e.products[productId];
       if (!q) return;
-      const key = by === "week" ? mondayOf(e.date) : e.date.slice(0, 7);
+      const key = by === "week" ? mondayOf2(e.date) : e.date.slice(0, 7);
       sums.set(key, (sums.get(key) || 0) + q);
     });
     if (sums.size === 0) return [];
@@ -60067,7 +60258,7 @@ Cliquer pour modifier le tarif` : void 0,
       return i ? ingredientName(i, ingredientSources()) : "";
     }), ...Object.keys(r.allergens).map(regLabel));
     if (r.kind === "ingredient") extra.push(r.brand, r.reference, r.comment, ...Object.keys(r.allergens).map(regLabel));
-    return [titleOf2(r, records5), KIND_LABEL3[r.kind], ...extra].join(" ").toLowerCase();
+    return [titleOf2(r, records5), KIND_LABEL4[r.kind], ...extra].join(" ").toLowerCase();
   }
   function detailOf(r, records5) {
     const t = (v) => nr(v);
@@ -60102,7 +60293,7 @@ Cliquer pour modifier le tarif` : void 0,
         return [["Date et heure", `${frDate(r.date)} ${r.time}`], ["Concerne", t(r.subject)], ["Description", r.description], ["Mesure imm\xE9diate", t(r.immediate)], ["Action corrective", t(r.corrective)], ["Responsable", t(r.responsible)], ["Date limite", r.dueDate ? frDate(r.dueDate) : NR], ["Statut", INCIDENT_STATUS_LABEL2[r.status]], ["Cl\xF4ture", r.status === "closed" ? `${frDate(r.closedDate)} \u2014 ${r.closingComment}` : "Non cl\xF4tur\xE9"]];
     }
   }
-  var HYGIENE_REPORTS, KIND_LABEL3, inRange3, nr, temp, sheet;
+  var HYGIENE_REPORTS, KIND_LABEL4, inRange3, nr, temp, sheet;
   var init_reports2 = __esm({
     "src/modules/hygiene/reports.ts"() {
       "use strict";
@@ -60126,7 +60317,7 @@ Cliquer pour modifier le tarif` : void 0,
         { id: "incidents", label: "Incidents et actions correctives" },
         ...DISH_REPORTS
       ];
-      KIND_LABEL3 = {
+      KIND_LABEL4 = {
         thermo: "\xC9quipement thermique",
         dish: "Fiche plat",
         ingredient: "Ingr\xE9dient",
@@ -60934,7 +61125,7 @@ Cliquer pour modifier le tarif` : void 0,
           period: periodText(from, to),
           note: "",
           head: ["Type", "Libell\xE9", "Statut", "Date", "Derni\xE8re modification", "Cr\xE9\xE9 par"],
-          rows: shown.map((r) => [KIND_LABEL3[r.kind], titleOf2(r, records5), statusLabel3(r), frDate(dateOf2(r)), r.updatedAt.slice(0, 16).replace("T", " "), r.createdBy || "Non renseign\xE9"])
+          rows: shown.map((r) => [KIND_LABEL4[r.kind], titleOf2(r, records5), statusLabel3(r), frDate(dateOf2(r)), r.updatedAt.slice(0, 16).replace("T", " "), r.createdBy || "Non renseign\xE9"])
         });
         const table = (rows) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("div", { className: "overflow-x-auto", children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("table", { className: "w-full text-[11px] border-collapse", children: [
           /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("tr", { children: rows.head.map((h2) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("th", { className: "text-left font-bold text-neutral-700 border-b border-neutral-300 px-2 py-1 whitespace-nowrap", children: h2 }, h2)) }) }),
@@ -60953,7 +61144,7 @@ Cliquer pour modifier le tarif` : void 0,
               /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Field, { label: "Au", children: /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(DateInput, { value: to, onChange: setTo }) }),
               mode === "journal" ? /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Field, { label: "Type", children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("select", { value: kind, onChange: (e) => setKind(e.target.value), className: `w-full ${filterSelect}`, "aria-label": "Type", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("option", { value: "all", children: "Tout" }),
-                Object.keys(KIND_LABEL3).map((k) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("option", { value: k, children: KIND_LABEL3[k] }, k))
+                Object.keys(KIND_LABEL4).map((k) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("option", { value: k, children: KIND_LABEL4[k] }, k))
               ] }) }) : /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Field, { label: "Registre", children: /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("select", { value: reportId, onChange: (e) => setReportId(e.target.value), className: `w-full ${filterSelect}`, "data-report-select": true, "aria-label": "Registre", children: HYGIENE_REPORTS.map((r) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("option", { value: r.id, children: r.label }, r.id)) }) }),
               mode === "reports" && isDish ? /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(import_jsx_runtime118.Fragment, { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Field, { label: "Fiches \xE0 exporter", children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("select", { value: dishScope, onChange: (e) => setDishScope(e.target.value), className: `w-full ${filterSelect}`, "aria-label": "Fiches \xE0 exporter", "data-dish-scope": true, children: [
@@ -61000,7 +61191,7 @@ Cliquer pour modifier le tarif` : void 0,
             ] }) : /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("div", { className: "space-y-2", children: shown.map((r) => /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 space-y-1.5", "data-history-row": r.id, children: [
               /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", onClick: () => setOpen(open === r.id ? null : r.id), "aria-expanded": open === r.id, className: "w-full text-left flex flex-wrap items-center justify-between gap-2 cursor-pointer", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { className: "text-xs text-neutral-900", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("span", { className: "text-[10px] font-bold uppercase text-neutral-500 mr-1.5", children: KIND_LABEL3[r.kind] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("span", { className: "text-[10px] font-bold uppercase text-neutral-500 mr-1.5", children: KIND_LABEL4[r.kind] }),
                   /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("span", { className: "font-semibold", children: titleOf2(r, records5) })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { className: "flex items-center gap-2 text-[11px] text-neutral-500", children: [
@@ -66110,181 +66301,6 @@ Sitemap: ${base}sitemap.xml
     }
   });
 
-  // src/modules/personnel/shifts.ts
-  function mondayOf2(iso) {
-    const n = dayNumber3(iso);
-    const weekday = (new Date(n * DAY4).getUTCDay() + 6) % 7;
-    return isoOf3(n - weekday);
-  }
-  function toMinutes(hhmm) {
-    const m = /^(\d{1,2}):(\d{2})$/.exec((hhmm || "").trim());
-    if (!m) return null;
-    const h2 = Number(m[1]);
-    const min = Number(m[2]);
-    return h2 <= 24 && min < 60 && h2 * 60 + min <= 24 * 60 ? h2 * 60 + min : null;
-  }
-  function shiftMinutes(s) {
-    if (s.kind !== "work") return 0;
-    const a = toMinutes(s.start);
-    const b = toMinutes(s.end);
-    if (a !== null && b !== null) return b > a ? b - a : 0;
-    return typeof s.hours === "number" && isFinite(s.hours) && s.hours > 0 ? Math.round(s.hours * 60) : 0;
-  }
-  function shiftsOn(map, memberId, date) {
-    return shiftsOf(map, memberId).filter((s) => s.date === date).sort((a, b) => (a.start || "").localeCompare(b.start || ""));
-  }
-  function validateShift(s) {
-    if (!s.memberId) return "Choisissez la personne.";
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(s.date)) return "Indiquez la date.";
-    if (s.kind === "work") {
-      const typed = (s.start || "").trim() !== "" || (s.end || "").trim() !== "";
-      if (!typed) return s.hours && s.hours > 0 ? null : "Indiquez les horaires, ou le nombre d\u2019heures travaill\xE9es.";
-      if (!hasTimes(s)) return "Indiquez l\u2019heure de d\xE9but et de fin.";
-      if (shiftMinutes(s) === 0) return "L\u2019heure de fin doit \xEAtre apr\xE8s l\u2019heure de d\xE9but.";
-    }
-    return null;
-  }
-  function totals(map, memberId, from, to) {
-    const out = { minutes: 0, workDays: 0, leaveDays: 0, sickDays: 0, offDays: 0 };
-    const worked = /* @__PURE__ */ new Set();
-    const seen = { leave: /* @__PURE__ */ new Set(), sick: /* @__PURE__ */ new Set(), off: /* @__PURE__ */ new Set() };
-    shiftsOf(map, memberId).filter((s) => s.date >= from && s.date <= to).forEach((s) => {
-      if (s.kind === "work") {
-        const m = shiftMinutes(s);
-        if (m > 0) {
-          out.minutes += m;
-          worked.add(s.date);
-        }
-      } else if (s.kind === "leave") seen.leave.add(s.date);
-      else if (s.kind === "sick") seen.sick.add(s.date);
-      else seen.off.add(s.date);
-    });
-    out.workDays = worked.size;
-    out.leaveDays = seen.leave.size;
-    out.sickDays = seen.sick.size;
-    out.offDays = seen.off.size;
-    return out;
-  }
-  function monthRange2(month) {
-    const [y, m] = month.split("-").map(Number);
-    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
-    return { from: `${month}-01`, to: `${month}-${String(last).padStart(2, "0")}` };
-  }
-  function weekWarnings(map, memberId, monday) {
-    const out = [];
-    const days2 = weekDates(monday);
-    const workOn = (d) => shiftsOn(map, memberId, d).filter((s) => shiftMinutes(s) > 0);
-    const timedOn = (d) => workOn(d).filter(hasTimes);
-    days2.forEach((d) => {
-      const list3 = timedOn(d);
-      for (let i = 0; i < list3.length; i++) {
-        for (let j = i + 1; j < list3.length; j++) {
-          if (toMinutes(list3[i].start) < toMinutes(list3[j].end) && toMinutes(list3[j].start) < toMinutes(list3[i].end)) out.push({ kind: "overlap", date: d, text: `Deux cr\xE9neaux se chevauchent le ${frDay(d)}.` });
-        }
-      }
-      const minutes = workOn(d).reduce((n, s) => n + shiftMinutes(s), 0);
-      if (minutes > MAX_DAY_MINUTES) out.push({ kind: "day", date: d, text: `Plus de 10 h de travail le ${frDay(d)} (${hoursText(minutes)}).` });
-    });
-    const week = weekTotals(map, memberId, monday).minutes;
-    if (week > MAX_WEEK_MINUTES) out.push({ kind: "week", date: monday, text: `Plus de 48 h dans la semaine (${hoursText(week)}).` });
-    for (let i = 0; i < days2.length; i++) {
-      const today6 = timedOn(days2[i]);
-      const next = timedOn(i + 1 < days2.length ? days2[i + 1] : addDays3(days2[i], 1));
-      if (today6.length === 0 || next.length === 0) continue;
-      const lastEnd = Math.max(...today6.map((s) => toMinutes(s.end)));
-      const firstStart = Math.min(...next.map((s) => toMinutes(s.start)));
-      if (24 * 60 - lastEnd + firstStart < MIN_REST_MINUTES) out.push({ kind: "rest", date: days2[i], text: `Moins de 11 h de repos entre le ${frDay(days2[i])} et le lendemain.` });
-    }
-    return out;
-  }
-  function copyWeek(map, fromMonday, toMonday, newId11, now) {
-    const offset = dayNumber3(toMonday) - dayNumber3(fromMonday);
-    const existing = Object.values(map);
-    const out = [];
-    existing.filter((s) => (s.kind === "work" || s.kind === "off") && s.date >= fromMonday && s.date <= addDays3(fromMonday, 6)).forEach((s) => {
-      const date = addDays3(s.date, offset);
-      const dup = [...existing, ...out].some((x) => x.memberId === s.memberId && x.date === date && x.kind === s.kind && x.start === s.start && x.end === s.end && x.task === s.task);
-      if (!dup) out.push({ ...s, id: newId11(), date, updatedAt: now });
-    });
-    return out;
-  }
-  function uncovered(map, date, needs) {
-    const planned = Object.values(map).filter((s) => s.date === date && shiftMinutes(s) > 0);
-    const out = [];
-    if (needs.menage > 0 && !planned.some((s) => s.task === "menage")) out.push("menage");
-    if (needs.repas > 0 && !planned.some((s) => s.task === "repas")) out.push("repas");
-    return out;
-  }
-  function weekRows(map, members, monday) {
-    const days2 = weekDates(monday);
-    return [
-      ["Personne", ...days2.map((d) => d.split("-").reverse().join("/")), "Total (h)"],
-      ...members.map((m) => [
-        m.name,
-        ...days2.map((d) => shiftsOn(map, m.id, d).map((s) => s.kind === "work" ? `${hasTimes(s) ? `${s.start}-${s.end}` : `${s.hours} h`} ${TASK_LABEL[s.task]}` : KIND_LABEL4[s.kind]).join(" ; ")),
-        Math.round(weekTotals(map, m.id, monday).minutes / 60 * 100) / 100
-      ])
-    ];
-  }
-  function bilan(map, members, from, to) {
-    const lines2 = members.map((m) => {
-      const t = totals(map, m.id, from, to);
-      const rate = typeof m.hourlyRate === "number" && m.hourlyRate > 0 ? m.hourlyRate : null;
-      return { id: m.id, name: m.name, occasional: !!m.occasional, minutes: t.minutes, workDays: t.workDays, rate, amount: rate === null ? null : round27(t.minutes / 60 * rate) };
-    }).filter((l) => l.minutes > 0);
-    return {
-      from,
-      to,
-      lines: lines2,
-      minutes: lines2.reduce((n, l) => n + l.minutes, 0),
-      amount: round27(lines2.reduce((n, l) => n + (l.amount || 0), 0)),
-      withoutRate: lines2.filter((l) => l.rate === null).length
-    };
-  }
-  function yearByMonth(map, members, year) {
-    return Array.from({ length: 12 }, (_, i) => {
-      const month = `${year}-${String(i + 1).padStart(2, "0")}`;
-      const { from, to } = monthRange2(month);
-      const b = bilan(map, members, from, to);
-      return { month, minutes: Object.fromEntries(b.lines.map((l) => [l.id, l.minutes])), total: b.minutes, amount: b.amount };
-    });
-  }
-  function bilanRows(b) {
-    return [
-      [`Bilan des heures du ${b.from.split("-").reverse().join("/")} au ${b.to.split("-").reverse().join("/")} (indicatif : \xE0 rapprocher des bulletins de paie ou des d\xE9clarations)`],
-      ["Personne", "Contrat", "Heures travaill\xE9es", "Jours travaill\xE9s", "Co\xFBt horaire (\u20AC)", "Montant \xE0 r\xE9gler (\u20AC)"],
-      ...b.lines.map((l) => [l.name, l.occasional ? "Occasionnel" : "R\xE9gulier", round27(l.minutes / 60), l.workDays, l.rate, l.amount]),
-      ["Total", null, round27(b.minutes / 60), null, null, b.amount]
-    ];
-  }
-  var KIND_LABEL4, TASK_LABEL, MAX_DAY_MINUTES, MAX_WEEK_MINUTES, MIN_REST_MINUTES, DAY4, dayNumber3, isoOf3, addDays3, weekDates, hasTimes, hoursText, shiftsOf, weekTotals, overtimeMinutes, frDay, round27;
-  var init_shifts = __esm({
-    "src/modules/personnel/shifts.ts"() {
-      "use strict";
-      KIND_LABEL4 = { work: "Travail", leave: "Cong\xE9", sick: "Maladie", off: "Repos" };
-      TASK_LABEL = { menage: "M\xE9nage", repas: "Repas et cuisine", accueil: "Accueil", entretien: "Entretien", autre: "Autre" };
-      MAX_DAY_MINUTES = 10 * 60;
-      MAX_WEEK_MINUTES = 48 * 60;
-      MIN_REST_MINUTES = 11 * 60;
-      DAY4 = 864e5;
-      dayNumber3 = (iso) => Math.floor(Date.parse(`${iso}T00:00:00Z`) / DAY4);
-      isoOf3 = (n) => new Date(n * DAY4).toISOString().slice(0, 10);
-      addDays3 = (iso, n) => isoOf3(dayNumber3(iso) + n);
-      weekDates = (monday) => Array.from({ length: 7 }, (_, i) => addDays3(monday, i));
-      hasTimes = (s) => toMinutes(s.start) !== null && toMinutes(s.end) !== null;
-      hoursText = (minutes) => {
-        const h2 = Math.floor(minutes / 60);
-        const m = Math.round(minutes % 60);
-        return m ? `${h2} h ${String(m).padStart(2, "0")}` : `${h2} h`;
-      };
-      shiftsOf = (map, memberId) => Object.values(map).filter((s) => s && s.memberId === memberId);
-      weekTotals = (map, memberId, monday) => totals(map, memberId, monday, addDays3(monday, 6));
-      overtimeMinutes = (workedMinutes, weeklyHours) => weeklyHours && weeklyHours > 0 ? Math.max(0, workedMinutes - Math.round(weeklyHours * 60)) : 0;
-      frDay = (iso) => iso.split("-").reverse().slice(0, 2).join("/");
-      round27 = (n) => Math.round(n * 100) / 100;
-    }
-  });
-
   // src/modules/personnel/PlanningView.tsx
   var import_react141, import_jsx_runtime139, DAY_NAMES, field2, frShort, KIND_TONE, ShiftForm, PlanningView, eur5, hText, BilanPanel;
   var init_PlanningView = __esm({
@@ -66311,15 +66327,29 @@ Sitemap: ${base}sitemap.xml
         sick: "bg-rose-50 text-rose-900 border-rose-200",
         off: "bg-neutral-100 text-neutral-600 border-neutral-200"
       };
-      ShiftForm = ({ initial, isNew, members, onClose, onToast }) => {
+      ShiftForm = ({ initial, isNew, members, posts, onClose, onToast }) => {
         const [s, setS] = (0, import_react141.useState)(initial);
         const [byHours, setByHours] = (0, import_react141.useState)(!!initial.hours && !initial.start && !initial.end);
         const set = (p) => setS((x) => ({ ...x, ...p }));
+        const [repeat, setRepeat] = (0, import_react141.useState)(false);
+        const [endDate, setEndDate] = (0, import_react141.useState)(initial.date);
+        const [weekdays, setWeekdays] = (0, import_react141.useState)([true, true, true, true, true, false, false]);
         const save = () => {
           const prepared = s.kind !== "work" ? { ...s, start: "", end: "", hours: null } : byHours ? { ...s, start: "", end: "" } : { ...s, hours: null };
           const err = validateShift(prepared);
           if (err) return onToast(err);
           try {
+            if (isNew && repeat) {
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate) || endDate < prepared.date) return onToast("La date de fin doit \xEAtre le m\xEAme jour ou apr\xE8s la date de d\xE9but.");
+              const dates = expandDays(prepared.date, endDate, weekdays);
+              if (dates.length === 0) return onToast("Aucun jour ne correspond : cochez au moins un jour de la semaine compris entre les deux dates.");
+              const existing = Object.values(getShifts());
+              const created = dates.filter((d) => !existing.some((x) => x.memberId === prepared.memberId && x.date === d && x.kind === prepared.kind && x.start === prepared.start && x.end === prepared.end && x.task === prepared.task && (x.hours ?? null) === (prepared.hours ?? null))).map((d) => ({ ...prepared, id: newShiftId(), date: d }));
+              if (created.length === 0) return onToast("Ces cr\xE9neaux existent d\xE9j\xE0 sur tous ces jours.");
+              saveShifts(created);
+              onToast(`${created.length} cr\xE9neau${created.length > 1 ? "x" : ""} ajout\xE9${created.length > 1 ? "s" : ""}${created.length < dates.length ? ` (${dates.length - created.length} d\xE9j\xE0 existant${dates.length - created.length > 1 ? "s" : ""} ignor\xE9${dates.length - created.length > 1 ? "s" : ""})` : ""}.`);
+              return onClose();
+            }
             saveShift(prepared);
           } catch {
             return onToast("Enregistrement impossible : la m\xE9moire de l\u2019appareil est pleine.");
@@ -66335,16 +66365,40 @@ Sitemap: ${base}sitemap.xml
               /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("select", { value: s.memberId, onChange: (e) => set({ memberId: e.target.value }), className: `${field2} w-full`, "data-shift-member": true, children: members.map((m) => /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("option", { value: m.id, children: m.name }, m.id)) })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("label", { className: "block", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "Date" }),
+              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: repeat ? "Du" : "Date" }),
               /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("input", { type: "date", value: s.date, onChange: (e) => set({ date: e.target.value }), className: `${field2} w-full`, "data-shift-date": true })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("label", { className: "block", children: [
               /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "Type" }),
-              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("select", { value: s.kind, onChange: (e) => set({ kind: e.target.value }), className: `${field2} w-full`, "data-shift-kind": true, children: Object.keys(KIND_LABEL4).map((k) => /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("option", { value: k, children: KIND_LABEL4[k] }, k)) })
+              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("select", { value: s.kind, onChange: (e) => set({ kind: e.target.value }), className: `${field2} w-full`, "data-shift-kind": true, children: Object.keys(KIND_LABEL).map((k) => /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("option", { value: k, children: KIND_LABEL[k] }, k)) })
             ] }),
             s.kind === "work" && /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("label", { className: "block", children: [
               /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "Poste" }),
-              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("select", { value: s.task, onChange: (e) => set({ task: e.target.value }), className: `${field2} w-full`, "data-shift-task": true, children: Object.keys(TASK_LABEL).map((k) => /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("option", { value: k, children: TASK_LABEL[k] }, k)) })
+              /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("select", { value: s.task, onChange: (e) => set({ task: e.target.value }), className: `${field2} w-full`, "data-shift-task": true, children: [
+                !posts.some((p) => p.id === s.task) && /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("option", { value: s.task, children: taskName(s.task, posts) }),
+                posts.map((p) => /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("option", { value: p.id, children: p.name }, p.id))
+              ] })
+            ] })
+          ] }),
+          isNew && /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: "space-y-2", "data-shift-repeat": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("label", { className: "flex items-center gap-1.5 text-xs font-semibold cursor-pointer", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("input", { type: "checkbox", checked: repeat, onChange: (e) => {
+                setRepeat(e.target.checked);
+                if (e.target.checked && endDate < s.date) setEndDate(addDays2(s.date, 6));
+              }, className: "accent-sy-325032", "data-shift-repeat-toggle": true }),
+              " Saisir sur plusieurs jours"
+            ] }),
+            repeat && /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: "p-2.5 rounded-xl bg-neutral-50 border border-neutral-200 space-y-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("label", { className: "block max-w-[11rem]", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "Jusqu\u2019au (inclus)" }),
+                /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("input", { type: "date", value: endDate, min: s.date, onChange: (e) => setEndDate(e.target.value), className: `${field2} w-full`, "data-shift-end-date": true })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("div", { className: "flex flex-wrap gap-1.5", role: "group", "aria-label": "Jours de la semaine concern\xE9s", children: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"].map((n, i) => /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("label", { className: `flex items-center gap-1 px-2 py-1 text-xs rounded-lg border cursor-pointer ${weekdays[i] ? "bg-sy-e9efea border-sy-cad7cd font-semibold" : "bg-white border-neutral-200"}`, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("input", { type: "checkbox", checked: weekdays[i], onChange: (e) => setWeekdays((w2) => w2.map((v, j) => j === i ? e.target.checked : v)), className: "accent-sy-325032", "data-shift-weekday": i }),
+                " ",
+                n
+              ] }, n)) }),
+              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("p", { className: "text-[11px] text-neutral-500", children: "Un cr\xE9neau identique est cr\xE9\xE9 chaque jour coch\xE9 entre les deux dates ; chacun reste ensuite modifiable s\xE9par\xE9ment." })
             ] })
           ] }),
           s.kind === "work" && /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: "space-y-2", children: [
@@ -66387,8 +66441,9 @@ Sitemap: ${base}sitemap.xml
       PlanningView = ({ members, reservations, onToast }) => {
         const settings = useSettings();
         const shifts2 = useShifts();
+        const posts = readStaffSettings(settings).posts;
         const today6 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-        const [monday, setMonday] = (0, import_react141.useState)(() => mondayOf2(today6));
+        const [monday, setMonday] = (0, import_react141.useState)(() => mondayOf(today6));
         const [form, setForm] = (0, import_react141.useState)(null);
         const [month, setMonth] = (0, import_react141.useState)(today6.slice(0, 7));
         const active2 = (0, import_react141.useMemo)(() => members.filter((m) => !m.archived).sort((a, b) => a.name.localeCompare(b.name, "fr")), [members]);
@@ -66409,7 +66464,7 @@ Sitemap: ${base}sitemap.xml
         const warnings = (0, import_react141.useMemo)(() => active2.flatMap((m) => weekWarnings(shifts2, m.id, monday).map((w2) => ({ ...w2, name: m.name }))), [active2, shifts2, monday]);
         const gaps = days2.flatMap((d) => uncovered(shifts2, d, needs[d] || { menage: 0, repas: 0 }).map((t) => ({ date: d, task: t })));
         const copyPrevious = () => {
-          const prev = addDays3(monday, -7);
+          const prev = addDays2(monday, -7);
           const created = copyWeek(shifts2, prev, monday, newShiftId, (/* @__PURE__ */ new Date()).toISOString());
           if (created.length === 0) return onToast("Rien \xE0 copier : la semaine pr\xE9c\xE9dente est vide ou d\xE9j\xE0 report\xE9e.");
           try {
@@ -66451,22 +66506,22 @@ Sitemap: ${base}sitemap.xml
         return /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: "space-y-3", "data-planning": true, children: [
           /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200 p-3 flex flex-wrap items-center justify-between gap-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: "flex items-center gap-1.5", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("button", { type: "button", "aria-label": "Semaine pr\xE9c\xE9dente", onClick: () => setMonday(addDays3(monday, -7)), className: "p-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(ChevronLeft, { className: "w-4 h-4" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("button", { type: "button", "aria-label": "Semaine pr\xE9c\xE9dente", onClick: () => setMonday(addDays2(monday, -7)), className: "p-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(ChevronLeft, { className: "w-4 h-4" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("span", { className: "text-sm font-bold text-neutral-900 min-w-[11rem] text-center", "data-week-label": true, children: [
                 "Semaine du ",
                 frShort(monday),
                 " au ",
                 frShort(days2[6])
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("button", { type: "button", "aria-label": "Semaine suivante", onClick: () => setMonday(addDays3(monday, 7)), className: "p-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(ChevronRight, { className: "w-4 h-4" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("button", { type: "button", onClick: () => setMonday(mondayOf2(today6)), className: "px-2.5 py-2 text-xs font-semibold border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer", children: "Cette semaine" })
+              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("button", { type: "button", "aria-label": "Semaine suivante", onClick: () => setMonday(addDays2(monday, 7)), className: "p-2 rounded-lg border border-neutral-200 hover:bg-neutral-50 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(ChevronRight, { className: "w-4 h-4" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("button", { type: "button", onClick: () => setMonday(mondayOf(today6)), className: "px-2.5 py-2 text-xs font-semibold border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer", children: "Cette semaine" })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: "flex flex-wrap gap-1.5", children: [
               /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("button", { type: "button", onClick: copyPrevious, className: "flex items-center gap-1 px-2.5 py-2 text-xs font-semibold border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer", "data-copy-week": true, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(Copy, { className: "w-3.5 h-3.5" }),
                 " Copier la semaine pr\xE9c\xE9dente"
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("button", { type: "button", onClick: () => downloadCsv(`planning_${monday}.csv`, weekRows(shifts2, active2, monday), ";"), className: "flex items-center gap-1 px-2.5 py-2 text-xs font-semibold border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer", "data-week-export": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("button", { type: "button", onClick: () => downloadCsv(`planning_${monday}.csv`, weekRows(shifts2, active2, monday, posts), ";"), className: "flex items-center gap-1 px-2.5 py-2 text-xs font-semibold border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer", "data-week-export": true, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(Download, { className: "w-3.5 h-3.5" }),
                 " CSV"
               ] })
@@ -66491,7 +66546,7 @@ Sitemap: ${base}sitemap.xml
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("span", { className: "text-[11px] text-neutral-500", children: "Pour quelques heures, pas toutes les semaines : saisissez simplement le nombre d\u2019heures travaill\xE9es." })
           ] }),
-          form && /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(ShiftForm, { initial: form.shift, isNew: form.isNew, members: active2, onClose: () => setForm(null), onToast }, form.shift.id),
+          form && /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(ShiftForm, { initial: form.shift, isNew: form.isNew, members: active2, posts, onClose: () => setForm(null), onToast }, form.shift.id),
           rowMembers.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("div", { className: "p-6 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", "data-planning-empty": true, children: active2.length === 0 ? "Ajoutez les personnes de l\u2019\xE9quipe (onglet \xC9quipe) ou une personne occasionnelle ci-dessus : le planning s\u2019appuie sur leurs fiches." : "Aucune personne r\xE9guli\xE8re : ajoutez-en dans l\u2019onglet \xC9quipe, ou choisissez une personne occasionnelle pour cette semaine." }),
           /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("div", { className: `bg-white rounded-2xl border border-neutral-200 overflow-x-auto ${rowMembers.length === 0 ? "hidden" : ""}`, children: /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("table", { className: "w-full text-[11px] border-collapse min-w-[44rem]", "data-planning-grid": true, children: [
             /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("tr", { children: [
@@ -66509,7 +66564,7 @@ Sitemap: ${base}sitemap.xml
                 ] }),
                 uncovered(shifts2, d, needs[d] || { menage: 0, repas: 0 }).map((t) => /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: "text-[10px] font-semibold text-amber-800", "data-uncovered": true, children: [
                   "Personne : ",
-                  TASK_LABEL[t].toLowerCase()
+                  taskName(t, posts).toLowerCase()
                 ] }, t))
               ] }, d)),
               /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("th", { className: "text-right font-bold text-neutral-700 border-b border-neutral-300 px-2 py-2 w-28", children: "Semaine" })
@@ -66529,8 +66584,8 @@ Sitemap: ${base}sitemap.xml
                 days2.map((d) => /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("td", { className: `border-b border-neutral-100 px-1 py-1 align-top ${d === today6 ? "bg-amber-50/40" : ""}`, children: /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("div", { className: "space-y-1", children: [
                   shiftsOn(shifts2, m.id, d).map((s) => /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("button", { type: "button", onClick: () => setForm({ shift: s, isNew: false }), className: `block w-full text-left px-1.5 py-1 rounded-md border cursor-pointer ${KIND_TONE[s.kind]}`, "data-shift": s.id, children: s.kind === "work" ? /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)(import_jsx_runtime139.Fragment, { children: [
                     /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("b", { children: hasTimes(s) ? `${s.start}\u2013${s.end}` : `${String(s.hours).replace(".", ",")} h` }),
-                    /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("span", { className: "block text-[10px]", children: TASK_LABEL[s.task] })
-                  ] }) : /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("b", { children: KIND_LABEL4[s.kind] }) }, s.id)),
+                    /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("span", { className: "block text-[10px]", children: taskName(s.task, posts) })
+                  ] }) : /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("b", { children: KIND_LABEL[s.kind] }) }, s.id)),
                   /* @__PURE__ */ (0, import_jsx_runtime139.jsx)("button", { type: "button", "aria-label": `Ajouter un cr\xE9neau pour ${m.name} le ${frShort(d)}`, onClick: () => setForm({ shift: newShift(m.id, d), isNew: true }), className: "w-full text-neutral-300 hover:text-sy-325032 hover:bg-neutral-50 rounded-md cursor-pointer flex justify-center", "data-add-shift": `${m.id}|${d}`, children: /* @__PURE__ */ (0, import_jsx_runtime139.jsx)(Plus, { className: "w-3.5 h-3.5" }) })
                 ] }) }, d)),
                 /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("td", { className: "border-b border-neutral-100 px-2 py-1.5 text-right align-top font-mono", "data-week-total": m.id, children: [
@@ -66560,7 +66615,7 @@ Sitemap: ${base}sitemap.xml
               ", ",
               g.task === "menage" ? "des m\xE9nages sont \xE0 faire" : "des repas sont command\xE9s",
               " mais personne n\u2019est pr\xE9vu sur le poste \xAB ",
-              TASK_LABEL[g.task],
+              taskName(g.task, posts),
               " \xBB."
             ] }, `${g.date}${g.task}`)),
             warnings.map((w2, i) => /* @__PURE__ */ (0, import_jsx_runtime139.jsxs)("p", { children: [
@@ -66577,15 +66632,15 @@ Sitemap: ${base}sitemap.xml
       hText = (minutes) => `${String(Math.round(minutes / 60 * 100) / 100).replace(".", ",")} h`;
       BilanPanel = ({ members, shifts: shifts2, onToast }) => {
         const today6 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-        const [range, setRange] = (0, import_react141.useState)(() => monthRange2(today6.slice(0, 7)));
+        const [range, setRange] = (0, import_react141.useState)(() => monthRange(today6.slice(0, 7)));
         const [year, setYear] = (0, import_react141.useState)(parseInt(today6.slice(0, 4), 10));
         const list3 = (0, import_react141.useMemo)(() => members.map((m) => ({ id: m.id, name: m.name, occasional: isOccasional(m), hourlyRate: m.hourlyRate })), [members]);
         const b = (0, import_react141.useMemo)(() => bilan(shifts2, list3, range.from, range.to), [shifts2, list3, range]);
         const byMonth = (0, import_react141.useMemo)(() => yearByMonth(shifts2, list3, year), [shifts2, list3, year]);
         const withHours = list3.filter((m) => byMonth.some((mo) => mo.minutes[m.id]));
         const setPreset = (kind) => {
-          if (kind === "month") setRange(monthRange2(today6.slice(0, 7)));
-          else if (kind === "previous") setRange(monthRange2(addDays3(`${today6.slice(0, 7)}-01`, -1).slice(0, 7)));
+          if (kind === "month") setRange(monthRange(today6.slice(0, 7)));
+          else if (kind === "previous") setRange(monthRange(addDays2(`${today6.slice(0, 7)}-01`, -1).slice(0, 7)));
           else setRange({ from: `${today6.slice(0, 4)}-01-01`, to: `${today6.slice(0, 4)}-12-31` });
         };
         const setRate = (id, v) => {
@@ -66709,6 +66764,7 @@ Sitemap: ${base}sitemap.xml
       init_fields();
       init_store12();
       init_PlanningView();
+      init_shifts();
       import_jsx_runtime140 = __require("react/jsx-runtime");
       btn6 = "flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer min-h-[2.5rem] disabled:opacity-40";
       primary3 = "flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-bold text-white bg-sy-325032 hover:bg-sy-253d25 rounded-xl cursor-pointer min-h-[2.5rem] disabled:opacity-40";
@@ -66900,7 +66956,9 @@ Sitemap: ${base}sitemap.xml
         const [types, setTypes] = (0, import_react142.useState)(stored.types);
         const [alertDays, setAlertDays] = (0, import_react142.useState)(stored.alertDays);
         const [name, setName] = (0, import_react142.useState)("");
-        const dirty = JSON.stringify({ types, alertDays }) !== JSON.stringify(stored);
+        const [posts, setPosts] = (0, import_react142.useState)(stored.posts);
+        const [postName, setPostName] = (0, import_react142.useState)("");
+        const dirty = JSON.stringify({ types, alertDays, posts }) !== JSON.stringify(stored);
         const patch = (id, p) => setTypes((ts) => ts.map((t) => t.id === id ? { ...t, ...p } : t));
         return /* @__PURE__ */ (0, import_jsx_runtime140.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 sm:p-4 space-y-3", "data-staff-settings": true, children: [
           /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(InfoNote, { children: "La dur\xE9e de validit\xE9 sert seulement \xE0 proposer une date de renouvellement quand vous saisissez une formation : vous pouvez toujours la modifier. \xAB Obligatoire \xBB signale \xAB \xC0 planifier \xBB pour toute personne en poste qui n'a jamais suivi la formation. Rien n'est suppos\xE9 : aucune dur\xE9e ni obligation n'est impos\xE9e au d\xE9part." }),
@@ -66924,8 +66982,24 @@ Sitemap: ${base}sitemap.xml
               }, children: "Ajouter" })
             ] })
           ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime140.jsxs)("div", { className: "space-y-2 pt-2 border-t border-neutral-200", "data-post-settings": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("h4", { className: "text-xs font-bold text-neutral-800", children: "Postes du planning" }),
+            /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(InfoNote, { children: "Liste propos\xE9e quand vous saisissez un cr\xE9neau dans le planning. \xAB M\xE9nage \xBB et \xAB Repas et cuisine \xBB ne peuvent pas \xEAtre supprim\xE9s : le planning s'en sert pour signaler les m\xE9nages ou les repas sans personne pr\xE9vue (vous pouvez les renommer). Retirer un poste ne modifie pas les cr\xE9neaux d\xE9j\xE0 saisis." }),
+            posts.map((p) => /* @__PURE__ */ (0, import_jsx_runtime140.jsxs)("div", { className: "grid grid-cols-[1fr_2rem] gap-2 items-center", "data-post-row": p.id, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("input", { value: p.name, "aria-label": "Nom du poste", onChange: (e) => setPosts((ps) => ps.map((x) => x.id === p.id ? { ...x, name: e.target.value } : x)), className: cell4 }),
+              FIXED_POST_IDS.includes(p.id) ? /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("span", {}) : /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("button", { type: "button", "aria-label": `Retirer ${p.name}`, onClick: () => setPosts((ps) => ps.filter((x) => x.id !== p.id)), className: "p-1 text-neutral-400 hover:text-rose-600 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(Trash2, { className: "w-3.5 h-3.5" }) })
+            ] }, p.id)),
+            /* @__PURE__ */ (0, import_jsx_runtime140.jsxs)("div", { className: "flex gap-1.5", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("input", { value: postName, onChange: (e) => setPostName(e.target.value), placeholder: "Nouveau poste (ex. Jardin, Piscine, R\xE9ception)", "aria-label": "Nouveau poste", className: cell4 }),
+              /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("button", { type: "button", className: btn6, "data-add-post": true, onClick: () => {
+                if (!postName.trim()) return;
+                setPosts((ps) => [...ps, { id: `post_${Date.now().toString(36)}`, name: postName.trim() }]);
+                setPostName("");
+              }, children: "Ajouter" })
+            ] })
+          ] }),
           /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("div", { className: "flex justify-end", children: /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("button", { type: "button", className: primary3, disabled: !dirty, "data-save-staff-settings": true, onClick: () => {
-            saveStaffSettings(settings, { types: types.filter((t) => t.name.trim()), alertDays }, "R\xE9glages du personnel enregistr\xE9s.");
+            saveStaffSettings(settings, { types: types.filter((t) => t.name.trim()), alertDays, posts: posts.filter((p) => p.name.trim()) }, "R\xE9glages du personnel enregistr\xE9s.");
             onToast("R\xE9glages enregistr\xE9s.");
           }, children: "Enregistrer les r\xE9glages" }) })
         ] });
@@ -66977,7 +67051,7 @@ Sitemap: ${base}sitemap.xml
               ] })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("div", { className: "bg-white p-1.5 rounded-2xl border border-neutral-200 grid grid-cols-2 sm:grid-cols-4 gap-1", role: "tablist", children: [["team", `\xC9quipe (${members.filter((m) => !m.archived).length})`], ["planning", "Planning"], ["dues", `\xC9ch\xE9ances${due.length ? ` (${due.length})` : ""}`], ["settings", "Types de formation"]].map(([id, label2]) => /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("button", { type: "button", role: "tab", "aria-selected": tab === id, "data-staff-tab": id, onClick: () => {
+          /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("div", { className: "bg-white p-1.5 rounded-2xl border border-neutral-200 grid grid-cols-2 sm:grid-cols-4 gap-1", role: "tablist", children: [["team", `\xC9quipe (${members.filter((m) => !m.archived).length})`], ["planning", "Planning"], ["dues", `\xC9ch\xE9ances${due.length ? ` (${due.length})` : ""}`], ["settings", "R\xE9glages"]].map(([id, label2]) => /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("button", { type: "button", role: "tab", "aria-selected": tab === id, "data-staff-tab": id, onClick: () => {
             setTab(id);
             setEditing(null);
           }, className: `py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold cursor-pointer ${tab === id ? "bg-sy-325032 text-white" : "text-neutral-600 hover:bg-neutral-100"}`, children: label2 }, id)) }),
