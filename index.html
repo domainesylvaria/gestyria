@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v255</title>
-  <meta name="application-name" content="Gestyria v255" />
+  <title>Gestyria v256</title>
+  <meta name="application-name" content="Gestyria v256" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8527,7 +8527,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "255";
+      APP_VERSION = "256";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -40632,7 +40632,7 @@ ${m.message}
   });
 
   // src/modules/rentabilite/AssetsPanel.tsx
-  var import_react64, import_jsx_runtime53, today3, AssetsPanel;
+  var import_react64, import_jsx_runtime53, today3, CostCards, AssetsPanel;
   var init_AssetsPanel = __esm({
     "src/modules/rentabilite/AssetsPanel.tsx"() {
       "use strict";
@@ -40640,11 +40640,135 @@ ${m.message}
       init_lucide_react();
       init_bookingUtils();
       init_fields();
+      init_settingsStore();
       init_compute();
       init_store4();
       import_jsx_runtime53 = __require("react/jsx-runtime");
       today3 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-      AssetsPanel = ({ settings, prof, period, onToast }) => {
+      CostCards = ({ stats, period, onToast }) => {
+        const lines2 = stats.costing.filter((c) => c.bucket !== "" && c.known);
+        const unassigned = stats.costing.find((c) => c.bucket === "");
+        const applicable = lines2.filter((c) => c.perNight !== null);
+        const sumNight = applicable.reduce((s, c) => s + (c.perNight || 0), 0);
+        const sumDepr = lines2.reduce((s, c) => s + c.depreciation, 0);
+        const sumExp = lines2.reduce((s, c) => s + c.expenses, 0);
+        const nights = stats.nightsSold;
+        const perNight = (v) => nights > 0 ? formatCurrency(v / nights) : "\u2014";
+        const apply = (c) => {
+          if (c.perNight === null) return;
+          if (!window.confirm(`Proposer ${formatCurrency(c.perNight)} par nuit\xE9e pour \xAB ${c.label} \xBB dans la fiche des NOUVELLES r\xE9servations ?
+
+Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
+          if (applyCostPerNight(getSettings(), c.bucket, c.perNight)) onToast(`\xAB ${c.label} \xBB : ${formatCurrency(c.perNight)} par nuit\xE9e propos\xE9 sur les nouvelles r\xE9servations.`);
+        };
+        const applyAll = () => {
+          if (!window.confirm(`Proposer ces ${applicable.length} co\xFBts par nuit\xE9e dans la fiche des NOUVELLES r\xE9servations ?
+
+Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
+          let done = 0;
+          applicable.forEach((c) => {
+            if (applyCostPerNight(getSettings(), c.bucket, c.perNight)) done++;
+          });
+          onToast(`${done} co\xFBt${done > 1 ? "s" : ""} par nuit\xE9e propos\xE9${done > 1 ? "s" : ""} sur les nouvelles r\xE9servations.`);
+        };
+        return /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "space-y-2", "data-cost-cards": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("h3", { className: "font-serif font-bold text-base text-neutral-900", children: "Co\xFBt par jour de chaque poste" }),
+            applicable.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(SecondaryButton, { onClick: applyAll, children: "Appliquer tous les co\xFBts" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("p", { className: "text-[11px] text-neutral-500", children: [
+            "Pour chaque poste de co\xFBt de la fiche de r\xE9servation : ",
+            /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("b", { children: "amortissements + d\xE9penses" }),
+            " rattach\xE9es \xE0 ce poste (",
+            period.label,
+            "), divis\xE9s par les ",
+            nights,
+            " nuit\xE9e",
+            nights > 1 ? "s" : "",
+            " vendue",
+            nights > 1 ? "s" : "",
+            ". Le bouton \xAB Appliquer \xBB d\xE9pose ce montant comme co\xFBt par d\xE9faut des prochaines r\xE9servations. Le poste d'un bien se r\xE8gle dans sa fiche, celui d'une d\xE9pense dans la cat\xE9gorie de d\xE9pense (R\xE9glages)."
+          ] }),
+          lines2.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("div", { className: "bg-white border border-dashed border-neutral-300 rounded-2xl p-4 text-xs text-neutral-500", children: "Aucun co\xFBt \xE0 r\xE9partir sur cette p\xE9riode : choisissez un poste de co\xFBt pour vos biens, ou une cat\xE9gorie de d\xE9pense qui alimente un poste." }) : /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3", children: [
+            lines2.map((c) => /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "bg-white border border-neutral-200 rounded-2xl p-3 space-y-1.5", "data-cost-card": c.bucket, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("div", { className: "text-[11px] font-bold uppercase tracking-wide text-neutral-500", children: c.label }),
+              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "text-xl font-bold font-mono text-neutral-900", children: [
+                c.perNight === null ? "\u2014" : formatCurrency(c.perNight),
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { className: "text-xs font-semibold text-neutral-500", children: " / jour" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "text-[11px] text-neutral-600 space-y-0.5", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "flex justify-between", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { children: "Amortissements" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { className: "font-mono", children: perNight(c.depreciation) })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "flex justify-between", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { children: "D\xE9penses" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { className: "font-mono", children: perNight(c.expenses) })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "flex justify-between border-t border-neutral-100 pt-0.5", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { children: "Total p\xE9riode" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { className: "font-mono", children: formatCurrency(c.total) })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "flex justify-between text-neutral-400", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { children: "Propos\xE9 actuellement" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { className: "font-mono", children: c.current === null ? "\u2014" : formatCurrency(c.current) })
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(
+                "button",
+                {
+                  type: "button",
+                  disabled: c.perNight === null,
+                  onClick: () => apply(c),
+                  className: "w-full px-2 py-1.5 text-[11px] font-bold text-sy-325032 border border-sy-cad7cd hover:bg-sy-f4f7f4 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-default",
+                  children: "Appliquer aux prochaines r\xE9servations"
+                }
+              )
+            ] }, c.bucket)),
+            /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "bg-sy-f4f7f4 border border-sy-cad7cd rounded-2xl p-3 space-y-1.5", "data-cost-total": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("div", { className: "text-[11px] font-bold uppercase tracking-wide text-sy-325032", children: "Total amortissements + d\xE9penses" }),
+              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "text-xl font-bold font-mono text-neutral-900", children: [
+                nights > 0 ? formatCurrency(sumNight) : "\u2014",
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { className: "text-xs font-semibold text-neutral-500", children: " / jour" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "text-[11px] text-neutral-600 space-y-0.5", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "flex justify-between", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { children: "Amortissements" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("span", { className: "font-mono", children: [
+                    formatCurrency(sumDepr),
+                    " \xB7 ",
+                    perNight(sumDepr),
+                    "/j"
+                  ] })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "flex justify-between", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { children: "D\xE9penses" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("span", { className: "font-mono", children: [
+                    formatCurrency(sumExp),
+                    " \xB7 ",
+                    perNight(sumExp),
+                    "/j"
+                  ] })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "flex justify-between border-t border-sy-cad7cd pt-0.5 font-semibold", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { children: "Total p\xE9riode" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { className: "font-mono", children: formatCurrency(sumDepr + sumExp) })
+                ] })
+              ] })
+            ] })
+          ] }),
+          unassigned && unassigned.total > 0 && /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("p", { className: "text-[11px] text-neutral-500", children: [
+            "Non r\xE9percut\xE9 dans la fiche de r\xE9servation : ",
+            formatCurrency(unassigned.total),
+            " (amortissements ",
+            formatCurrency(unassigned.depreciation),
+            ", d\xE9penses ",
+            formatCurrency(unassigned.expenses),
+            ")."
+          ] })
+        ] });
+      };
+      AssetsPanel = ({ settings, prof, period, stats, onToast }) => {
         const all = useAssets();
         const [draft, setDraft] = (0, import_react64.useState)(null);
         const [isNew, setIsNew] = (0, import_react64.useState)(false);
@@ -40703,6 +40827,7 @@ ${m.message}
           deleteAsset(a.id);
         };
         return /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "space-y-4", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(CostCards, { stats, period, onToast }),
           /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)(InfoNote, { children: [
             "Un bien durable (lit, lave-linge, pompe de piscine, travaux\u2026) se r\xE9partit sur plusieurs ann\xE9es : ",
             /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("b", { children: "amortissement lin\xE9aire" }),
@@ -42175,7 +42300,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
             }
           ),
           shownTab === "expenses" && /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(ExpensesPanel, { settings, prof, period, onToast }),
-          shownTab === "assets" && /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(AssetsPanel, { settings, prof, period, onToast }),
+          shownTab === "assets" && /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(AssetsPanel, { settings, prof, period, stats, onToast }),
           shownTab === "custom" && /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(CustomPanel, { settings, prof, reservations, externalReviews, viewPeriod: period, onToast }),
           shownTab === "monthly" && monthly,
           shownTab === "annual" && annual,
@@ -66569,12 +66694,15 @@ Sitemap: ${base}sitemap.xml
   });
 
   // src/modules/personnel/StaffView.tsx
-  var import_react142, import_jsx_runtime140, btn6, primary3, cell4, FULL10, TONE3, Badge, MemberForm, SettingsPanel2, StaffView;
+  var import_react142, import_jsx_runtime140, btn6, primary3, cell4, FULL10, TONE3, Badge, TrainingFiles, MemberForm, SettingsPanel2, StaffView;
   var init_StaffView = __esm({
     "src/modules/personnel/StaffView.tsx"() {
       "use strict";
       import_react142 = __require("react");
       init_lucide_react();
+      init_store6();
+      init_content5();
+      init_files();
       init_PrintArea();
       init_settingsStore();
       init_reports();
@@ -66594,6 +66722,58 @@ Sitemap: ${base}sitemap.xml
         noRenewal: "bg-neutral-100 text-neutral-700 border-neutral-200"
       };
       Badge = ({ state: state2 }) => /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("span", { className: `px-2 py-0.5 rounded-full border text-[10px] font-bold whitespace-nowrap ${TONE3[state2]}`, children: STATE_LABEL[state2] });
+      TrainingFiles = ({ files, trainingId, onChange, onToast }) => {
+        const [busy, setBusy] = (0, import_react142.useState)(false);
+        const input7 = (0, import_react142.useRef)(null);
+        const admin = getAdmin();
+        const pick = async (list3) => {
+          if (!list3 || list3.length === 0) return;
+          setBusy(true);
+          const added = [];
+          try {
+            for (const file of Array.from(list3)) {
+              const problem = checkFile(file, admin);
+              if (problem) {
+                onToast(problem);
+                continue;
+              }
+              added.push(await uploadDocFile(file, `formation_${trainingId}`));
+            }
+            if (added.length > 0) onToast("Attestation jointe : pensez \xE0 cliquer sur \xAB Enregistrer \xBB la fiche.");
+          } catch (err) {
+            onToast(err?.message || "Envoi impossible.");
+          } finally {
+            if (added.length > 0) onChange([...files, ...added]);
+            setBusy(false);
+            if (input7.current) input7.current.value = "";
+          }
+        };
+        const remove = (f) => {
+          if (!window.confirm(`Retirer \xAB ${f.name} \xBB ? Le fichier sera mis \xE0 la corbeille de Google Drive.`)) return;
+          deleteDocFiles([f]);
+          onChange(files.filter((x) => x.id !== f.id));
+        };
+        return /* @__PURE__ */ (0, import_jsx_runtime140.jsxs)("div", { className: "space-y-1.5", "data-training-files": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime140.jsxs)("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime140.jsxs)("button", { type: "button", className: btn6, disabled: busy, onClick: () => input7.current?.click(), "data-add-training-file": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(Paperclip, { className: "w-4 h-4" }),
+              " ",
+              busy ? "Envoi en cours\u2026" : "Joindre l'attestation"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("input", { ref: input7, type: "file", multiple: true, hidden: true, accept: acceptedExtensions(admin).map((e) => "." + e).join(","), onChange: (e) => pick(e.target.files) }),
+            files.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("span", { className: "text-[10px] text-neutral-500", children: "PDF, image\u2026 10 Mo au maximum, rang\xE9 dans votre Google Drive priv\xE9." })
+          ] }),
+          files.map((f) => /* @__PURE__ */ (0, import_jsx_runtime140.jsxs)("div", { className: "flex items-center gap-2 text-[11px]", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime140.jsxs)("button", { type: "button", className: "inline-flex items-center gap-1 font-semibold text-sy-325032 underline cursor-pointer", onClick: () => downloadDocFile(f, true).catch((err) => onToast(err?.message || "Ouverture impossible.")), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(ExternalLink, { className: "w-3 h-3" }),
+              " ",
+              f.name
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("span", { className: "text-neutral-400", children: formatSize(f.size) }),
+            /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("button", { type: "button", "aria-label": `Retirer ${f.name}`, onClick: () => remove(f), className: "p-1 text-neutral-400 hover:text-rose-600 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(Trash2, { className: "w-3.5 h-3.5" }) })
+          ] }, f.id))
+        ] });
+      };
       MemberForm = ({ initial, isNew, onClose, onToast }) => {
         const settings = useSettings();
         const cfg = readStaffSettings(settings);
@@ -66676,6 +66856,7 @@ Sitemap: ${base}sitemap.xml
                   /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(Field, { label: "N\xB0 ou r\xE9f\xE9rence de l'attestation", children: /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(TextInput, { value: t.certificate, onChange: (v) => setTraining(t.id, { certificate: v }) }) }),
                   /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(Field, { label: "Remarques", className: "sm:col-span-2", children: /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(TextInput, { value: t.notes, onChange: (v) => setTraining(t.id, { notes: v }) }) })
                 ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(TrainingFiles, { files: t.files || [], trainingId: t.id, onChange: (files) => setTraining(t.id, { files }), onToast }),
                 /* @__PURE__ */ (0, import_jsx_runtime140.jsxs)("div", { className: "flex items-center justify-between gap-2", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime140.jsxs)("span", { className: "flex items-center gap-2", children: [
                     outdated ? /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("span", { className: "text-[10px] text-neutral-500", children: "Remplac\xE9e par une formation plus r\xE9cente" }) : /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(Badge, { state: st }),
@@ -66685,7 +66866,10 @@ Sitemap: ${base}sitemap.xml
                     ] })
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime140.jsx)("button", { type: "button", "aria-label": "Supprimer cette ligne", onClick: () => {
-                    if (window.confirm("Supprimer cette ligne de formation ?")) set({ trainings: m.trainings.filter((x) => x.id !== t.id) });
+                    if (window.confirm("Supprimer cette ligne de formation ?")) {
+                      if (t.files?.length) deleteDocFiles(t.files);
+                      set({ trainings: m.trainings.filter((x) => x.id !== t.id) });
+                    }
                   }, className: "p-1.5 text-neutral-400 hover:text-rose-600 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime140.jsx)(Trash2, { className: "w-4 h-4" }) })
                 ] })
               ] }, t.id);
