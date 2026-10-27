@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v257</title>
-  <meta name="application-name" content="Gestyria v257" />
+  <title>Gestyria v258</title>
+  <meta name="application-name" content="Gestyria v258" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8527,7 +8527,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "257";
+      APP_VERSION = "258";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -15744,6 +15744,14 @@ footer{background:#111}
     } catch {
     }
   }
+  function requestStaffMember(id) {
+    pendingMember = id;
+  }
+  function takeStaffMember() {
+    const v = pendingMember;
+    pendingMember = null;
+    return v;
+  }
   function useStaff() {
     return (0, import_react17.useSyncExternalStore)(
       (cb) => {
@@ -15782,7 +15790,7 @@ footer{background:#111}
     staff = read5();
     notify15();
   }
-  var import_react17, STAFF_STORAGE_KEY, staff, listeners16, notify15, getStaff, staffList;
+  var import_react17, STAFF_STORAGE_KEY, staff, listeners16, notify15, getStaff, pendingMember, staffList;
   var init_store12 = __esm({
     "src/modules/personnel/store.ts"() {
       "use strict";
@@ -15804,6 +15812,7 @@ footer{background:#111}
       } catch {
       }
       getStaff = () => staff;
+      pendingMember = null;
       staffList = (m = staff) => Object.values(m).map(normalizeMember);
     }
   });
@@ -53728,6 +53737,42 @@ Cliquer pour modifier le tarif` : void 0,
     }
   });
 
+  // src/modules/admin/external.ts
+  function externalDocs(staff2) {
+    const out = [];
+    staffList(staff2).forEach((m) => {
+      m.trainings.forEach((t) => {
+        const files = (t.files || []).filter((f) => f && f.id);
+        if (files.length === 0) return;
+        out.push({
+          key: `staff:${m.id}:${t.id}`,
+          title: `${t.title || "Formation"} : ${m.name || "sans nom"}`,
+          detail: [m.archived ? "personne partie" : "", t.organism, t.certificate ? `n\xB0 ${t.certificate}` : ""].filter(Boolean).join(" \xB7 "),
+          categoryId: "certificates",
+          moduleId: "staff",
+          date: t.date,
+          expiryDate: t.validUntil,
+          files,
+          open: { tab: "staff", memberId: m.id }
+        });
+      });
+    });
+    return out;
+  }
+  var SOURCE_LABEL, sourceLabel;
+  var init_external = __esm({
+    "src/modules/admin/external.ts"() {
+      "use strict";
+      init_store12();
+      SOURCE_LABEL = {
+        adminDocs: "Assistant administratif",
+        establishment: "Suivi de l'\xE9tablissement",
+        staff: "Personnel"
+      };
+      sourceLabel = (source) => SOURCE_LABEL[source || "adminDocs"] || "Assistant administratif";
+    }
+  });
+
   // src/modules/admin/SettingsPanel.tsx
   var import_react95, import_jsx_runtime88, json3, DaysInput, AdminSettingsPanel;
   var init_SettingsPanel3 = __esm({
@@ -53923,6 +53968,9 @@ Cliquer pour modifier le tarif` : void 0,
       import_react96 = __require("react");
       init_lucide_react();
       init_settingsStore();
+      init_store12();
+      init_external();
+      init_files();
       init_exports();
       init_SettingsPanel3();
       init_DocForm();
@@ -53938,8 +53986,12 @@ Cliquer pour modifier le tarif` : void 0,
       frDate10 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
       StatusChip2 = ({ status: status2, admin }) => /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("span", { className: `px-2 py-0.5 rounded-md text-[10px] font-bold ${STATUS_STYLE3[status2]}`, children: admin.statusLabels[status2] });
       daysText2 = (days2) => days2 < 0 ? `en retard de ${-days2} j` : days2 === 0 ? "aujourd'hui" : days2 === 1 ? "demain" : `dans ${days2} j`;
-      AdminView = ({ onToast }) => {
+      AdminView = ({ onToast, onOpenModule }) => {
         const settings = useSettings();
+        const staff2 = useStaff();
+        const external = (0, import_react96.useMemo)(() => externalDocs(staff2), [staff2]);
+        const [catSearch, setCatSearch] = (0, import_react96.useState)("");
+        const [catModule, setCatModule] = (0, import_react96.useState)("all");
         const admin = getAdmin(settings);
         const docMap = useAdminDocs();
         const docs3 = (0, import_react96.useMemo)(() => Object.values(docMap).map(normalizeDoc), [docMap]);
@@ -53971,6 +54023,7 @@ Cliquer pour modifier le tarif` : void 0,
         const tabs = [
           { id: "due", label: "\xC9ch\xE9ances", icon: CalendarClock, badge: counts2.expired + counts2.renew },
           { id: "docs", label: "Documents", icon: FileText },
+          { id: "catalog", label: "Par cat\xE9gorie", icon: FolderOpen, badge: void 0 },
           { id: "settings", label: "R\xE9glages", icon: Settings2 }
         ];
         const dueItems = rows.filter((r) => !r.d.archived && r.due).sort((a, b) => a.due.days - b.due.days);
@@ -54004,7 +54057,8 @@ Cliquer pour modifier le tarif` : void 0,
                   r.d.provider && ` \xB7 ${r.d.provider}`,
                   r.d.reference && ` \xB7 n\xB0 ${r.d.reference}`,
                   r.d.files.length > 0 && ` \xB7 ${r.d.files.length} fichier${r.d.files.length > 1 ? "s" : ""}`,
-                  r.d.shared && " \xB7 partag\xE9"
+                  r.d.shared && " \xB7 partag\xE9",
+                  r.d.source && ` \xB7 ajout\xE9 dans : ${sourceLabel(r.d.source)}`
                 ] })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("div", { className: "text-right shrink-0", children: [
@@ -54205,6 +54259,83 @@ Cliquer pour modifier le tarif` : void 0,
             ] }),
             shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", children: docs3.length === 0 ? "Aucun document. Cliquez sur \xAB Nouveau document \xBB pour commencer." : "Aucun document ne correspond \xE0 vos filtres." }) : /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("div", { className: "space-y-2", children: shown.map((r) => /* @__PURE__ */ (0, import_jsx_runtime89.jsx)(DocLine, { r }, r.d.id)) })
           ] }),
+          tab === "catalog" && (() => {
+            const q = catSearch.trim().toLowerCase();
+            const own = rows.filter((r) => !r.d.archived).map((r) => ({
+              key: r.d.id,
+              title: r.d.title || "Sans intitul\xE9",
+              detail: [r.d.provider, r.d.reference && `n\xB0 ${r.d.reference}`].filter(Boolean).join(" \xB7 "),
+              categoryId: r.d.categoryId,
+              moduleId: r.d.source || "adminDocs",
+              date: r.d.issueDate,
+              expiryDate: r.d.expiryDate,
+              files: r.d.files,
+              doc: r.d,
+              ext: null
+            }));
+            const outside = external.map((e) => ({ key: e.key, title: e.title, detail: e.detail, categoryId: e.categoryId, moduleId: e.moduleId, date: e.date, expiryDate: e.expiryDate, files: e.files, doc: null, ext: e }));
+            const all = [...own, ...outside].filter((x) => catModule === "all" || x.moduleId === catModule).filter((x) => !q || `${x.title} ${x.detail} ${categoryName2(admin.categories, x.categoryId)} ${sourceLabel(x.moduleId)}`.toLowerCase().includes(q));
+            const modules = Array.from(new Set([...own, ...outside].map((x) => x.moduleId)));
+            const known = new Set(admin.categories.map((c) => c.id));
+            const groups2 = [
+              ...admin.categories.map((c) => ({ id: c.id, name: c.name, items: all.filter((x) => x.categoryId === c.id) })),
+              { id: "__other", name: "Autres", items: all.filter((x) => !known.has(x.categoryId)) }
+            ].filter((g) => g.items.length > 0);
+            return /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("div", { className: "space-y-3", "data-admin-catalog": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200 p-3 flex flex-wrap items-center gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("div", { className: "relative flex-1 min-w-[12rem]", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime89.jsx)(Search, { className: "w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("input", { type: "text", value: catSearch, onChange: (e) => setCatSearch(e.target.value), placeholder: "Rechercher un document\u2026", className: "w-full pl-8 pr-3 py-1.5 bg-neutral-50 border border-neutral-200 rounded-lg text-xs focus:ring-1 focus:ring-sy-325032 focus:outline-hidden" })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("select", { value: catModule, onChange: (e) => setCatModule(e.target.value), "aria-label": "Module d'origine", className: "py-1.5 px-2 text-xs bg-neutral-50 border border-neutral-200 rounded-lg cursor-pointer", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("option", { value: "all", children: "Tous les modules" }),
+                  modules.map((m) => /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("option", { value: m, children: sourceLabel(m) }, m))
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("span", { className: "text-[11px] text-neutral-500", children: [
+                  all.length,
+                  " document",
+                  all.length > 1 ? "s" : ""
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("p", { className: "text-[11px] text-neutral-500", children: "Tous les documents de l'\xE9tablissement, rang\xE9s par type. Le module indiqu\xE9 est celui o\xF9 le document est ajout\xE9 et compl\xE9t\xE9 ; ceux d'un autre module (attestations de formation\u2026) se modifient l\xE0-bas." }),
+              groups2.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", children: "Aucun document." }) : groups2.map((g) => /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("section", { className: "space-y-1.5", "data-catalog-group": g.id, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("h3", { className: "text-xs font-bold uppercase tracking-wide text-neutral-700", children: [
+                  g.name,
+                  " (",
+                  g.items.length,
+                  ")"
+                ] }),
+                g.items.map((x) => /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 flex flex-wrap items-start justify-between gap-2", "data-catalog-row": x.key, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("div", { className: "min-w-0", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("div", { className: "font-serif font-bold text-sm text-neutral-900", children: x.title }),
+                    /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("div", { className: "text-[11px] text-neutral-500", children: [
+                      x.detail,
+                      x.detail && x.date ? " \xB7 " : "",
+                      x.date && `du ${frDate10(x.date)}`,
+                      x.expiryDate && ` \xB7 \xE9ch\xE9ance le ${frDate10(x.expiryDate)}`
+                    ] }),
+                    x.files.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("div", { className: "flex flex-wrap gap-x-3 gap-y-0.5 mt-1", children: x.files.map((f) => /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("button", { type: "button", className: "text-[11px] font-semibold text-sy-325032 underline cursor-pointer", onClick: () => downloadDocFile(f, true).catch((err) => onToast(err?.message || "Ouverture impossible.")), children: f.name }, f.id)) })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("div", { className: "flex flex-col items-end gap-1 shrink-0", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("span", { className: `px-2 py-0.5 rounded-md text-[10px] font-bold ${x.moduleId === "adminDocs" ? "bg-neutral-100 text-neutral-700" : "bg-sky-50 text-sky-800"}`, children: [
+                      "Module : ",
+                      sourceLabel(x.moduleId)
+                    ] }),
+                    x.ext ? /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("button", { type: "button", className: "text-[11px] font-semibold underline cursor-pointer", onClick: () => {
+                      if (x.ext.open.memberId) requestStaffMember(x.ext.open.memberId);
+                      onOpenModule?.(x.ext.open.tab);
+                    }, children: [
+                      "Ouvrir dans ",
+                      sourceLabel(x.moduleId)
+                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("button", { type: "button", className: "text-[11px] font-semibold underline cursor-pointer", onClick: () => {
+                      setEditing({ doc: x.doc, isNew: false });
+                      setTab("docs");
+                    }, children: "Ouvrir la fiche" })
+                  ] })
+                ] }, x.key))
+              ] }, g.id))
+            ] });
+          })(),
           tab === "settings" && /* @__PURE__ */ (0, import_jsx_runtime89.jsx)(AdminSettingsPanel, { settings, admin, onToast })
         ] });
       };
@@ -56369,6 +56500,7 @@ Cliquer pour modifier le tarif` : void 0,
                 provider: equipment.supplier,
                 keywords: equipment.name,
                 files: [f],
+                source: "establishment",
                 history: [{ at: now, text: "Document cr\xE9\xE9 depuis la fiche de l'\xE9quipement." }]
               });
               onAttached(doc.id);
@@ -66763,6 +66895,7 @@ Sitemap: ${base}sitemap.xml
       init_reports();
       init_fields();
       init_store12();
+      init_content13();
       init_PlanningView();
       init_shifts();
       import_jsx_runtime140 = __require("react/jsx-runtime");
@@ -67010,7 +67143,10 @@ Sitemap: ${base}sitemap.xml
         const cfg = readStaffSettings(settings);
         const { printing, print } = usePrint();
         const [tab, setTab] = (0, import_react142.useState)("team");
-        const [editing, setEditing] = (0, import_react142.useState)(null);
+        const [editing, setEditing] = (0, import_react142.useState)(() => {
+          const id = takeStaffMember();
+          return id && stored[id] && normalizeMember(stored[id]) || null;
+        });
         const [isNew, setIsNew] = (0, import_react142.useState)(false);
         const [search, setSearch] = (0, import_react142.useState)("");
         const [showArchived, setShowArchived] = (0, import_react142.useState)(false);
@@ -67956,7 +68092,7 @@ Sitemap: ${base}sitemap.xml
   });
 
   // src/modules/conseils/AdviceView.tsx
-  var import_react145, import_jsx_runtime143, field3, frDate15, fr2, MONTHS5, SOURCE_LABEL, AdviceView;
+  var import_react145, import_jsx_runtime143, field3, frDate15, fr2, MONTHS5, SOURCE_LABEL2, AdviceView;
   var init_AdviceView = __esm({
     "src/modules/conseils/AdviceView.tsx"() {
       "use strict";
@@ -67971,7 +68107,7 @@ Sitemap: ${base}sitemap.xml
       frDate15 = (iso) => iso.split("-").reverse().join("/");
       fr2 = (n) => String(Math.round(n * 100) / 100).replace(".", ",");
       MONTHS5 = ["janv.", "f\xE9vr.", "mars", "avr.", "mai", "juin", "juil.", "ao\xFBt", "sept.", "oct.", "nov.", "d\xE9c."];
-      SOURCE_LABEL = {
+      SOURCE_LABEL2 = {
         stats: "Mes statistiques (prix pratiqu\xE9s et occupation de mes r\xE9servations)",
         market: "Les prix du march\xE9 (biens comparables que je saisis)",
         both: "Les deux (moyenne des deux conseils)"
@@ -68030,7 +68166,7 @@ Sitemap: ${base}sitemap.xml
             /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)("div", { className: "grid sm:grid-cols-3 gap-3 pt-1", children: [
               /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)("label", { className: "block sm:col-span-2", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "Sur quoi s\u2019appuient les conseils ?" }),
-                /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("select", { value: draft.source, onChange: (e) => setDraft({ ...draft, source: e.target.value }), className: `${field3} w-full`, "data-advice-source": true, children: Object.keys(SOURCE_LABEL).map((s) => /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("option", { value: s, children: SOURCE_LABEL[s] }, s)) })
+                /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("select", { value: draft.source, onChange: (e) => setDraft({ ...draft, source: e.target.value }), className: `${field3} w-full`, "data-advice-source": true, children: Object.keys(SOURCE_LABEL2).map((s) => /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("option", { value: s, children: SOURCE_LABEL2[s] }, s)) })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)("label", { className: "block", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "Jours \xE9tudi\xE9s \xE0 partir d\u2019aujourd\u2019hui" }),
@@ -77780,7 +77916,7 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
           ),
           activeTab === "welcomeBook" && /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(WelcomeBookEditor, { onToast: showToast }),
           activeTab === "meals" && /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(MealsView, { onToast: showToast, reservations: effectiveReservations, onSelectReservation: (res2) => setViewingReservation(res2) }),
-          activeTab === "adminDocs" && /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(AdminView, { onToast: showToast }),
+          activeTab === "adminDocs" && /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(AdminView, { onToast: showToast, onOpenModule: (tab) => setActiveTab(tab) }),
           activeTab === "daily" && /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(DailyView, { reservations: effectiveReservations, onToast: showToast }),
           activeTab === "docgen" && /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(DocView, { onToast: showToast }),
           activeTab === "website" && /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(WebsiteView, { reservations, externalReviews, onToast: showToast, onDecideRequest: handleDecideSiteRequest }),
