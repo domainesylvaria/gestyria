@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v231</title>
-  <meta name="application-name" content="Gestyria v231" />
+  <title>Gestyria v232</title>
+  <meta name="application-name" content="Gestyria v232" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -1206,6 +1206,7 @@ if (typeof window !== "undefined") {
   };
 }
 
+"use strict";
 var DomaineAppBundle = (() => {
   var __create = Object.create;
   var __defProp = Object.defineProperty;
@@ -4696,7 +4697,8 @@ footer{background:#111}
         const missing = [
           !e.name.trim() && "nom",
           !e.address.trim() && "adresse",
-          !e.siret.trim() && "SIRET"
+          !e.siret.trim() && "SIRET",
+          !e.vatMention.trim() && "mention TVA"
         ].filter(Boolean);
         return missing.length === 0 ? { state: "ok" } : { state: "incomplete", message: `\xC0 compl\xE9ter pour les factures : ${missing.join(", ")}.` };
       }
@@ -4994,7 +4996,7 @@ footer{background:#111}
       establishment: {
         name: "Mon \xE9tablissement",
         subtitle: "Chambres d'h\xF4tes",
-        legalStatus: "Entrepreneur Individuel (EI)",
+        legalStatus: "",
         address: "",
         postalCode: "",
         city: "",
@@ -5003,7 +5005,8 @@ footer{background:#111}
         email: "",
         website: "",
         siret: "",
-        vatMention: "TVA non applicable, art. 293 B du CGI.",
+        vatMention: "",
+        // À choisir dans l'assistant de démarrage : ne jamais affirmer « TVA non applicable » à la place du client
         themeColor: "#325032"
       },
       accommodations: [
@@ -7153,44 +7156,7 @@ footer{background:#111}
     return { reservations: list3, added, linked, updated };
   }
   var EXTERNAL_REVIEWS_STORAGE_KEY = "domaine_sylvaria_external_reviews_v1";
-  var INITIAL_EXTERNAL_REVIEWS = [
-    {
-      id: "rev-google-1",
-      source: "google",
-      authorName: "Alexandre & Sophie Martin",
-      date: "2026-09-28",
-      roomId: "magnolia",
-      guestRating: 5,
-      guestComment: "Un s\xE9jour inoubliable ! La chambre est lumineuse et d\xE9cor\xE9e avec go\xFBt. Petit d\xE9jeuner d'exception avec des produits locaux. Nous reviendrons avec grand plaisir.",
-      hostRating: 5,
-      hostComment: "Voyageurs charmants et tr\xE8s respectueux des lieux. Un r\xE9el plaisir de les accueillir au domaine.",
-      createdAt: "2026-09-28T10:00:00Z"
-    },
-    {
-      id: "rev-tripadvisor-1",
-      source: "tripadvisor",
-      authorName: "Claire & Marc B.",
-      date: "2026-09-15",
-      roomId: "figuier",
-      guestRating: 5,
-      guestComment: "Cadre idyllique et h\xF4tes aux petits soins. La terrasse ombrag\xE9e de la chambre Figuier est un vrai havre de paix. Literie d'un tr\xE8s grand confort et propret\xE9 irr\xE9prochable.",
-      hostRating: 5,
-      hostComment: "S\xE9jour parfait, \xE9changes chaleureux et cordiaux.",
-      createdAt: "2026-09-15T14:30:00Z"
-    },
-    {
-      id: "rev-google-2",
-      source: "google",
-      authorName: "Julien Lefebvre",
-      date: "2026-08-20",
-      roomId: "all",
-      guestRating: 5,
-      guestComment: "Superbe domaine au calme absolu, piscine magnifique et accueil tr\xE8s personnalis\xE9. Parfait pour se ressourcer en pleine nature.",
-      hostRating: 5,
-      hostComment: "Client tr\xE8s agr\xE9able et discret.",
-      createdAt: "2026-08-20T18:00:00Z"
-    }
-  ];
+  var INITIAL_EXTERNAL_REVIEWS = [];
   function loadExternalReviews() {
     try {
       const raw = localStorage.getItem(EXTERNAL_REVIEWS_STORAGE_KEY);
@@ -7980,7 +7946,7 @@ footer{background:#111}
 
   // src/core/app.ts
   var APP_NAME = "Gestyria";
-  var APP_VERSION = "231";
+  var APP_VERSION = "232";
   var APP_VERSION_LABEL = `v${APP_VERSION}`;
   var APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
 
@@ -38477,6 +38443,7 @@ Cordialement`
       phone: e.phone || "",
       email: e.email || "",
       siret: e.siret || "",
+      vatMention: e.vatMention || "",
       rooms: s.accommodations.filter((a) => a.active).map((a) => ({ id: a.id, name: a.name, guests: num6(a.maxGuests), price: num6(a.basePrice) })),
       spaces: s.resources.filter((r) => r.active).map((r) => ({ id: r.id, name: r.name, guests: num6(r.capacity), price: num6(r.price) })),
       services: s.services.filter((x) => x.active).map((x) => ({ id: x.id, name: x.name, price: num6(x.price), unit: x.unit }))
@@ -38570,7 +38537,8 @@ Cordialement`
         city: a.city.trim(),
         phone: a.phone.trim(),
         email: a.email.trim(),
-        siret: a.siret.trim()
+        siret: a.siret.trim(),
+        vatMention: a.vatMention.trim()
       },
       accommodations,
       resources,
@@ -38788,7 +38756,12 @@ Cordialement`
             /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Label, { text: "T\xE9l\xE9phone", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("input", { value: a.phone, onChange: (e) => set({ phone: e.target.value }), className: inputClass3, placeholder: "06 00 00 00 00", inputMode: "tel" }) }),
             /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Label, { text: "Adresse e-mail", hint: "Utilis\xE9e pour les messages \xE0 vos voyageurs.", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("input", { value: a.email, onChange: (e) => set({ email: e.target.value }), className: inputClass3, placeholder: "contact@mondomaine.fr", inputMode: "email" }) })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Label, { text: "Num\xE9ro SIRET", hint: "Il figure sur vos factures. \xC0 laisser vide si vous ne l'avez pas sous la main.", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("input", { value: a.siret, onChange: (e) => set({ siret: e.target.value }), className: inputClass3, placeholder: "14 chiffres", inputMode: "numeric" }) })
+          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Label, { text: "Num\xE9ro SIRET", hint: "Il figure sur vos factures. \xC0 laisser vide si vous ne l'avez pas sous la main.", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("input", { value: a.siret, onChange: (e) => set({ siret: e.target.value }), className: inputClass3, placeholder: "14 chiffres", inputMode: "numeric" }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Label, { text: "TVA sur vos factures", hint: "Le logiciel ne calcule pas la TVA : il imprime seulement cette mention. Si vous \xEAtes assujetti \xE0 la TVA, demandez conseil \xE0 votre comptable.", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("select", { value: a.vatMention, onChange: (e) => set({ vatMention: e.target.value }), className: inputClass3, "aria-label": "TVA sur vos factures", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "", children: "Je ne sais pas encore (\xE0 compl\xE9ter plus tard)" }),
+            /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: "TVA non applicable, art. 293 B du CGI.", children: "Non assujetti (franchise en base, art. 293 B)" }),
+            a.vatMention && a.vatMention !== "TVA non applicable, art. 293 B du CGI." && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("option", { value: a.vatMention, children: a.vatMention })
+          ] }) })
         ] }),
         step === 3 && /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "space-y-4", children: [
           /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h2", { className: "font-serif font-bold text-xl text-neutral-900", children: "Vos h\xE9bergements" }),
@@ -63069,15 +63042,18 @@ Cette action supprimera la facture du registre et la retirera du Google Sheet.`)
               "\u2022 ",
               /* @__PURE__ */ (0, import_jsx_runtime141.jsx)("strong", { children: "SIRET :" }),
               " ",
-              /* @__PURE__ */ (0, import_jsx_runtime141.jsx)("span", { className: "font-mono font-bold text-slate-800", children: est.siret }),
-              " | ",
-              /* @__PURE__ */ (0, import_jsx_runtime141.jsx)("strong", { children: "Statut :" }),
+              /* @__PURE__ */ (0, import_jsx_runtime141.jsx)("span", { className: "font-mono font-bold text-slate-800", children: est.siret || "\xE0 compl\xE9ter" }),
+              est.legalStatus.trim() && /* @__PURE__ */ (0, import_jsx_runtime141.jsxs)(import_jsx_runtime141.Fragment, { children: [
+                " | ",
+                /* @__PURE__ */ (0, import_jsx_runtime141.jsx)("strong", { children: "Statut :" }),
+                " ",
+                est.legalStatus
+              ] }),
               " ",
-              est.legalStatus,
-              " | ",
+              "| ",
               /* @__PURE__ */ (0, import_jsx_runtime141.jsx)("strong", { children: "TVA :" }),
               " ",
-              est.vatMention
+              est.vatMention.trim() || "mention \xE0 compl\xE9ter (Param\xE9trage > \xC9tablissement)"
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime141.jsxs)("div", { children: [
               "\u2022 ",
@@ -67797,12 +67773,15 @@ ${establishment}`;
     const [modalDefaultDate, setModalDefaultDate] = (0, import_react148.useState)(now.toISOString().slice(0, 10));
     const [toastMessage, setToastMessage] = (0, import_react148.useState)(null);
     const toastTimer = (0, import_react148.useRef)(null);
-    const showToast = (msg) => {
+    const [toastUndo, setToastUndo] = (0, import_react148.useState)(null);
+    const showToast = (msg, undo) => {
       setToastMessage(msg);
+      setToastUndo(undo ? () => undo : null);
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastTimer.current = setTimeout(() => {
         setToastMessage(null);
-      }, 3500);
+        setToastUndo(null);
+      }, undo ? 1e4 : 3500);
     };
     (0, import_react148.useEffect)(() => {
       saveReservations(reservations);
@@ -68354,12 +68333,18 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
     };
     const handleDeleteReservation = (id) => {
       dismissIcalUid(reservations.find((r) => r.id === id)?.icalUid);
+      const removed = reservations.find((r) => r.id === id);
       const updated = reservations.filter((r) => r.id !== id);
       setReservations(updated);
       if (viewingReservation?.id === id) {
         setViewingReservation(null);
       }
-      showToast("R\xE9servation supprim\xE9e.");
+      showToast("R\xE9servation supprim\xE9e.", removed ? () => {
+        const restored = [...updated, removed];
+        setReservations(restored);
+        showToast("R\xE9servation r\xE9tablie.");
+        triggerBackgroundSync(restored, externalReviews);
+      } : void 0);
       triggerBackgroundSync(updated, externalReviews);
     };
     const handleDecideSiteRequest = async (res2, decision, message) => {
@@ -68446,7 +68431,8 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
     return /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { className: "sy-shell min-h-screen bg-sy-f8f9f6 text-neutral-800 flex flex-col font-sans", children: [
       toastMessage && /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { className: "fixed bottom-5 right-5 z-50 bg-neutral-900 text-white text-xs px-4 py-2.5 rounded-xl shadow-lg border border-neutral-800 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200", children: [
         /* @__PURE__ */ (0, import_jsx_runtime149.jsx)(Check, { className: "w-4 h-4 text-emerald-400" }),
-        /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { children: toastMessage })
+        /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { children: toastMessage }),
+        toastUndo && /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("button", { type: "button", onClick: toastUndo, className: "ml-2 font-bold underline text-emerald-300 hover:text-white cursor-pointer", children: "Annuler" })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime149.jsx)(
         Header,
