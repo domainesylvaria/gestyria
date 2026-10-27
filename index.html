@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v254</title>
-  <meta name="application-name" content="Gestyria v254" />
+  <title>Gestyria v255</title>
+  <meta name="application-name" content="Gestyria v255" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -5165,6 +5165,11 @@ footer{background:#111}
     if (state.status !== "valid" && state.status !== "expired") return false;
     return state.included.includes(id) || id === "synthesis" && state.included.includes("statistics");
   }
+  function licenseAnnouncement() {
+    if (!LICENSE_REQUIRED) return "";
+    if (state.status !== "valid" && state.status !== "expired" || !state.payload) return "";
+    return state.payload.kind === "purchase" || !state.payload.expiresAt ? "none" : state.payload.expiresAt;
+  }
   function licenseReadOnly(id) {
     if (!LICENSE_REQUIRED || FREE_MODULES.includes(id)) return false;
     return state.status === "expired" && state.phase === "readonly" && licenseAllows(id);
@@ -5228,9 +5233,11 @@ footer{background:#111}
   function parseRegistry(raw) {
     try {
       const p = JSON.parse(raw || "null");
-      const list3 = (Array.isArray(p?.list) ? p.list : []).filter((e) => e && typeof e.id === "string" && /^[a-z0-9]{1,12}$/.test(e.id)).map((e) => ({ id: e.id, name: String(e.name || ""), createdAt: String(e.createdAt || "") }));
+      const list3 = (Array.isArray(p?.list) ? p.list : []).filter((e) => e && typeof e.id === "string" && /^[a-z0-9]{1,12}$/.test(e.id)).map((e) => ({ id: e.id, name: String(e.name || ""), createdAt: String(e.createdAt || ""), ...typeof e.closedAt === "string" && e.closedAt ? { closedAt: e.closedAt } : {} }));
       if (!list3.some((e) => e.id === FIRST_ID)) list3.unshift({ id: FIRST_ID, name: "", createdAt: "" });
-      const active2 = list3.some((e) => e.id === p?.active) ? p.active : FIRST_ID;
+      const open = list3.filter((e) => !e.closedAt);
+      const wanted = list3.find((e) => e.id === p?.active && !e.closedAt);
+      const active2 = wanted ? wanted.id : (open.find((e) => e.id === FIRST_ID) || open[0] || list3[0]).id;
       return { active: active2, list: list3 };
     } catch {
       return defaultRegistry();
@@ -5269,7 +5276,7 @@ footer{background:#111}
   }
   function switchEstablishment(id) {
     const reg = readRegistry();
-    if (!reg.list.some((e) => e.id === id)) return;
+    if (!openEstablishments(reg).some((e) => e.id === id)) return;
     writeRegistry({ ...reg, active: id });
     try {
       const url = new URL(window.location.href);
@@ -5281,7 +5288,7 @@ footer{background:#111}
   }
   function createEstablishment(name) {
     const reg = readRegistry();
-    const check = checkLimit("establishments", reg.list.length);
+    const check = checkLimit("establishments", openEstablishments(reg).length);
     if (!check.ok) return check;
     const clean = name.trim();
     if (!clean) return { ok: false, message: "Donnez un nom \xE0 l'\xE9tablissement." };
@@ -5296,11 +5303,42 @@ footer{background:#111}
     window.location.reload();
     return { ok: true };
   }
+  function closeEstablishment(id, now = /* @__PURE__ */ new Date()) {
+    const reg = readRegistry();
+    const target = reg.list.find((e) => e.id === id);
+    if (!target) return { ok: false, message: "\xC9tablissement introuvable." };
+    if (target.closedAt) return { ok: true };
+    const others = openEstablishments(reg).filter((e) => e.id !== id);
+    if (others.length === 0) return { ok: false, message: "Il faut garder au moins un \xE9tablissement en activit\xE9 : cr\xE9ez-en un autre avant de fermer celui-ci." };
+    const wasActive = reg.active === id;
+    const list3 = reg.list.map((e) => e.id === id ? { ...e, closedAt: now.toISOString() } : e);
+    const active2 = wasActive ? (others.find((e) => e.id === FIRST_ID) || others[0]).id : reg.active;
+    if (!writeRegistry({ active: active2, list: list3 })) return { ok: false, message: "Enregistrement impossible : la m\xE9moire de l'appareil est pleine." };
+    if (wasActive) window.location.reload();
+    return { ok: true };
+  }
+  function reopenEstablishment(id) {
+    const reg = readRegistry();
+    const target = reg.list.find((e) => e.id === id);
+    if (!target) return { ok: false, message: "\xC9tablissement introuvable." };
+    if (!target.closedAt) return { ok: true };
+    const check = checkLimit("establishments", openEstablishments(reg).length);
+    if (!check.ok) return check;
+    const list3 = reg.list.map((e) => {
+      if (e.id !== id) return e;
+      const { closedAt: _closed, ...rest } = e;
+      return rest;
+    });
+    if (!writeRegistry({ ...reg, list: list3 })) return { ok: false, message: "Enregistrement impossible : la m\xE9moire de l'appareil est pleine." };
+    return { ok: true };
+  }
   function deleteEstablishment(id) {
     const reg = readRegistry();
     if (id === FIRST_ID) return { ok: false, message: "L'\xE9tablissement principal ne peut pas \xEAtre supprim\xE9." };
     if (id === getActiveId()) return { ok: false, message: "Ouvrez un autre \xE9tablissement avant de supprimer celui-ci." };
-    if (!reg.list.some((e) => e.id === id)) return { ok: false, message: "\xC9tablissement introuvable." };
+    const target = reg.list.find((e) => e.id === id);
+    if (!target) return { ok: false, message: "\xC9tablissement introuvable." };
+    if (!target.closedAt) return { ok: false, message: "Fermez d'abord cet \xE9tablissement : la suppression d\xE9finitive ne se fait que sur un \xE9tablissement ferm\xE9." };
     wipeEstablishment(getRealStorage(), id);
     try {
       indexedDB.deleteDatabase(`gestyria_photos_v1__${id}`);
@@ -5383,13 +5421,14 @@ footer{background:#111}
       message: `Limite de votre formule atteinte : ${max} ${unit}${max > 1 ? "s" : ""} au maximum. Changez de formule dans Param\xE9trage > \xC9tablissements et formule.`
     };
   }
-  var defaultRegistry, PLANS, LIMIT_LABELS, defaultAccount;
+  var defaultRegistry, openEstablishments, PLANS, LIMIT_LABELS, defaultAccount;
   var init_registry2 = __esm({
     "src/core/establishments/registry.ts"() {
       "use strict";
       init_license();
       init_scope();
       defaultRegistry = () => ({ active: FIRST_ID, list: [{ id: FIRST_ID, name: "", createdAt: "" }] });
+      openEstablishments = (reg) => reg.list.filter((e) => !e.closedAt);
       PLANS = [
         { id: "illimitee", label: "Illimit\xE9e", description: "Aucune limite (formule de d\xE9part).", limits: { establishments: null, users: null, accommodations: null } },
         { id: "essentiel", label: "Essentiel", description: "Un \xE9tablissement, une petite \xE9quipe.", limits: { establishments: 1, users: 2, accommodations: 3 } },
@@ -5420,7 +5459,7 @@ footer{background:#111}
           const reg = parseRegistry(real3.getItem(REGISTRY_KEY));
           let id = reg.active;
           const asked = new URLSearchParams(window.location.search).get("etab");
-          if (asked && reg.list.some((e) => e.id === asked)) id = asked;
+          if (asked && reg.list.some((e) => e.id === asked && !e.closedAt)) id = asked;
           setActiveId(id);
           const scoped = makeScopedStorage(real3, id);
           Object.defineProperty(window, "localStorage", { configurable: true, get: () => scoped });
@@ -8488,7 +8527,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "254";
+      APP_VERSION = "255";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -12109,6 +12148,13 @@ footer{background:#111}
     p.catch(() => infoCache.delete(key));
     return p;
   }
+  function announceLicense() {
+    const value = licenseAnnouncement();
+    const target = currentTarget();
+    if (!value || !target || announced.get(target.url) === value) return;
+    announced.set(target.url, value);
+    connectorGet({ action: "ping", licenseUntil: value }, { url: target.url }).catch(() => announced.delete(target.url));
+  }
   async function requireV10(target = currentTarget()) {
     const info = await connectorInfo(target);
     if (info.version < 10) throw new Error(CONNECTOR_UPDATE_MESSAGE);
@@ -12174,16 +12220,19 @@ footer{background:#111}
     const info = await connectorInfo(target, true);
     if (info.version < 24) throw new Error(CONNECTOR_V24_MESSAGE);
   }
-  var CONNECTOR_UPDATE_MESSAGE, NO_CONNECTOR_MESSAGE, staffTarget, infoCache, CONNECTOR_V11_MESSAGE, CONNECTOR_V12_MESSAGE, CONNECTOR_V18_MESSAGE, CONNECTOR_V17_MESSAGE, CONNECTOR_V21_MESSAGE, CONNECTOR_V22_MESSAGE, CONNECTOR_V24_MESSAGE, CONNECTOR_V34_MESSAGE;
+  var CONNECTOR_UPDATE_MESSAGE, NO_CONNECTOR_MESSAGE, staffTarget, infoCache, announced, CONNECTOR_V11_MESSAGE, CONNECTOR_V12_MESSAGE, CONNECTOR_V18_MESSAGE, CONNECTOR_V17_MESSAGE, CONNECTOR_V21_MESSAGE, CONNECTOR_V22_MESSAGE, CONNECTOR_V24_MESSAGE, CONNECTOR_V34_MESSAGE;
   var init_connector = __esm({
     "src/core/access/connector.ts"() {
       "use strict";
       init_googleSheetsService();
       init_links();
+      init_license();
       CONNECTOR_UPDATE_MESSAGE = "Votre connecteur Google doit \xEAtre mis \xE0 jour (V10) : Param\xE9trage > Google Sheets, copiez le nouveau code dans Apps Script et d\xE9ployez une nouvelle version.";
       NO_CONNECTOR_MESSAGE = "Renseignez d'abord l'adresse du connecteur (Param\xE9trage > Google Sheets).";
       staffTarget = null;
       infoCache = /* @__PURE__ */ new Map();
+      announced = /* @__PURE__ */ new Map();
+      onLicenseChanged(announceLicense);
       CONNECTOR_V11_MESSAGE = "Votre connecteur Google doit \xEAtre mis \xE0 jour (V11) : Param\xE9trage > Google Sheets, copiez le nouveau code dans Apps Script et d\xE9ployez une nouvelle version.";
       CONNECTOR_V12_MESSAGE = "Le livre d'or demande la mise \xE0 jour du connecteur Google (V12) : Param\xE9trage > Google Sheets, copiez TOUT le nouveau code dans Apps Script et d\xE9ployez une nouvelle version.";
       CONNECTOR_V18_MESSAGE = "Les rappels par e-mail et l'acc\xE8s par personne du Suivi de l'\xE9tablissement demandent la mise \xE0 jour du connecteur Google (V18) : Param\xE9trage > Google Sheets, copiez TOUT le nouveau code dans Apps Script et d\xE9ployez une nouvelle version.";
@@ -18449,7 +18498,7 @@ ${body}
   }
   function getAppsScriptCode() {
     return `// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - GESTYRIA (V39)
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - GESTYRIA (V40)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -18529,6 +18578,7 @@ ${body}
 // V22 : RGPD. Outil (Param\xE9trage > Donn\xE9es personnelles) qui compte puis supprime, dans les onglets
 // Livret_Messages et Repas_Commandes, les lignes d'une personne ou plus anciennes qu'une dur\xE9e. Aucune nouvelle autorisation.
 // V23 : phototh\xE8que du site web. Les photos du module Site web sont rang\xE9es dans un dossier Google Drive priv\xE9 "Gestyria - Phototh\xE8que du site" (envoi "uploadDocument" avec folder = "site"). Aucune nouvelle autorisation.
+// V40 : FIN DE LICENCE. L'application annonce au connecteur prot\xE9g\xE9 la date de fin de la licence de l'abonnement (jamais pour un achat d\xE9finitif ni sans licence exig\xE9e). Quinze jours apr\xE8s cette date, les e-mails automatiques (rappels, avis, message avant l'arriv\xE9e, acomptes) sont suspendus ; trente jours plus tard, les pages publiques (livret, commandes de repas, demandes du site) se ferment. Rien n'est supprim\xE9 : une licence renouvel\xE9e, annonc\xE9e \xE0 nouveau par l'application, remet tout en marche. Nouvelle fonction arreterAutomatismes() (\xE0 lancer \xE0 la main) : supprime tous les d\xE9clencheurs horaires, pour fermer un \xE9tablissement ou quitter l'application. Aucune nouvelle autorisation : coller le code et red\xE9ployer une nouvelle version.
 // V39 : e-mail automatique AVANT L'ARRIV\xC9E (facultatif, r\xE9gl\xE9 dans Livret d'accueil > E-mails du s\xE9jour : jours avant, heure, texte avec le lien du livret du s\xE9jour) et formulaire de PR\xC9-ENREGISTREMENT du voyageur (heure d'arriv\xE9e, t\xE9l\xE9phone, voyageurs, allergies) ouvert par le lien de s\xE9jour ; les r\xE9ponses arrivent dans Livret > Messages. Aucune nouvelle autorisation : coller le code et red\xE9ployer une nouvelle version.
 // V38 : connexion FACULTATIVE \xE0 Beds24 (channel manager, services Airbnb / Booking.com) : le code d'invitation cr\xE9\xE9 dans Beds24 est \xE9chang\xE9 contre une cl\xE9 gard\xE9e dans les propri\xE9t\xE9s du script (jamais envoy\xE9e \xE0 l'application) ; le connecteur lit les r\xE9servations avec nom, montant, commission, voyageurs et annulations, que l'application fusionne sans rien \xE9craser. NOUVELLE AUTORISATION : apr\xE8s avoir coll\xE9 ce code, choisissez la fonction "autoriserConnecteurV38" dans la liste, cliquez sur \xAB Ex\xE9cuter \xBB et acceptez (appels vers Internet), puis D\xE9ployer > G\xE9rer les d\xE9ploiements > crayon > Nouvelle version > D\xE9ployer. Sans Beds24, rien ne change.
 // V37 : noms g\xE9n\xE9riques \xAB Gestyria \xBB pour ce que le connecteur cr\xE9e d\xE9sormais (classeur, dossiers Google Drive, nom et identifiant du calendrier iCal d'export) et nom d'\xE9tablissement par d\xE9faut \xAB Mon \xE9tablissement \xBB. Les dossiers Drive d\xE9j\xE0 cr\xE9\xE9s sont retrouv\xE9s par leur identifiant et gardent leur nom. Aucune nouvelle autorisation.
@@ -19250,7 +19300,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 39;
+var CONNECTOR_VERSION = 40;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Gestyria - Photos m\xE9nage";
@@ -19277,6 +19327,11 @@ function installerRappelsMenage() {
 }
 
 function envoyerRappelsMenage() {
+  // V40 : licence expir\xE9e depuis plus de quinze jours (annonc\xE9e par l'application) : e-mails automatiques suspendus
+  if (licenceAutomatismesArretes_()) {
+    Logger.log("Licence expir\xE9e : e-mails automatiques suspendus (renouvelez la licence dans l'application).");
+    return;
+  }
   var result = sendHousekeepingReminders_(false);
   Logger.log(JSON.stringify(result));
   // V16 : demandes d'avis automatiques (m\xEAme d\xE9clencheur horaire)
@@ -19395,6 +19450,35 @@ function afficherAdresseAdministratrice() {
   Logger.log("Adresse \xE0 coller dans l'app (Param\xE9trage > Google Sheets) : " + ScriptApp.getService().getUrl() + "?cle=" + key);
 }
 
+// V40 : fin de licence annonc\xE9e par l'application (date AAAA-MM-JJ ; \xAB none \xBB = achat d\xE9finitif, plus de suivi)
+var LICENCE_FIN_PROP = "LICENCE_FIN";
+var LICENCE_GRACE_JOURS = 15;
+var LICENCE_PUBLIC_JOURS = 30;
+
+// Jours \xE9coul\xE9s depuis la fin de la licence annonc\xE9e (\u2264 0 : pas encore finie) ; null si aucune fin n'a \xE9t\xE9 annonc\xE9e
+function licenceRetard_() {
+  var fin = PropertiesService.getScriptProperties().getProperty(LICENCE_FIN_PROP) || "";
+  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(fin)) return null;
+  return daysBetweenIso_(fin, siteToday_());
+}
+
+function licenceAutomatismesArretes_() {
+  var r = licenceRetard_();
+  return r !== null && r > LICENCE_GRACE_JOURS;
+}
+
+function licencePublicFerme_() {
+  var r = licenceRetard_();
+  return r !== null && r > LICENCE_GRACE_JOURS + LICENCE_PUBLIC_JOURS;
+}
+
+// \xC0 lancer \xE0 la main depuis l'\xE9diteur pour fermer un \xE9tablissement ou quitter l'application : supprime tous les d\xE9clencheurs horaires
+function arreterAutomatismes() {
+  var triggers = ScriptApp.getProjectTriggers();
+  triggers.forEach(function(t) { ScriptApp.deleteTrigger(t); });
+  Logger.log("\u2705 " + triggers.length + " d\xE9clencheur(s) supprim\xE9(s) : plus aucun e-mail automatique ne partira. Pour les remettre : lancer la fonction autoriserConnecteurV10.");
+}
+
 // V36 : la protection par cl\xE9 est obligatoire, elle ne se retire plus
 function retirerProtection() {
   Logger.log("La protection par cl\xE9 est obligatoire depuis la V36 : elle ne peut plus \xEAtre retir\xE9e. Pour changer de cl\xE9, utilisez Param\xE9trage > Personnes et acc\xE8s dans l'application.");
@@ -19475,6 +19559,12 @@ function routeGetV10_(e, action) {
     var announced = String(p.appUrl || "");
     if (announced && adminKey_() && isAdminRequest_(e, null) && /^https:\\/\\/[^\\s"<>?#]{4,200}\\/$/.test(announced)) {
       PropertiesService.getScriptProperties().setProperty(APP_URL_PROP, announced);
+    }
+    // V40 : fin de licence annonc\xE9e par l'application (m\xEAme protection par cl\xE9)
+    var licenseUntil = String(p.licenseUntil || "");
+    if (licenseUntil && adminKey_() && isAdminRequest_(e, null)) {
+      if (licenseUntil === "none") PropertiesService.getScriptProperties().deleteProperty(LICENCE_FIN_PROP);
+      else if (/^\\d{4}-\\d{2}-\\d{2}$/.test(licenseUntil)) PropertiesService.getScriptProperties().setProperty(LICENCE_FIN_PROP, licenseUntil);
     }
     return { status: "success", version: CONNECTOR_VERSION, protected: !!adminKey_(), admin: isAdminRequest_(e, null) };
   }
@@ -20237,6 +20327,7 @@ function textOf_(v) {
 function bookContext_(publicId, guestCode, stayToken) {
   var unavailable = { status: "error", code: "livret_indisponible", message: "Ce livret d'accueil n'est pas (ou plus) disponible." };
   if (!adminKey_()) return { error: unavailable };
+  if (licencePublicFerme_()) return { error: unavailable }; // V40 : licence expir\xE9e depuis plus de 45 jours
   var ss = getTargetSpreadsheet();
   var store = loadAppData_(ss);
   var settings = store && store.appStores && store.appStores.settings;
@@ -22753,7 +22844,7 @@ function beds24Bookings_() {
     return { status: "error", message: message };
   }
 }
-// ===== FIN DU CONNECTEUR (V39) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== FIN DU CONNECTEUR (V40) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
   var SPREADSHEET_ID_STORAGE_KEY, AUTO_SYNC_STORAGE_KEY, APPS_SCRIPT_STORAGE_KEY, SHEET_PULLED_KEY, SHEET_PENDING_KEY, SHEET_REVISION_KEY, SHEET_CONFLICT_MESSAGE, SHEET_NOT_PULLED_MESSAGE;
@@ -23379,7 +23470,8 @@ function beds24Bookings_() {
       EstablishmentSwitcher = () => {
         const settings = useSettings();
         const reg = readRegistry();
-        if (reg.list.length < 2) return null;
+        const open = openEstablishments(reg);
+        if (open.length < 2) return null;
         const active2 = getActiveId();
         const label2 = (id) => (id === active2 ? settings.establishment.name : "") || nameOf(reg, id, id === "e1" ? "\xC9tablissement principal" : "\xC9tablissement");
         return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { className: "sy-switcher flex items-center gap-1 bg-white border border-neutral-300 rounded-xl px-2 py-1 sm:py-1.5 shadow-2xs shrink-0", title: "Changer d'\xE9tablissement", children: [
@@ -23392,7 +23484,7 @@ function beds24Bookings_() {
               "aria-label": "\xC9tablissement",
               className: "bg-transparent text-neutral-900 font-bold text-[11px] sm:text-xs focus:outline-hidden cursor-pointer max-w-[120px] sm:max-w-[200px] truncate",
               "data-establishment-switcher": true,
-              children: reg.list.map((e) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: e.id, children: label2(e.id) }, e.id))
+              children: open.map((e) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: e.id, children: label2(e.id) }, e.id))
             }
           )
         ] });
@@ -25201,7 +25293,7 @@ function beds24Bookings_() {
         const limits = limitsOf(account);
         const plan = PLANS.find((p) => p.id === account.plan) || PLANS[0];
         const usage = {
-          establishments: reg.list.length,
+          establishments: openEstablishments(reg).length,
           users: countUsers(),
           accommodations: settings.accommodations.length
         };
@@ -25222,16 +25314,38 @@ function beds24Bookings_() {
           const res2 = createEstablishment(newName);
           if (!res2.ok) onToast(res2.message);
         };
+        const close = (id) => {
+          const name = nameOf(reg, id);
+          if (!window.confirm(`Fermer \xAB ${name} \xBB ?
+
+Ses donn\xE9es sont conserv\xE9es intactes et vous pourrez le rouvrir. Il n'est plus propos\xE9 dans le s\xE9lecteur et ne compte plus dans votre formule.
+
+Pensez \xE0 pr\xE9parer le dossier de sortie (Param\xE9trage > Donn\xE9es personnelles) et \xE0 arr\xEAter les rappels automatiques de son connecteur Google.`)) return;
+          const res2 = closeEstablishment(id);
+          if (!res2.ok) return onToast(res2.message);
+          onToast(`\xAB ${name} \xBB ferm\xE9.`);
+          setTimeout(() => window.location.reload(), 400);
+        };
+        const reopen = (id) => {
+          const res2 = reopenEstablishment(id);
+          if (!res2.ok) return onToast(res2.message);
+          onToast(`\xAB ${nameOf(reg, id)} \xBB rouvert.`);
+          setTimeout(() => window.location.reload(), 400);
+        };
         const remove = (id) => {
           const name = nameOf(reg, id);
-          if (!window.confirm(`Supprimer \xAB ${name} \xBB et toutes ses donn\xE9es de cet appareil (r\xE9servations, r\xE9glages, photos) ?
-Cette action est d\xE9finitive. Pensez \xE0 une sauvegarde de cet \xE9tablissement avant.`)) return;
+          const typed = window.prompt(`Supprimer d\xE9finitivement \xAB ${name} \xBB et toutes ses donn\xE9es de cet appareil (r\xE9servations, r\xE9glages, photos) ?
+Cette action est irr\xE9versible : sauvegarde et dossier de sortie d'abord.
+
+Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
+          if (typed === null) return;
+          if (typed.trim().toLowerCase() !== name.trim().toLowerCase()) return onToast("Le nom saisi ne correspond pas : rien n'a \xE9t\xE9 supprim\xE9.");
           const res2 = deleteEstablishment(id);
           if (!res2.ok) return onToast(res2.message);
           onToast(`\xAB ${name} \xBB supprim\xE9.`);
           setTimeout(() => window.location.reload(), 600);
         };
-        const addCheck = checkLimit("establishments", reg.list.length, limits);
+        const addCheck = checkLimit("establishments", openEstablishments(reg).length, limits);
         return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { "data-establishments-section": true, children: [
           /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(SectionTitle, { title: "\xC9tablissements et formule", description: "Un compte, plusieurs \xE9tablissements, chacun avec ses propres donn\xE9es et ses propres droits." }),
           /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(InfoNote, { children: [
@@ -25242,19 +25356,24 @@ Cette action est d\xE9finitive. Pensez \xE0 une sauvegarde de cet \xE9tablisseme
           /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "space-y-2 mb-5", children: [
             reg.list.map((e) => {
               const active2 = e.id === activeId2;
+              const closed = !!e.closedAt;
               const name = active2 ? settings.establishment.name || nameOf(reg, e.id) : nameOf(reg, e.id, e.id === FIRST_ID ? settings.establishment.name || "\xC9tablissement principal" : "\xC9tablissement");
-              return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "flex items-center gap-3 p-3 rounded-xl border border-neutral-200 bg-white", "data-establishment": e.id, children: [
+              const btn10 = "px-3 py-1.5 text-xs font-bold rounded-lg cursor-pointer";
+              return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: `flex flex-wrap items-center gap-3 p-3 rounded-xl border bg-white ${closed ? "border-neutral-200 opacity-80" : "border-neutral-200"}`, "data-establishment": e.id, "data-closed": closed || void 0, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Building2, { className: "w-4 h-4 text-sy-325032 shrink-0" }),
                 /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "min-w-0 flex-1", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "text-sm font-bold text-neutral-900 truncate", children: name }),
-                  /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "text-[11px] text-neutral-500", children: e.id === FIRST_ID ? "\xC9tablissement principal" : e.createdAt ? `Cr\xE9\xE9 le ${new Date(e.createdAt).toLocaleDateString("fr-FR")}` : "\xC9tablissement" })
+                  /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "text-[11px] text-neutral-500", children: closed ? `Ferm\xE9 le ${new Date(e.closedAt).toLocaleDateString("fr-FR")} \xB7 donn\xE9es conserv\xE9es` : e.id === FIRST_ID ? "\xC9tablissement principal" : e.createdAt ? `Cr\xE9\xE9 le ${new Date(e.createdAt).toLocaleDateString("fr-FR")}` : "\xC9tablissement" })
                 ] }),
-                active2 ? /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("span", { className: "flex items-center gap-1 text-[11px] font-bold text-sy-325032", children: [
+                active2 && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("span", { className: "flex items-center gap-1 text-[11px] font-bold text-sy-325032", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Check, { className: "w-3.5 h-3.5" }),
                   " Ouvert"
-                ] }) : /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_jsx_runtime8.Fragment, { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { type: "button", onClick: () => switchEstablishment(e.id), className: "px-3 py-1.5 text-xs font-bold text-sy-325032 border border-sy-325032 rounded-lg hover:bg-sy-f4f7f4 cursor-pointer", "data-open-establishment": e.id, children: "Ouvrir" }),
-                  e.id !== FIRST_ID && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { type: "button", onClick: () => remove(e.id), className: "p-2 text-neutral-400 hover:text-red-700 hover:bg-red-50 rounded-lg cursor-pointer", title: "Supprimer cet \xE9tablissement", "aria-label": `Supprimer ${name}`, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Trash2, { className: "w-4 h-4" }) })
+                ] }),
+                !active2 && !closed && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { type: "button", onClick: () => switchEstablishment(e.id), className: `${btn10} text-sy-325032 border border-sy-325032 hover:bg-sy-f4f7f4`, "data-open-establishment": e.id, children: "Ouvrir" }),
+                !closed && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { type: "button", onClick: () => close(e.id), className: `${btn10} text-neutral-700 border border-neutral-300 hover:bg-neutral-50`, "data-close-establishment": e.id, children: "Fermer" }),
+                closed && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(import_jsx_runtime8.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { type: "button", onClick: () => reopen(e.id), className: `${btn10} text-sy-325032 border border-sy-325032 hover:bg-sy-f4f7f4`, "data-reopen-establishment": e.id, children: "Rouvrir" }),
+                  e.id !== FIRST_ID && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { type: "button", onClick: () => remove(e.id), className: "p-2 text-neutral-400 hover:text-red-700 hover:bg-red-50 rounded-lg cursor-pointer", title: "Supprimer d\xE9finitivement", "aria-label": `Supprimer ${name}`, "data-delete-establishment": e.id, children: /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(Trash2, { className: "w-4 h-4" }) })
                 ] })
               ] }, e.id);
             }),
@@ -29588,6 +29707,201 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
     }
   });
 
+  // src/core/export/csv.ts
+  function csvCell(value, sep) {
+    if (value === null || value === void 0) return "";
+    if (typeof value === "number") return String(Math.round(value * 100) / 100).replace(".", ",");
+    let text = String(value).replace(/\r?\n/g, " ");
+    if (/^[=+\-@]/.test(text)) text = `'${text}`;
+    return /["\n;,]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  }
+  function csvText(rows, sep) {
+    return `\uFEFF${rows.map((r) => r.map((c) => csvCell(c, sep)).join(sep)).join("\r\n")}`;
+  }
+  function download(name, content, type) {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 2e3);
+  }
+  function downloadCsv(name, rows, sep) {
+    download(name, csvText(rows, sep), "text/csv;charset=utf-8");
+  }
+  var init_csv = __esm({
+    "src/core/export/csv.ts"() {
+      "use strict";
+    }
+  });
+
+  // src/core/exit/exitPack.ts
+  function reservationRows(list3, roomName) {
+    const head = ["Arriv\xE9e", "D\xE9part", "Nuits", "H\xE9bergement", "Voyageur", "E-mail", "T\xE9l\xE9phone", "Voyageurs", "Origine", "Montant total (\u20AC)", "Acompte (\u20AC)", "Paiement", "Statut", "Notes"];
+    const rows = list3.filter((r) => r && !r.isBlocked).slice().sort((a, b) => String(a.checkIn).localeCompare(String(b.checkIn))).map((r) => [
+      frDate5(r.checkIn),
+      frDate5(r.checkOut),
+      Number(r.nights) || 0,
+      roomName(r.roomId),
+      r.guestName || "",
+      r.guestEmail || "",
+      r.guestPhone || "",
+      Number(r.guestsCount) || 0,
+      r.bookingSource || "",
+      Number(r.totalAmount) || 0,
+      Number(r.depositAmount) || 0,
+      PAYMENT[r.paymentStatus] || "",
+      r.reservationStatus === "cancelled" ? "Annul\xE9" : "",
+      r.notes || ""
+    ]);
+    return [head, ...rows];
+  }
+  function exitReadme(establishment, now) {
+    const date = frDate5(now.toISOString().slice(0, 10));
+    return [
+      `DOSSIER DE SORTIE \u2014 ${establishment || "\xC9tablissement"}`,
+      `Pr\xE9par\xE9 le ${date}.`,
+      "",
+      "CE QUE CONTIENT CE DOSSIER",
+      "- sauvegarde-complete.json : toutes les donn\xE9es de l'application (r\xE9servations, factures, registres, personnel, r\xE9glages, photos\u2026).",
+      "  Elle permet de tout remettre dans l'application (Aujourd'hui > Sauvegardes > Restaurer). Elle contient des donn\xE9es personnelles :",
+      "  rangez-la comme un document confidentiel.",
+      "- sejours.csv : la liste des s\xE9jours, lisible dans Excel ou LibreOffice.",
+      "",
+      "\xC0 FAIRE AVANT DE PARTIR",
+      "1. Copiez ce dossier \xE0 deux endroits diff\xE9rents (disque externe, autre compte). Une seule copie, sur le m\xEAme appareil, ne prot\xE8ge pas.",
+      "2. V\xE9rifiez que les fichiers s'ouvrent bien.",
+      "3. Gardez les documents que vous devez conserver (\xE0 titre indicatif : factures et pi\xE8ces comptables 10 ans ; registres d'hygi\xE8ne et de s\xE9curit\xE9",
+      "   selon les dur\xE9es applicables \xE0 votre activit\xE9 ; fiches de police des voyageurs \xE9trangers 6 mois). V\xE9rifiez ces dur\xE9es pour votre cas.",
+      "",
+      "POUR QUITTER D\xC9FINITIVEMENT",
+      "Vos donn\xE9es sont dans votre propre compte Google, pas chez le fournisseur du logiciel : rien n'y est supprim\xE9 \xE0 votre place.",
+      "Une demande de suppression de compte est ex\xE9cut\xE9e apr\xE8s un d\xE9lai de r\xE9flexion de 30 jours, pendant lesquels rien n'est supprim\xE9.",
+      "Quand vous \xEAtes s\xFBr(e) :",
+      "1. Dans Google Drive : supprimez le classeur \xAB Gestyria \u2026 \xBB et les dossiers \xAB Gestyria - \u2026 \xBB (photos du m\xE9nage, documents administratifs, phototh\xE8que, sauvegardes).",
+      "2. Dans Google Apps Script (Extensions > Apps Script du classeur) : \xAB D\xE9clencheurs \xBB (horloge) > supprimez les d\xE9clencheurs, puis \xAB D\xE9ployer > G\xE9rer les d\xE9ploiements > Archiver \xBB.",
+      "   Tant que le d\xE9clencheur existe, les rappels et e-mails automatiques continuent de partir.",
+      "3. Retirez les acc\xE8s \xAB \xC9diteur \xBB que vous avez donn\xE9s \xE0 une personne qui vous aide \xE0 distance (bouton Partager du classeur).",
+      "4. Site web publi\xE9 : d\xE9publiez-le (h\xE9bergeur ou GitHub Pages) et r\xE9voquez le jeton d'acc\xE8s utilis\xE9 pour le publier. Fermez ou redirigez le nom de domaine si vous n'en avez plus l'usage.",
+      "5. Dans l'application : Param\xE9trage > \xC9tablissements et formule > Fermer (r\xE9versible), puis Supprimer apr\xE8s avoir v\xE9rifi\xE9 ce dossier.",
+      "6. Videz les donn\xE9es de l'application dans les navigateurs de chaque appareil (param\xE8tres du navigateur > donn\xE9es du site).",
+      "",
+      "VOYAGEURS",
+      "Vous restez responsable des donn\xE9es personnelles de vos voyageurs. L'outil Param\xE9trage > Donn\xE9es personnelles permet de les exporter ou de les anonymiser."
+    ].join("\r\n");
+  }
+  function buildExitFiles(input7) {
+    const now = input7.now || /* @__PURE__ */ new Date();
+    return [
+      { path: "LISEZ-MOI.txt", text: exitReadme(input7.establishment, now) },
+      { path: "sauvegarde-complete.json", text: input7.backupJson },
+      { path: "sejours.csv", text: csvText(reservationRows(input7.reservations, input7.roomName), ";") }
+    ];
+  }
+  function exitPackName(establishment, now = /* @__PURE__ */ new Date()) {
+    const slug6 = String(establishment || "etablissement").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "etablissement";
+    return `dossier-de-sortie-${slug6}-${now.toISOString().slice(0, 10)}.zip`;
+  }
+  var frDate5, PAYMENT;
+  var init_exitPack = __esm({
+    "src/core/exit/exitPack.ts"() {
+      "use strict";
+      init_csv();
+      frDate5 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
+      PAYMENT = { paid: "Pay\xE9", deposit: "Acompte", pending: "En attente" };
+    }
+  });
+
+  // src/modules/siteweb/zip.ts
+  function crc32(data) {
+    let c = 4294967295;
+    for (let i = 0; i < data.length; i++) c = TABLE[(c ^ data[i]) & 255] ^ c >>> 8;
+    return (c ^ 4294967295) >>> 0;
+  }
+  function fileBytes(f) {
+    return f.data || new TextEncoder().encode(f.text || "");
+  }
+  function makeZip(files, now = /* @__PURE__ */ new Date()) {
+    const enc = new TextEncoder();
+    const time = now.getHours() << 11 | now.getMinutes() << 5 | now.getSeconds() >> 1;
+    const date = Math.max(1980, now.getFullYear()) - 1980 << 9 | now.getMonth() + 1 << 5 | now.getDate();
+    const parts = [];
+    const central = [];
+    let offset = 0;
+    const u16 = (v, o, n) => v.setUint16(o, n, true);
+    const u32 = (v, o, n) => v.setUint32(o, n >>> 0, true);
+    files.forEach((f) => {
+      const name = enc.encode(f.path);
+      const data = fileBytes(f);
+      const crc = crc32(data);
+      const local = new Uint8Array(30 + name.length);
+      const lv = new DataView(local.buffer);
+      u32(lv, 0, 67324752);
+      u16(lv, 4, 20);
+      u16(lv, 6, 2048);
+      u16(lv, 8, 0);
+      u16(lv, 10, time);
+      u16(lv, 12, date);
+      u32(lv, 14, crc);
+      u32(lv, 18, data.length);
+      u32(lv, 22, data.length);
+      u16(lv, 26, name.length);
+      u16(lv, 28, 0);
+      local.set(name, 30);
+      parts.push(local, data);
+      const cen = new Uint8Array(46 + name.length);
+      const cv = new DataView(cen.buffer);
+      u32(cv, 0, 33639248);
+      u16(cv, 4, 20);
+      u16(cv, 6, 20);
+      u16(cv, 8, 2048);
+      u16(cv, 10, 0);
+      u16(cv, 12, time);
+      u16(cv, 14, date);
+      u32(cv, 16, crc);
+      u32(cv, 20, data.length);
+      u32(cv, 24, data.length);
+      u16(cv, 28, name.length);
+      u32(cv, 42, offset);
+      cen.set(name, 46);
+      central.push(cen);
+      offset += local.length + data.length;
+    });
+    const centralSize = central.reduce((n, c) => n + c.length, 0);
+    const end = new Uint8Array(22);
+    const ev = new DataView(end.buffer);
+    u32(ev, 0, 101010256);
+    u16(ev, 8, files.length);
+    u16(ev, 10, files.length);
+    u32(ev, 12, centralSize);
+    u32(ev, 16, offset);
+    const all = [...parts, ...central, end];
+    const out = new Uint8Array(all.reduce((n, p) => n + p.length, 0));
+    let pos = 0;
+    all.forEach((p) => {
+      out.set(p, pos);
+      pos += p.length;
+    });
+    return out;
+  }
+  var TABLE;
+  var init_zip = __esm({
+    "src/modules/siteweb/zip.ts"() {
+      "use strict";
+      TABLE = (() => {
+        const t = new Uint32Array(256);
+        for (let n = 0; n < 256; n++) {
+          let c = n;
+          for (let k = 0; k < 8; k++) c = c & 1 ? 3988292384 ^ c >>> 1 : c >>> 1;
+          t[n] = c >>> 0;
+        }
+        return t;
+      })();
+    }
+  });
+
   // src/core/privacy/privacy.ts
   function readPrivacy() {
     try {
@@ -29826,7 +30140,7 @@ ${policy}</body></html>`;
   });
 
   // src/modules/parametrage/PrivacySection.tsx
-  var import_react40, import_jsx_runtime26, card, h, frDate5, PrivacySection;
+  var import_react40, import_jsx_runtime26, card, h, frDate6, PrivacySection;
   var init_PrivacySection = __esm({
     "src/modules/parametrage/PrivacySection.tsx"() {
       "use strict";
@@ -29834,6 +30148,9 @@ ${policy}</body></html>`;
       init_lucide_react();
       init_settingsStore();
       init_backup();
+      init_exitPack();
+      init_zip();
+      init_csv();
       init_connector();
       init_privacy();
       init_googleSheetsService();
@@ -29842,7 +30159,7 @@ ${policy}</body></html>`;
       import_jsx_runtime26 = __require("react/jsx-runtime");
       card = "p-4 mb-4 bg-white border border-neutral-200 rounded-xl";
       h = "font-serif font-bold text-sm text-neutral-900 mb-1";
-      frDate5 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
+      frDate6 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
       PrivacySection = ({ settings, onToast, reservations, onReservationsChange }) => {
         const [config, setConfig] = (0, import_react40.useState)(readPrivacy);
         const [query, setQuery] = (0, import_react40.useState)("");
@@ -29937,6 +30254,22 @@ Cette op\xE9ration est d\xE9finitive.`
           update({ reviewedAt: (/* @__PURE__ */ new Date()).toISOString() });
         };
         const register = processingRegister(facts);
+        const exitPack = () => {
+          try {
+            const now = /* @__PURE__ */ new Date();
+            const files = buildExitFiles({
+              establishment: settings.establishment.name,
+              reservations,
+              roomName: (id) => settings.accommodations.find((a) => a.id === id)?.name || id,
+              backupJson: JSON.stringify(buildBackup(void 0, now)),
+              now
+            });
+            download(exitPackName(settings.establishment.name, now), makeZip(files, now), "application/zip");
+            onToast("Dossier de sortie t\xE9l\xE9charg\xE9 : copiez-le \xE0 deux endroits diff\xE9rents.");
+          } catch {
+            onToast("Pr\xE9paration impossible : la m\xE9moire de l'appareil est peut-\xEAtre insuffisante.");
+          }
+        };
         return /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(
             SectionTitle,
@@ -29962,7 +30295,7 @@ Cette op\xE9ration est d\xE9finitive.`
             /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { className: "text-[11px] text-neutral-600 mb-2", children: "Les coordonn\xE9es des clients se gardent le temps utile (la CNIL cite 3 ans apr\xE8s le dernier contact). Pass\xE9 ce d\xE9lai, le s\xE9jour est anonymis\xE9." }),
             /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "max-w-xs", children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Field, { label: "Conserver les donn\xE9es d'un s\xE9jour (ann\xE9es apr\xE8s le d\xE9part)", hint: "0 = ne pas rappeler", children: /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(NumberInput, { value: config.retentionYears, onChange: (v) => update({ retentionYears: Math.min(30, Math.max(0, Math.round(v ?? 0))) }), suffix: "ans" }) }) }),
             config.retentionYears > 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-3 flex flex-wrap items-center gap-2", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { className: "text-[11px] text-neutral-700", children: expired.length === 0 ? `Aucun s\xE9jour termin\xE9 avant le ${frDate5(retentionCutoff(config.retentionYears))} n'est encore nominatif.` : `${expired.length} s\xE9jour(s) termin\xE9(s) avant le ${frDate5(retentionCutoff(config.retentionYears))} sont encore nominatifs.` }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { className: "text-[11px] text-neutral-700", children: expired.length === 0 ? `Aucun s\xE9jour termin\xE9 avant le ${frDate6(retentionCutoff(config.retentionYears))} n'est encore nominatif.` : `${expired.length} s\xE9jour(s) termin\xE9(s) avant le ${frDate6(retentionCutoff(config.retentionYears))} sont encore nominatifs.` }),
               expired.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(PrimaryButton, { onClick: () => anonymize(expired, `ces ${expired.length} s\xE9jour(s)`), children: [
                 /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(ShieldAlert, { className: "w-3.5 h-3.5" }),
                 " Anonymiser ces s\xE9jours"
@@ -30006,9 +30339,9 @@ Cette op\xE9ration est d\xE9finitive.`
                 /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("ul", { className: "divide-y divide-neutral-100 border border-neutral-200 rounded-lg max-h-48 overflow-y-auto", children: matches2.map((r) => /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("li", { className: "px-2.5 py-1.5 text-[11px] text-neutral-800 flex flex-wrap gap-x-2", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("b", { children: r.guestName }),
                   /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { className: "text-neutral-500", children: [
-                    frDate5(r.checkIn),
+                    frDate6(r.checkIn),
                     " \u2192 ",
-                    frDate5(r.checkOut)
+                    frDate6(r.checkOut)
                   ] }),
                   r.guestEmail && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-neutral-500", children: r.guestEmail }),
                   r.guestPhone && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "text-neutral-500", children: r.guestPhone })
@@ -30052,6 +30385,24 @@ Cette op\xE9ration est d\xE9finitive.`
             /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("p", { className: "text-[10px] text-neutral-400 mt-2", children: [
               config.reviewedAt ? `Derni\xE8re \xE9dition : ${new Date(config.reviewedAt).toLocaleDateString("fr-FR")}. ` : "Pas encore \xE9dit\xE9. ",
               "\xC0 refaire chaque ann\xE9e ou quand vous changez d'outil. En cas de fuite de donn\xE9es, pr\xE9venez la CNIL sous 72 heures (cnil.fr)."
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: card, "data-exit-pack": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("h4", { className: h, children: "5. D\xE9part, fermeture d'un \xE9tablissement, perte de donn\xE9es" }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { className: "text-[11px] text-neutral-600 mb-2", children: "Avant de quitter l'application, de fermer un \xE9tablissement ou de supprimer votre compte, emportez vos donn\xE9es : un seul fichier r\xE9unit la sauvegarde compl\xE8te, la liste des s\xE9jours (lisible dans Excel) et le mode d'emploi pour tout supprimer proprement chez Google." }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)(PrimaryButton, { onClick: exitPack, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Download, { className: "w-3.5 h-3.5" }),
+              " Pr\xE9parer mon dossier de sortie"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "mt-3 p-3 rounded-lg bg-neutral-50 border border-neutral-200 text-[11px] text-neutral-700 space-y-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("b", { children: "Si des donn\xE9es ont disparu ou ont \xE9t\xE9 modifi\xE9es par erreur" }),
+              /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("ol", { className: "list-decimal pl-4 space-y-0.5", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("li", { children: "Ne modifiez plus rien et n'enregistrez pas de nouveau dans Google Sheets." }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("li", { children: "Onglet \xAB Aujourd'hui \xBB : les copies automatiques (dossier de l'appareil, 14 jours) et celles de Google Drive (8 derni\xE8res) se restaurent en un clic." }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("li", { children: "\xC0 d\xE9faut, dans le classeur Google : Fichier > Historique des versions, pour retrouver un \xE9tat ant\xE9rieur." }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("li", { children: "Un fichier \xAB sauvegarde-gestyria-\u2026 \xBB t\xE9l\xE9charg\xE9 plus t\xF4t se restaure aussi depuis \xAB Aujourd'hui \xBB." }),
+                /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("li", { children: "Si rien ne convient, contactez l'assistance avec le num\xE9ro de version affich\xE9 dans l'application et l'heure approximative du probl\xE8me." })
+              ] })
             ] })
           ] })
         ] });
@@ -32941,7 +33292,7 @@ Cette op\xE9ration est d\xE9finitive.`
   });
 
   // src/modules/cuisine/IngredientsGrid.tsx
-  var import_react48, import_jsx_runtime34, cell2, money, CostPanel, frDate6, PricePanel, IngredientsGrid;
+  var import_react48, import_jsx_runtime34, cell2, money, CostPanel, frDate7, PricePanel, IngredientsGrid;
   var init_IngredientsGrid = __esm({
     "src/modules/cuisine/IngredientsGrid.tsx"() {
       "use strict";
@@ -32994,7 +33345,7 @@ Cette op\xE9ration est d\xE9finitive.`
           /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("div", { className: "flex justify-end", children: /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(PrimaryButton, { onClick: save, disabled: !dirty, children: "Enregistrer les r\xE9glages" }) })
         ] });
       };
-      frDate6 = (iso) => iso ? iso.split("-").reverse().join("/") : "l'origine";
+      frDate7 = (iso) => iso ? iso.split("-").reverse().join("/") : "l'origine";
       PricePanel = ({ ing, cost, onApply, onClose, onToast }) => {
         const [date, setDate] = (0, import_react48.useState)(todayIso2());
         const [texts, setTexts] = (0, import_react48.useState)(() => Object.fromEntries(cost.shops.map((s) => [s.id, ing.prices?.[s.id] !== void 0 ? String(ing.prices[s.id]).replace(".", ",") : ""])));
@@ -33016,7 +33367,7 @@ Cette op\xE9ration est d\xE9finitive.`
           }
           if (next === ing) return onToast("Les prix n'ont pas chang\xE9.");
           onApply(next);
-          onToast(`Prix de \xAB ${ing.name} \xBB actualis\xE9 au ${frDate6(date)} : l'ancien prix est gard\xE9 dans l'historique.`);
+          onToast(`Prix de \xAB ${ing.name} \xBB actualis\xE9 au ${frDate7(date)} : l'ancien prix est gard\xE9 dans l'historique.`);
           onClose();
         };
         const removeEntry = (idx) => {
@@ -33048,7 +33399,7 @@ Cette op\xE9ration est d\xE9finitive.`
             /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "text-[11px] text-neutral-800", children: [
               /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("b", { children: [
                 "Depuis le ",
-                frDate6(ing.priceDate || ""),
+                frDate7(ing.priceDate || ""),
                 " (actuel)"
               ] }),
               " : ",
@@ -33060,9 +33411,9 @@ Cette op\xE9ration est d\xE9finitive.`
             hist.map((h2, idx) => /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "flex items-start justify-between gap-2 text-[11px] text-neutral-600", "data-history-entry": true, children: [
               /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("span", { children: [
                 "Du ",
-                frDate6(h2.from),
+                frDate7(h2.from),
                 " au ",
-                frDate6(h2.until),
+                frDate7(h2.until),
                 " : ",
                 cost.shops.filter((s) => h2.prices[s.id] !== void 0).map((s) => `${s.name} ${money(h2.prices[s.id])}`).join(" \xB7 ") || "prix saisi",
                 " \u2014 retenu ",
@@ -33212,7 +33563,7 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
                       ] }),
                       i.priceDate && /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "text-[10px] text-neutral-400", children: [
                         "au ",
-                        frDate6(i.priceDate)
+                        frDate7(i.priceDate)
                       ] })
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("td", { className: "p-1.5 text-center whitespace-nowrap", children: [
@@ -34606,14 +34957,14 @@ ${establishmentName}`;
   });
 
   // src/modules/admin/exports.ts
-  function csvCell(value, sep) {
+  function csvCell2(value, sep) {
     if (value === null || value === void 0) return "";
     if (typeof value === "number") return String(value).replace(".", ",");
     let text = String(value).replace(/\r?\n/g, " ");
     if (/^[=+\-@]/.test(text)) text = `'${text}`;
     return /["\n;,]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   }
-  function download(name, content, type) {
+  function download2(name, content, type) {
     const url = URL.createObjectURL(new Blob([content], { type }));
     const a = document.createElement("a");
     a.href = url;
@@ -34666,8 +35017,8 @@ ${establishmentName}`;
     ];
   }
   function exportDocsCsv(docs3, admin) {
-    const text = docRows(docs3, admin).map((r) => r.map((c) => csvCell(c, admin.exportSeparator)).join(admin.exportSeparator)).join("\r\n");
-    download(`documents_${todayIso2()}.csv`, `\uFEFF${text}`, "text/csv;charset=utf-8");
+    const text = docRows(docs3, admin).map((r) => r.map((c) => csvCell2(c, admin.exportSeparator)).join(admin.exportSeparator)).join("\r\n");
+    download2(`documents_${todayIso2()}.csv`, `\uFEFF${text}`, "text/csv;charset=utf-8");
   }
   function exportDocsExcel(docs3, admin) {
     const wb = XLSX3.utils.book_new();
@@ -34834,7 +35185,7 @@ ${establishmentName}`;
   function exportReportCsv(r) {
     const sep = ";";
     const lines2 = [[r.title], [r.period], [], r.head, ...r.rows];
-    download(`${slug2(r.title)}_${todayIso2()}.csv`, `\uFEFF${lines2.map((l) => l.map((c) => csvCell(c, sep)).join(sep)).join("\r\n")}`, "text/csv;charset=utf-8");
+    download2(`${slug2(r.title)}_${todayIso2()}.csv`, `\uFEFF${lines2.map((l) => l.map((c) => csvCell2(c, sep)).join(sep)).join("\r\n")}`, "text/csv;charset=utf-8");
   }
   function exportReportExcel(r) {
     const wb = XLSX4.utils.book_new();
@@ -35294,36 +35645,6 @@ ${establishmentName}`;
     }
   });
 
-  // src/core/export/csv.ts
-  function csvCell2(value, sep) {
-    if (value === null || value === void 0) return "";
-    if (typeof value === "number") return String(Math.round(value * 100) / 100).replace(".", ",");
-    let text = String(value).replace(/\r?\n/g, " ");
-    if (/^[=+\-@]/.test(text)) text = `'${text}`;
-    return /["\n;,]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  }
-  function csvText(rows, sep) {
-    return `\uFEFF${rows.map((r) => r.map((c) => csvCell2(c, sep)).join(sep)).join("\r\n")}`;
-  }
-  function download2(name, content, type) {
-    const url = URL.createObjectURL(new Blob([content], { type }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 2e3);
-  }
-  function downloadCsv(name, rows, sep) {
-    download2(name, csvText(rows, sep), "text/csv;charset=utf-8");
-  }
-  var init_csv = __esm({
-    "src/core/export/csv.ts"() {
-      "use strict";
-    }
-  });
-
   // src/modules/repas/shopping.ts
   function portionQty(ing) {
     if (ing.unit === "u") return ing.quantityUsed && ing.quantityUsed > 0 ? ing.quantityUsed : 1;
@@ -35492,7 +35813,7 @@ ${stock.map((s) => `- ${s.name}${s.place ? ` (${s.place})` : ""} : ${String(s.ga
                   /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(Copy, { className: "w-3.5 h-3.5" }),
                   " Copier"
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("button", { type: "button", disabled: empty, "data-shopping-download": true, onClick: () => download2(`liste-de-courses_${from || today2()}.txt`, text(), "text/plain;charset=utf-8"), className: "flex items-center gap-1 px-2.5 py-2 text-[11px] font-semibold rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer disabled:opacity-40", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime43.jsxs)("button", { type: "button", disabled: empty, "data-shopping-download": true, onClick: () => download(`liste-de-courses_${from || today2()}.txt`, text(), "text/plain;charset=utf-8"), className: "flex items-center gap-1 px-2.5 py-2 text-[11px] font-semibold rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer disabled:opacity-40", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime43.jsx)(Download, { className: "w-3.5 h-3.5" }),
                   " T\xE9l\xE9charger"
                 ] })
@@ -39366,7 +39687,7 @@ ${m.message}
   function makeContext(reservations, expenses2, assets2, externalReviews, settings, mealOrders = [], housekeeping = null) {
     return { reservations, expenses: expenses2, assets: assets2, externalReviews, mealOrders, housekeeping, settings, registry: readInvoiceRegistry(), capacityCache: /* @__PURE__ */ new Map() };
   }
-  function reservationRows(ctx, months) {
+  function reservationRows2(ctx, months) {
     const rows = [];
     const lodging = new Set(ctx.settings.accommodations.filter((a) => a.active).map((a) => a.id));
     ctx.reservations.forEach((r) => {
@@ -39428,7 +39749,7 @@ ${m.message}
   }
   function buildRows(ctx, monthKeys) {
     const months = new Set(monthKeys);
-    const rows = reservationRows(ctx, months);
+    const rows = reservationRows2(ctx, months);
     const prof = readProfitability(ctx.settings);
     Object.values(ctx.expenses).forEach((e) => {
       const month = (e.date || "").slice(0, 7);
@@ -42345,7 +42666,7 @@ Cordialement`
   });
 
   // src/modules/admin/StaffDocs.tsx
-  var import_react72, import_jsx_runtime63, STATUS_STYLE, frDate7, btn3, StaffDocs;
+  var import_react72, import_jsx_runtime63, STATUS_STYLE, frDate8, btn3, StaffDocs;
   var init_StaffDocs = __esm({
     "src/modules/admin/StaffDocs.tsx"() {
       "use strict";
@@ -42361,7 +42682,7 @@ Cordialement`
         expired: "bg-red-100 text-red-800",
         archived: "bg-neutral-100 text-neutral-500"
       };
-      frDate7 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
+      frDate8 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
       btn3 = "flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-sy-325032 border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50";
       StaffDocs = ({ payload, onToast }) => {
         const [search, setSearch] = (0, import_react72.useState)("");
@@ -42415,7 +42736,7 @@ Cordialement`
                   due && /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)("div", { className: "text-[11px] text-neutral-600 mt-1", children: [
                     due.kind === "expiry" ? "Expire" : "\xC0 renouveler",
                     " le ",
-                    frDate7(due.date)
+                    frDate8(due.date)
                   ] })
                 ] })
               ] }),
@@ -44048,7 +44369,7 @@ Cordialement`
   });
 
   // src/modules/siteweb/RequestsBanner.tsx
-  var import_react78, import_jsx_runtime69, frDate8, euro2, RequestsBanner;
+  var import_react78, import_jsx_runtime69, frDate9, euro2, RequestsBanner;
   var init_RequestsBanner = __esm({
     "src/modules/siteweb/RequestsBanner.tsx"() {
       "use strict";
@@ -44056,7 +44377,7 @@ Cordialement`
       init_lucide_react();
       init_requests();
       import_jsx_runtime69 = __require("react/jsx-runtime");
-      frDate8 = (iso) => iso.split("-").reverse().join("/");
+      frDate9 = (iso) => iso.split("-").reverse().join("/");
       euro2 = (n) => `${n.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} \u20AC`;
       RequestsBanner = ({ reservations, rooms, onOpen, onDecide }) => {
         const pending = pendingSiteReservations(reservations);
@@ -44090,7 +44411,7 @@ Cordialement`
                   /* @__PURE__ */ (0, import_jsx_runtime69.jsxs)("p", { children: [
                     rooms[r.roomId.toLowerCase()] || r.roomId,
                     " \xB7 ",
-                    r.checkIn === r.checkOut ? frDate8(r.checkIn) : `${frDate8(r.checkIn)} \u2192 ${frDate8(r.checkOut)}`,
+                    r.checkIn === r.checkOut ? frDate9(r.checkIn) : `${frDate9(r.checkIn)} \u2192 ${frDate9(r.checkOut)}`,
                     r.nights > 1 && r.checkIn !== r.checkOut ? ` (${r.nights} nuits)` : "",
                     r.adultsCount > 0 ? ` \xB7 ${r.adultsCount} adulte${r.adultsCount > 1 ? "s" : ""}${r.childrenCount ? `, ${r.childrenCount} enfant${r.childrenCount > 1 ? "s" : ""}` : ""}` : ""
                   ] }),
@@ -53279,7 +53600,7 @@ Cliquer pour modifier le tarif` : void 0,
   });
 
   // src/modules/admin/AdminView.tsx
-  var import_react96, import_jsx_runtime89, STATUS_STYLE3, frDate9, StatusChip2, daysText2, AdminView;
+  var import_react96, import_jsx_runtime89, STATUS_STYLE3, frDate10, StatusChip2, daysText2, AdminView;
   var init_AdminView = __esm({
     "src/modules/admin/AdminView.tsx"() {
       "use strict";
@@ -53298,7 +53619,7 @@ Cliquer pour modifier le tarif` : void 0,
         expired: "bg-red-100 text-red-800",
         archived: "bg-neutral-100 text-neutral-500"
       };
-      frDate9 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
+      frDate10 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
       StatusChip2 = ({ status: status2, admin }) => /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("span", { className: `px-2 py-0.5 rounded-md text-[10px] font-bold ${STATUS_STYLE3[status2]}`, children: admin.statusLabels[status2] });
       daysText2 = (days2) => days2 < 0 ? `en retard de ${-days2} j` : days2 === 0 ? "aujourd'hui" : days2 === 1 ? "demain" : `dans ${days2} j`;
       AdminView = ({ onToast }) => {
@@ -53375,7 +53696,7 @@ Cliquer pour modifier le tarif` : void 0,
                 r.due && !r.d.archived && /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("div", { className: "text-[11px] text-neutral-600 mt-1", children: [
                   r.due.kind === "expiry" ? "Expire" : "\xC0 renouveler",
                   " le ",
-                  frDate9(r.due.date),
+                  frDate10(r.due.date),
                   " ",
                   /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("span", { className: r.due.days < 0 ? "text-red-700 font-semibold" : "text-neutral-400", children: [
                     "(",
@@ -62413,7 +62734,7 @@ body { font-family: ${fontName(doc.font, doc.font)}; font-size: ${doc.size}pt; }
   });
 
   // src/modules/docgen/DocView.tsx
-  var import_react132, import_jsx_runtime129, btn4, primary2, FULL9, frDate10, DocView;
+  var import_react132, import_jsx_runtime129, btn4, primary2, FULL9, frDate11, DocView;
   var init_DocView = __esm({
     "src/modules/docgen/DocView.tsx"() {
       "use strict";
@@ -62430,7 +62751,7 @@ body { font-family: ${fontName(doc.font, doc.font)}; font-size: ${doc.size}pt; }
       btn4 = "flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer min-h-[2.5rem] disabled:opacity-40";
       primary2 = "flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-bold text-white bg-sy-325032 hover:bg-sy-253d25 rounded-xl cursor-pointer min-h-[2.5rem] disabled:opacity-40";
       FULL9 = "Enregistrement impossible : la m\xE9moire de l'appareil est pleine (retirez des images).";
-      frDate10 = (iso) => iso ? new Date(iso).toLocaleDateString("fr-FR") : "";
+      frDate11 = (iso) => iso ? new Date(iso).toLocaleDateString("fr-FR") : "";
       DocView = ({ onToast }) => {
         const settings = useSettings();
         const stored = useDocs();
@@ -62530,7 +62851,7 @@ body { font-family: ${fontName(doc.font, doc.font)}; font-size: ${doc.size}pt; }
                 /* @__PURE__ */ (0, import_jsx_runtime129.jsx)("div", { className: "font-serif font-bold text-sm text-neutral-900", children: d.name }),
                 /* @__PURE__ */ (0, import_jsx_runtime129.jsxs)("div", { className: "text-[11px] text-neutral-500", children: [
                   "Modifi\xE9 le ",
-                  frDate10(d.updatedAt),
+                  frDate11(d.updatedAt),
                   " \xB7 ",
                   d.blocks.length,
                   " bloc",
@@ -64687,94 +65008,6 @@ Sitemap: ${base}sitemap.xml
     }
   });
 
-  // src/modules/siteweb/zip.ts
-  function crc32(data) {
-    let c = 4294967295;
-    for (let i = 0; i < data.length; i++) c = TABLE[(c ^ data[i]) & 255] ^ c >>> 8;
-    return (c ^ 4294967295) >>> 0;
-  }
-  function fileBytes(f) {
-    return f.data || new TextEncoder().encode(f.text || "");
-  }
-  function makeZip(files, now = /* @__PURE__ */ new Date()) {
-    const enc = new TextEncoder();
-    const time = now.getHours() << 11 | now.getMinutes() << 5 | now.getSeconds() >> 1;
-    const date = Math.max(1980, now.getFullYear()) - 1980 << 9 | now.getMonth() + 1 << 5 | now.getDate();
-    const parts = [];
-    const central = [];
-    let offset = 0;
-    const u16 = (v, o, n) => v.setUint16(o, n, true);
-    const u32 = (v, o, n) => v.setUint32(o, n >>> 0, true);
-    files.forEach((f) => {
-      const name = enc.encode(f.path);
-      const data = fileBytes(f);
-      const crc = crc32(data);
-      const local = new Uint8Array(30 + name.length);
-      const lv = new DataView(local.buffer);
-      u32(lv, 0, 67324752);
-      u16(lv, 4, 20);
-      u16(lv, 6, 2048);
-      u16(lv, 8, 0);
-      u16(lv, 10, time);
-      u16(lv, 12, date);
-      u32(lv, 14, crc);
-      u32(lv, 18, data.length);
-      u32(lv, 22, data.length);
-      u16(lv, 26, name.length);
-      u16(lv, 28, 0);
-      local.set(name, 30);
-      parts.push(local, data);
-      const cen = new Uint8Array(46 + name.length);
-      const cv = new DataView(cen.buffer);
-      u32(cv, 0, 33639248);
-      u16(cv, 4, 20);
-      u16(cv, 6, 20);
-      u16(cv, 8, 2048);
-      u16(cv, 10, 0);
-      u16(cv, 12, time);
-      u16(cv, 14, date);
-      u32(cv, 16, crc);
-      u32(cv, 20, data.length);
-      u32(cv, 24, data.length);
-      u16(cv, 28, name.length);
-      u32(cv, 42, offset);
-      cen.set(name, 46);
-      central.push(cen);
-      offset += local.length + data.length;
-    });
-    const centralSize = central.reduce((n, c) => n + c.length, 0);
-    const end = new Uint8Array(22);
-    const ev = new DataView(end.buffer);
-    u32(ev, 0, 101010256);
-    u16(ev, 8, files.length);
-    u16(ev, 10, files.length);
-    u32(ev, 12, centralSize);
-    u32(ev, 16, offset);
-    const all = [...parts, ...central, end];
-    const out = new Uint8Array(all.reduce((n, p) => n + p.length, 0));
-    let pos = 0;
-    all.forEach((p) => {
-      out.set(p, pos);
-      pos += p.length;
-    });
-    return out;
-  }
-  var TABLE;
-  var init_zip = __esm({
-    "src/modules/siteweb/zip.ts"() {
-      "use strict";
-      TABLE = (() => {
-        const t = new Uint32Array(256);
-        for (let n = 0; n < 256; n++) {
-          let c = n;
-          for (let k = 0; k < 8; k++) c = c & 1 ? 3988292384 ^ c >>> 1 : c >>> 1;
-          t[n] = c >>> 0;
-        }
-        return t;
-      })();
-    }
-  });
-
   // src/modules/siteweb/publish.ts
   function loadPublishConfig() {
     try {
@@ -65550,7 +65783,7 @@ Sitemap: ${base}sitemap.xml
   });
 
   // src/modules/siteweb/RequestsPanel.tsx
-  var import_react139, import_jsx_runtime137, STATUS, frDate11, RequestsPanel2;
+  var import_react139, import_jsx_runtime137, STATUS, frDate12, RequestsPanel2;
   var init_RequestsPanel2 = __esm({
     "src/modules/siteweb/RequestsPanel.tsx"() {
       "use strict";
@@ -65565,7 +65798,7 @@ Sitemap: ${base}sitemap.xml
         refused: { label: "Refus\xE9e", cls: "bg-red-100 text-red-900" },
         released: { label: "Annul\xE9e", cls: "bg-neutral-200 text-neutral-700" }
       };
-      frDate11 = (iso) => iso.split("-").reverse().join("/");
+      frDate12 = (iso) => iso.split("-").reverse().join("/");
       RequestsPanel2 = ({ reservations, onDecide, onToast }) => {
         const [list3, setList] = (0, import_react139.useState)(null);
         const [loading2, setLoading] = (0, import_react139.useState)(false);
@@ -65621,7 +65854,7 @@ Sitemap: ${base}sitemap.xml
                   /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("p", { children: [
                     q.roomName,
                     " \xB7 ",
-                    q.arrival === q.departure ? frDate11(q.arrival) : `${frDate11(q.arrival)} \u2192 ${frDate11(q.departure)}`,
+                    q.arrival === q.departure ? frDate12(q.arrival) : `${frDate12(q.arrival)} \u2192 ${frDate12(q.departure)}`,
                     q.kind === "stay" ? ` \xB7 ${q.adults} adulte${q.adults > 1 ? "s" : ""}${q.children ? `, ${q.children} enfant${q.children > 1 ? "s" : ""}` : ""}` : "",
                     q.total ? ` \xB7 estimation ${q.total.toLocaleString("fr-FR")} \u20AC` : ""
                   ] }),
@@ -66636,7 +66869,7 @@ Sitemap: ${base}sitemap.xml
   });
 
   // src/modules/reglementation/ComplianceView.tsx
-  var import_react143, import_jsx_runtime141, LEVEL_TONE, STATUS_TONE, inputClass7, frDate12, Badge2, TextField, savedAt, RowEditor, Bar, ComplianceView;
+  var import_react143, import_jsx_runtime141, LEVEL_TONE, STATUS_TONE, inputClass7, frDate13, Badge2, TextField, savedAt, RowEditor, Bar, ComplianceView;
   var init_ComplianceView = __esm({
     "src/modules/reglementation/ComplianceView.tsx"() {
       "use strict";
@@ -66658,7 +66891,7 @@ Sitemap: ${base}sitemap.xml
         na: "bg-neutral-100 text-neutral-600 border-neutral-200"
       };
       inputClass7 = "w-full text-xs border border-neutral-300 rounded-lg px-2.5 py-1.5 bg-white";
-      frDate12 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
+      frDate13 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
       Badge2 = ({ tone: tone3, children }) => /* @__PURE__ */ (0, import_jsx_runtime141.jsx)("span", { className: `inline-block px-2 py-0.5 rounded-full border text-[10px] font-bold whitespace-nowrap ${tone3}`, children });
       TextField = ({ value, type, placeholder, ariaLabel, dataField, onCommit }) => {
         const [text, setText] = (0, import_react143.useState)(value);
@@ -66806,7 +67039,7 @@ Sitemap: ${base}sitemap.xml
                 /* @__PURE__ */ (0, import_jsx_runtime141.jsxs)("p", { children: [
                   /* @__PURE__ */ (0, import_jsx_runtime141.jsxs)("b", { children: [
                     "Catalogue r\xE9vis\xE9 le ",
-                    frDate12(CATALOGUE_REVISION)
+                    frDate13(CATALOGUE_REVISION)
                   ] }),
                   " (il y a ",
                   age.days,
@@ -66948,7 +67181,7 @@ Sitemap: ${base}sitemap.xml
                         ] }),
                         /* @__PURE__ */ (0, import_jsx_runtime141.jsxs)("span", { className: "text-neutral-400", children: [
                           "Fiche v\xE9rifi\xE9e le ",
-                          frDate12(item2.checked)
+                          frDate13(item2.checked)
                         ] })
                       ] })
                     ] })
@@ -66964,7 +67197,7 @@ Sitemap: ${base}sitemap.xml
   });
 
   // src/modules/energie/UtilitiesView.tsx
-  var import_react144, import_jsx_runtime142, input5, frDate13, fmt5, monthLabel2, NumberField, MeterCard, CostCheckCard, UtilitiesView;
+  var import_react144, import_jsx_runtime142, input5, frDate14, fmt5, monthLabel2, NumberField, MeterCard, CostCheckCard, UtilitiesView;
   var init_UtilitiesView = __esm({
     "src/modules/energie/UtilitiesView.tsx"() {
       "use strict";
@@ -66977,7 +67210,7 @@ Sitemap: ${base}sitemap.xml
       init_store11();
       import_jsx_runtime142 = __require("react/jsx-runtime");
       input5 = "text-xs border border-neutral-300 rounded-lg px-2.5 py-1.5 bg-white";
-      frDate13 = (iso) => iso.split("-").reverse().join("/");
+      frDate14 = (iso) => iso.split("-").reverse().join("/");
       fmt5 = (n) => String(Math.round(n * 100) / 100).replace(".", ",");
       monthLabel2 = (m) => `${["janv.", "f\xE9vr.", "mars", "avr.", "mai", "juin", "juil.", "ao\xFBt", "sept.", "oct.", "nov.", "d\xE9c."][parseInt(m.slice(5), 10) - 1]} ${m.slice(0, 4)}`;
       NumberField = ({ value, onChange, placeholder, label: label2, dataAttr }) => /* @__PURE__ */ (0, import_jsx_runtime142.jsx)("input", { value, onChange: (e) => onChange(e.target.value.replace(/[^0-9.,]/g, "")), inputMode: "decimal", placeholder, "aria-label": label2, className: `${input5} w-28 font-mono`, ...dataAttr ? { [dataAttr]: "" } : {} });
@@ -67111,7 +67344,7 @@ Sitemap: ${base}sitemap.xml
           ] }) }) : /* @__PURE__ */ (0, import_jsx_runtime142.jsx)("p", { className: "text-xs text-neutral-500", children: readings.length < 2 ? "La consommation s\u2019affiche \xE0 partir de deux relev\xE9s. Un relev\xE9 par mois (par exemple le 1er) donne les meilleures comparaisons." : "Pas encore de mois complet : continuez les relev\xE9s." }),
           series.resets.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime142.jsxs)("p", { className: "text-[11px] text-neutral-500", children: [
             "Index plus bas que le pr\xE9c\xE9dent le ",
-            series.resets.map(frDate13).join(", "),
+            series.resets.map(frDate14).join(", "),
             " : \xE9cart ignor\xE9 (compteur chang\xE9 ?)."
           ] }),
           readings.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime142.jsxs)("details", { className: "text-xs", children: [
@@ -67122,7 +67355,7 @@ Sitemap: ${base}sitemap.xml
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime142.jsx)("ul", { className: "mt-1.5 divide-y divide-neutral-100", children: [...readings].reverse().map((r) => /* @__PURE__ */ (0, import_jsx_runtime142.jsxs)("li", { className: "flex items-center justify-between gap-2 py-1", children: [
               /* @__PURE__ */ (0, import_jsx_runtime142.jsxs)("span", { children: [
-                frDate13(r.date),
+                frDate14(r.date),
                 " \xB7 ",
                 /* @__PURE__ */ (0, import_jsx_runtime142.jsx)("b", { className: "font-mono", children: fmt5(r.index) }),
                 " ",
@@ -67132,7 +67365,7 @@ Sitemap: ${base}sitemap.xml
                   r.note
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime142.jsx)("button", { type: "button", "aria-label": `Supprimer le relev\xE9 du ${frDate13(r.date)}`, onClick: () => window.confirm(`Supprimer le relev\xE9 du ${frDate13(r.date)} ?`) && save(() => deleteReading(r.id)), className: "p-1 text-neutral-400 hover:text-rose-600 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime142.jsx)(Trash2, { className: "w-3.5 h-3.5" }) })
+              /* @__PURE__ */ (0, import_jsx_runtime142.jsx)("button", { type: "button", "aria-label": `Supprimer le relev\xE9 du ${frDate14(r.date)}`, onClick: () => window.confirm(`Supprimer le relev\xE9 du ${frDate14(r.date)} ?`) && save(() => deleteReading(r.id)), className: "p-1 text-neutral-400 hover:text-rose-600 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime142.jsx)(Trash2, { className: "w-3.5 h-3.5" }) })
             ] }, r.id)) })
           ] })
         ] });
@@ -67465,7 +67698,7 @@ Sitemap: ${base}sitemap.xml
   });
 
   // src/modules/conseils/AdviceView.tsx
-  var import_react145, import_jsx_runtime143, field3, frDate14, fr2, MONTHS5, SOURCE_LABEL, AdviceView;
+  var import_react145, import_jsx_runtime143, field3, frDate15, fr2, MONTHS5, SOURCE_LABEL, AdviceView;
   var init_AdviceView = __esm({
     "src/modules/conseils/AdviceView.tsx"() {
       "use strict";
@@ -67477,7 +67710,7 @@ Sitemap: ${base}sitemap.xml
       init_store17();
       import_jsx_runtime143 = __require("react/jsx-runtime");
       field3 = "text-xs border border-neutral-300 rounded-lg px-2.5 py-1.5 bg-white";
-      frDate14 = (iso) => iso.split("-").reverse().join("/");
+      frDate15 = (iso) => iso.split("-").reverse().join("/");
       fr2 = (n) => String(Math.round(n * 100) / 100).replace(".", ",");
       MONTHS5 = ["janv.", "f\xE9vr.", "mars", "avr.", "mai", "juin", "juil.", "ao\xFBt", "sept.", "oct.", "nov.", "d\xE9c."];
       SOURCE_LABEL = {
@@ -67509,7 +67742,7 @@ Sitemap: ${base}sitemap.xml
         const apply = (r) => {
           const dates = Array.from({ length: r.nights }, (_, i) => isoOf4(dayNumber4(r.from) + i));
           setDayRates(dates, [r.roomId], { price: r.suggested });
-          onToast(`Prix de ${r.suggested} \u20AC appliqu\xE9 du ${frDate14(r.from)} au ${frDate14(r.to)} (${roomName(r.roomId)}). Modifiable depuis le Calendrier > Visualisation tarif.`);
+          onToast(`Prix de ${r.suggested} \u20AC appliqu\xE9 du ${frDate15(r.from)} au ${frDate15(r.to)} (${roomName(r.roomId)}). Modifiable depuis le Calendrier > Visualisation tarif.`);
           try {
             window.dispatchEvent(new CustomEvent("domaine_sylvaria_trigger_sync"));
           } catch {
@@ -67644,8 +67877,8 @@ Sitemap: ${base}sitemap.xml
               /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)("div", { className: "text-sm font-bold text-neutral-900", children: [
                 roomName(r.roomId),
                 " \xB7 ",
-                frDate14(r.from),
-                r.nights > 1 ? ` au ${frDate14(r.to)}` : "",
+                frDate15(r.from),
+                r.nights > 1 ? ` au ${frDate15(r.to)}` : "",
                 " ",
                 /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)("span", { className: "text-[11px] font-normal text-neutral-500", children: [
                   "(",
