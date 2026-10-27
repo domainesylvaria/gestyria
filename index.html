@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v234</title>
-  <meta name="application-name" content="Gestyria v234" />
+  <title>Gestyria v235</title>
+  <meta name="application-name" content="Gestyria v235" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -5218,20 +5218,20 @@ footer{background:#111}
           billing: "supplement",
           includedInAccommodationIds: [],
           showInPlanning: false,
-          active: true,
+          active: false,
+          // Proposé seulement si l'établissement accepte les animaux (Paramétrage > Services)
           order: 2
         }
       ],
       platforms: DEFAULT_PLATFORMS.map((p) => ({ ...p })),
       pricing: {
-        longStayDiscounts: [
-          { minNights: 7, percent: 12 },
-          { minNights: 30, percent: 30 }
-        ],
+        longStayDiscounts: [],
+        // Aucune réduction au départ : à choisir dans Paramétrage > Tarification
         urssafRate: 21.2,
         incomeTaxRate: 1.7,
-        defaultRoomCostPerNight: 50,
-        defaultPoolCostPerNight: 8,
+        defaultRoomCostPerNight: 0,
+        // Coûts à renseigner soi-même : aucun chiffre inventé pour la marge
+        defaultPoolCostPerNight: 0,
         otaSources: ["airbnb", "booking", "abritel"],
         cancellation: { tiers: [], noShowPercent: null, note: "" }
       },
@@ -6389,6 +6389,10 @@ footer{background:#111}
     });
     Object.assign(ROOMS, next);
   }
+  function roomFor(roomId) {
+    const id = roomId || "";
+    return ROOMS[id] || ROOMS[id.toLowerCase()] || { ...LEGACY_ROOMS.figuier, id, name: "H\xE9bergement supprim\xE9" };
+  }
   function isCountedInCapacity(id) {
     const s = getSettings();
     const fiche = s.accommodations.find((a) => a.id === id) || s.resources.find((r) => r.id === id) || s.services.find((x) => x.id === id);
@@ -6612,7 +6616,7 @@ footer{background:#111}
     };
   }
   function calculateRoomTariff(roomId, nights, adultsCount = 2, childrenCount = 0, dogsCount = 0, options = {}) {
-    const room = ROOMS[roomId] || ROOMS.figuier;
+    const room = roomFor(roomId);
     const safeNights = Math.max(1, nights);
     const payingGuests = Math.max(1, (adultsCount || 0) + (childrenCount || 0));
     let extraGuestsCount = 0;
@@ -7290,7 +7294,7 @@ footer{background:#111}
           authorName: r.guestName,
           date: r.checkIn,
           roomId: r.roomId,
-          roomName: (ROOMS[r.roomId] || ROOMS[(r.roomId || "").toLowerCase()] || ROOMS.figuier).name,
+          roomName: roomFor(r.roomId).name,
           guestRating: r.guestRating || 5,
           guestComment: r.guestComment,
           hostRating: r.hostRating,
@@ -7411,7 +7415,7 @@ footer{background:#111}
       "Remarques & Notes"
     ];
     const rows = reservations.map((r) => {
-      const roomInfo = ROOMS[r.roomId] || ROOMS[(r.roomId || "").toLowerCase()] || ROOMS.figuier;
+      const roomInfo = roomFor(r.roomId);
       return [
         r.id,
         roomInfo.name,
@@ -7489,7 +7493,7 @@ footer{background:#111}
       return [
         r.checkIn,
         r.nights || 1,
-        `"${(ROOMS[r.roomId] || ROOMS[(r.roomId || "").toLowerCase()] || ROOMS.figuier).name}"`,
+        `"${roomFor(r.roomId).name}"`,
         r.adultsCount || 0,
         fin.totalKidsAndBabies,
         fin.roomRev,
@@ -8190,7 +8194,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "234";
+      APP_VERSION = "235";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -44005,7 +44009,7 @@ Cliquer pour modifier le tarif` : void 0,
               ] }),
               upcomingReservations.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("div", { className: "p-6 text-center text-xs text-neutral-500 italic bg-white", children: "Aucune r\xE9servation \xE0 venir dans cette s\xE9lection." }) : /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(import_jsx_runtime73.Fragment, { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("div", { className: "block sm:hidden divide-y divide-neutral-200 bg-white", children: upcomingReservations.map((res2) => {
-                  const room = ROOMS[res2.roomId] || ROOMS[(res2.roomId || "").toLowerCase()] || ROOMS.figuier;
+                  const room = roomFor(res2.roomId);
                   const sourceObj = BOOKING_SOURCES.find((s) => s.id === res2.bookingSource) || BOOKING_SOURCES[0];
                   return /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(
                     "div",
@@ -44114,7 +44118,7 @@ Cliquer pour modifier le tarif` : void 0,
                     /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("th", { className: "py-3 px-4 text-right", children: "Actions" })
                   ] }) }),
                   /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("tbody", { className: "divide-y divide-neutral-100", children: upcomingReservations.map((res2) => {
-                    const room = ROOMS[res2.roomId] || ROOMS[(res2.roomId || "").toLowerCase()] || ROOMS.figuier;
+                    const room = roomFor(res2.roomId);
                     const sourceObj = BOOKING_SOURCES.find((s) => s.id === res2.bookingSource) || BOOKING_SOURCES[0];
                     return /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(
                       "tr",
@@ -44298,7 +44302,7 @@ Cliquer pour modifier le tarif` : void 0,
                 "."
               ] }) : /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(import_jsx_runtime73.Fragment, { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("div", { className: "block sm:hidden divide-y divide-neutral-200 bg-white", children: pastReservationsFiltered.map((res2) => {
-                  const room = ROOMS[res2.roomId] || ROOMS[(res2.roomId || "").toLowerCase()] || ROOMS.figuier;
+                  const room = roomFor(res2.roomId);
                   const sourceObj = BOOKING_SOURCES.find((s) => s.id === res2.bookingSource) || BOOKING_SOURCES[0];
                   return /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(
                     "div",
@@ -44407,7 +44411,7 @@ Cliquer pour modifier le tarif` : void 0,
                     /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("th", { className: "py-3 px-4 text-right", children: "Actions" })
                   ] }) }),
                   /* @__PURE__ */ (0, import_jsx_runtime73.jsx)("tbody", { className: "divide-y divide-neutral-100", children: pastReservationsFiltered.map((res2) => {
-                    const room = ROOMS[res2.roomId] || ROOMS[(res2.roomId || "").toLowerCase()] || ROOMS.figuier;
+                    const room = roomFor(res2.roomId);
                     const sourceObj = BOOKING_SOURCES.find((s) => s.id === res2.bookingSource) || BOOKING_SOURCES[0];
                     return /* @__PURE__ */ (0, import_jsx_runtime73.jsxs)(
                       "tr",
@@ -45287,7 +45291,7 @@ Cliquer pour modifier le tarif` : void 0,
                 /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("th", { className: "py-3 px-4", children: "Statut" })
               ] }) }),
               /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("tbody", { className: "divide-y divide-neutral-100", children: recap.reservationsInMonth.map(({ reservation: res2, nightsInMonth, monthRevenueShare }) => {
-                const room = ROOMS[res2.roomId] || ROOMS[(res2.roomId || "").toLowerCase()] || ROOMS.figuier;
+                const room = roomFor(res2.roomId);
                 return /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)(
                   "tr",
                   {
@@ -45386,7 +45390,7 @@ Cliquer pour modifier le tarif` : void 0,
                 /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("th", { className: "py-3 px-4 text-right", children: "Montant Taxe (\u20AC)" })
               ] }) }),
               /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("tbody", { className: "divide-y divide-neutral-100", children: recap.reservationsInMonth.map(({ reservation: res2, nightsInMonth }) => {
-                const room = ROOMS[res2.roomId] || ROOMS[(res2.roomId || "").toLowerCase()] || ROOMS.figuier;
+                const room = roomFor(res2.roomId);
                 const totalGuests = res2.guestsCount || (res2.adultsCount || 0) + (res2.childrenCount || 0) + (res2.babiesCount || 0);
                 const taxAmount = res2.touristTaxAmount || 0;
                 const status2 = res2.touristTaxStatus || (isOtaSource(res2.bookingSource, res2) ? "prise_en_charge" : "a_declarer");
@@ -45523,7 +45527,7 @@ Cliquer pour modifier le tarif` : void 0,
                 const fin = getReservationFinancials(res2);
                 return fin.isUrssaf;
               }).map(({ reservation: res2, nightsInMonth }) => {
-                const room = ROOMS[res2.roomId] || ROOMS[(res2.roomId || "").toLowerCase()] || ROOMS.figuier;
+                const room = roomFor(res2.roomId);
                 const fin = getReservationFinancials(res2);
                 const ratio = nightsInMonth / Math.max(1, res2.nights);
                 const roomRevShare = Math.round(fin.netRoomRev * ratio * 100) / 100;
@@ -48425,7 +48429,7 @@ Cliquer pour modifier le tarif` : void 0,
             if (searchTerm.trim()) {
               const term = searchTerm.toLowerCase();
               const matchName = r.guestName.toLowerCase().includes(term);
-              const matchRoom = (ROOMS[r.roomId] || ROOMS[(r.roomId || "").toLowerCase()] || ROOMS.figuier).name.toLowerCase().includes(term);
+              const matchRoom = roomFor(r.roomId).name.toLowerCase().includes(term);
               const matchSource = (r.bookingSource || "").toLowerCase().includes(term);
               if (!matchName && !matchRoom && !matchSource) return false;
             }
@@ -48870,7 +48874,7 @@ Cliquer pour modifier le tarif` : void 0,
                     /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("td", { className: "py-2 px-3 text-center", children: /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("span", { className: `inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold ${res2.reservationStatus === "cancelled" ? "bg-rose-100 text-rose-800 border border-rose-300" : res2.reservationStatus === "pending" ? "bg-amber-100 text-amber-800 border border-amber-300" : "bg-emerald-100 text-emerald-800 border border-emerald-300"}`, children: res2.reservationStatus === "cancelled" ? "Annul\xE9e" : res2.reservationStatus === "pending" ? "En attente" : "Confirm\xE9e" }) }),
                     /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("td", { className: "py-2 px-3", children: /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("span", { className: `inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold ${badge.badge.c}`, style: badge.badge.s, children: [
                       /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("span", { className: `w-1.5 h-1.5 rounded-full ${badge.dot.c}`, style: badge.dot.s }),
-                      (ROOMS[res2.roomId] || ROOMS[(res2.roomId || "").toLowerCase()] || ROOMS.figuier).name
+                      roomFor(res2.roomId).name
                     ] }) }),
                     /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("td", { className: "py-2 px-3 text-center font-mono", children: res2.adultsCount || 0 }),
                     /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("td", { className: "py-2 px-3 text-center font-mono", children: fin.totalKidsAndBabies }),
@@ -69518,7 +69522,7 @@ ${establishment}`;
                       ),
                       /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("span", { className: "text-[10px] text-neutral-400 mt-0.5 block", children: "Lit b\xE9b\xE9 offert (0\u20AC)" })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { children: [
+                    (dogPrice > 0 || dogsCount > 0) && /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { children: [
                       /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("label", { className: "block text-[11px] font-semibold text-neutral-700 mb-1 flex items-center gap-1", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime146.jsx)(Dog, { className: "w-3.5 h-3.5 text-emerald-700" }),
                         /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("span", { children: "Chiens" })
@@ -71029,7 +71033,7 @@ ${establishment}`;
         const [isInvoiceModalOpen, setIsInvoiceModalOpen] = (0, import_react146.useState)(false);
         if (!isOpen || !reservation) return null;
         const roomIdClean = (reservation.roomId || "").toLowerCase();
-        const room = ROOMS[reservation.roomId] || ROOMS[roomIdClean] || ROOMS.figuier;
+        const room = roomFor(reservation.roomId);
         const sourceObj = BOOKING_SOURCES.find((s) => s.id === reservation.bookingSource) || BOOKING_SOURCES[0];
         const rowNameLc = room.name.toLowerCase();
         const accent = /^#[0-9a-f]{6}$/i.test(room.accentColor || "") ? room.accentColor : "#325032";
