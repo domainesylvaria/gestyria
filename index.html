@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v239</title>
-  <meta name="application-name" content="Gestyria v239" />
+  <title>Gestyria v240</title>
+  <meta name="application-name" content="Gestyria v240" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -3856,12 +3856,12 @@ var DomaineAppBundle = (() => {
     if (!isOpenIncident2(i) || !/^\d{4}-\d{2}-\d{2}$/.test(i.dueDate)) return null;
     return daysBetween(today6, i.dueDate);
   }
-  function missedDays(eq, readings, day) {
+  function missedDays(eq, readings, day2) {
     if (!eq.daily || eq.archived) return [];
     const since = eq.createdAt.slice(0, 10);
     const out = [];
     for (let i = 1; i <= 7; i++) {
-      const d = isoShift2(day, -i);
+      const d = isoShift2(day2, -i);
       if (d < since) break;
       if (!readings.some((r) => !r.archived && r.equipmentId === eq.id && r.date === d)) out.push(d);
     }
@@ -6719,8 +6719,8 @@ footer{background:#111}
   }
   function formatDateFr(dateStr) {
     if (!dateStr) return "";
-    const [year, month, day] = dateStr.split("-").map(Number);
-    const d = new Date(year, month - 1, day);
+    const [year, month, day2] = dateStr.split("-").map(Number);
+    const d = new Date(year, month - 1, day2);
     return new Intl.DateTimeFormat("fr-FR", {
       day: "numeric",
       month: "short",
@@ -6729,8 +6729,8 @@ footer{background:#111}
   }
   function formatDateShort(dateStr) {
     if (!dateStr) return "";
-    const [year, month, day] = dateStr.split("-").map(Number);
-    const d = new Date(year, month - 1, day);
+    const [year, month, day2] = dateStr.split("-").map(Number);
+    const d = new Date(year, month - 1, day2);
     return new Intl.DateTimeFormat("fr-FR", {
       day: "numeric",
       month: "short"
@@ -6740,14 +6740,14 @@ footer{background:#111}
     return new Date(year, month + 1, 0).getDate();
   }
   function checkDateOverlap(reservations, roomId, checkIn, checkOut, excludeId) {
-    const day = (d) => (d || "").slice(0, 10);
-    const newStart = day(checkIn);
-    const newEnd = day(checkOut);
+    const day2 = (d) => (d || "").slice(0, 10);
+    const newStart = day2(checkIn);
+    const newEnd = day2(checkOut);
     for (const res2 of reservations) {
       if (res2.id === excludeId) continue;
       if (res2.roomId !== roomId) continue;
-      const resStart = day(res2.checkIn);
-      const resEnd = day(res2.checkOut);
+      const resStart = day2(res2.checkIn);
+      const resEnd = day2(res2.checkOut);
       if (newStart < resEnd && newEnd > resStart) {
         return res2;
       }
@@ -6801,8 +6801,8 @@ footer{background:#111}
       const resOut = parseLocalDate(res2.checkOut);
       if (resIn <= monthEnd && (resOut > monthStart || resIn >= monthStart)) {
         let nightsInThisMonth = 0;
-        for (let day = 1; day <= daysInMonth; day++) {
-          const currentNightDate = new Date(year, month, day);
+        for (let day2 = 1; day2 <= daysInMonth; day2++) {
+          const currentNightDate = new Date(year, month, day2);
           if (currentNightDate >= resIn && currentNightDate < resOut) {
             nightsInThisMonth++;
           }
@@ -6906,8 +6906,8 @@ footer{background:#111}
     const openingSettings = getSettings();
     const closedRules = hasOpeningRules(openingSettings);
     const dateIsoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    for (let day = 1; day <= daysInMonth; day++) {
-      const currentDate = new Date(year, month, day);
+    for (let day2 = 1; day2 <= daysInMonth; day2++) {
+      const currentDate = new Date(year, month, day2);
       const dayOfWeek = currentDate.getDay();
       const isWeekendNight = dayOfWeek === 5 || dayOfWeek === 6;
       for (const rId of roomIdsList) {
@@ -8208,7 +8208,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "239";
+      APP_VERSION = "240";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -11879,8 +11879,8 @@ footer{background:#111}
   }
   function weekStart(iso) {
     const [y, m, d] = iso.split("-").map(Number);
-    const day = new Date(y, m - 1, d).getDay();
-    return addDays(iso, day === 0 ? -6 : 1 - day);
+    const day2 = new Date(y, m - 1, d).getDay();
+    return addDays(iso, day2 === 0 ? -6 : 1 - day2);
   }
   function statusOf3(hk, id) {
     return hk.statuses.find((s) => s.id === id) || hk.statuses[0];
@@ -14208,7 +14208,7 @@ footer{background:#111}
           title: "Taxe de s\xE9jour : collecte, \xE9tat des s\xE9jours et d\xE9claration",
           level: "selon",
           summary: "Si votre commune a institu\xE9 la taxe de s\xE9jour, vous la collectez aupr\xE8s des voyageurs, tenez un \xE9tat des s\xE9jours et la d\xE9clarez et la reversez \xE0 la commune. Les plateformes qui encaissent pour vous (Airbnb, Booking\u2026) la collectent et la reversent elles-m\xEAmes : ne la comptez pas deux fois.",
-          steps: ["Relever le tarif et la p\xE9riodicit\xE9 de d\xE9claration sur le portail de votre commune ou intercommunalit\xE9.", "Renseigner le tarif dans Param\xE9trage > Tarification (taxe de s\xE9jour).", "Pour les r\xE9servations directes : collecter, puis d\xE9clarer et reverser. Gestyria fournit l\u2019\xE9tat des s\xE9jours dans Facturation > Exports pour votre comptable."],
+          steps: ["Relever le tarif et la p\xE9riodicit\xE9 de d\xE9claration sur le portail de votre commune ou intercommunalit\xE9.", "Renseigner le tarif dans Param\xE9trage > Tarification (taxe de s\xE9jour).", "Dans chaque fiche de r\xE9servation, le statut de la taxe indique si elle est \xAB prise en charge par la plateforme \xBB (elle la collecte et la reverse) ou \xAB \xE0 d\xE9clarer \xBB (r\xE9servation directe : vous la collectez, d\xE9clarez et reversez).", "Gestyria fournit l\u2019\xE9tat des s\xE9jours dans Facturation > Exports pour votre comptable, avec le total que vous devez reverser vous-m\xEAme."],
           source: SP,
           confirm: "Tarifs et \xE9ch\xE9ances sont fix\xE9s localement : \xE0 relever chaque ann\xE9e aupr\xE8s de votre commune.",
           checked: D,
@@ -14246,7 +14246,7 @@ footer{background:#111}
           title: "Contrat de location, acompte et caution",
           level: "conseille",
           summary: "Pour les r\xE9servations directes, un contrat \xE9crit (dates, prix, acompte, caution, r\xE8glement int\xE9rieur) \xE9vite la plupart des litiges.",
-          steps: ["Utiliser le m\xEAme mod\xE8le pour chaque r\xE9servation.", "Suivre l\u2019acompte, le solde et la caution dans la fiche de r\xE9servation (statut de paiement).", "\xC9diter la facture dans l\u2019onglet Facturation."],
+          steps: ["Imprimer le contrat depuis la fiche de r\xE9servation (bouton \xAB Contrat \xBB) : il reprend les parties, le s\xE9jour, les montants et la caution, avec vos conditions g\xE9n\xE9rales en annexe. Relisez-le et adaptez-le avant de le faire signer.", "Suivre l\u2019acompte, le solde et la caution dans la fiche de r\xE9servation ; Aujourd\u2019hui rappelle les cautions \xE0 encaisser ou \xE0 restituer.", "\xC9diter la facture dans l\u2019onglet Facturation."],
           source: SP,
           checked: D,
           helper: { label: "Facturation", tab: "invoices" }
@@ -25730,18 +25730,18 @@ Cette action est d\xE9finitive. Pensez \xE0 une sauvegarde de cet \xE9tablisseme
               ] }),
               p.mode === "days" && /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("div", { children: [
                 /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-1.5", children: "Jours d'ouverture (nuit commen\xE7ant ce jour-l\xE0)" }),
-                /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "flex flex-wrap gap-x-4 gap-y-1.5", children: WEEK_ORDER.map((day) => /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("label", { className: "flex items-center gap-1.5 text-xs text-neutral-700 cursor-pointer", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("div", { className: "flex flex-wrap gap-x-4 gap-y-1.5", children: WEEK_ORDER.map((day2) => /* @__PURE__ */ (0, import_jsx_runtime14.jsxs)("label", { className: "flex items-center gap-1.5 text-xs text-neutral-700 cursor-pointer", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
                     "input",
                     {
                       type: "checkbox",
-                      checked: p.weekdays.includes(day),
-                      onChange: (e) => setPeriod(idx, { weekdays: e.target.checked ? [...p.weekdays, day] : p.weekdays.filter((x) => x !== day) }),
+                      checked: p.weekdays.includes(day2),
+                      onChange: (e) => setPeriod(idx, { weekdays: e.target.checked ? [...p.weekdays, day2] : p.weekdays.filter((x) => x !== day2) }),
                       className: "w-3.5 h-3.5 accent-sy-325032 cursor-pointer"
                     }
                   ),
-                  /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { children: WEEKDAY_LABELS[day] })
-                ] }, day)) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime14.jsx)("span", { children: WEEKDAY_LABELS[day2] })
+                ] }, day2)) }),
                 /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(
                   "button",
                   {
@@ -25862,8 +25862,8 @@ Cette action est d\xE9finitive. Pensez \xE0 une sauvegarde de cet \xE9tablisseme
       setDraft(JSON.parse(JSON.stringify(item2)));
       setIsNew(false);
     };
-    const startNew = (blank) => {
-      setDraft(blank);
+    const startNew = (blank2) => {
+      setDraft(blank2);
       setIsNew(true);
     };
     const save = () => {
@@ -28964,14 +28964,14 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
     return parts.join("\n\n");
   }
   function registerAsHtml(f, now = /* @__PURE__ */ new Date()) {
-    const esc4 = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const esc5 = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const rows = processingRegister(f).map(
-      (r) => `<tr><td>${esc4(r.name)}</td><td>${esc4(r.purpose)}</td><td>${esc4(r.data)}</td><td>${esc4(r.basis)}</td><td>${esc4(r.retention)}</td><td>${esc4(r.recipients)}</td></tr>`
+      (r) => `<tr><td>${esc5(r.name)}</td><td>${esc5(r.purpose)}</td><td>${esc5(r.data)}</td><td>${esc5(r.basis)}</td><td>${esc5(r.retention)}</td><td>${esc5(r.recipients)}</td></tr>`
     ).join("");
-    const policy = privacyPolicyText(f).split("\n\n").map((p, i) => i === 0 ? `<h2>${esc4(p)}</h2>` : `<p>${esc4(p)}</p>`).join("");
-    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Registre des traitements \u2014 ${esc4(f.name)}</title>
+    const policy = privacyPolicyText(f).split("\n\n").map((p, i) => i === 0 ? `<h2>${esc5(p)}</h2>` : `<p>${esc5(p)}</p>`).join("");
+    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Registre des traitements \u2014 ${esc5(f.name)}</title>
 <style>body{font-family:Arial,sans-serif;font-size:12px;color:#171717;margin:24px}h1{font-family:Georgia,serif;font-size:20px}h2{font-family:Georgia,serif;font-size:16px;margin-top:28px}table{border-collapse:collapse;width:100%}td,th{border:1px solid #d4d4d4;padding:6px;vertical-align:top;text-align:left}th{background:#f5f5f5}p{line-height:1.5}.n{color:#737373;font-size:11px}</style></head><body>
-<h1>Registre des activit\xE9s de traitement \u2014 ${esc4(f.name)}</h1>
+<h1>Registre des activit\xE9s de traitement \u2014 ${esc5(f.name)}</h1>
 <p class="n">\xC9tabli le ${now.toLocaleDateString("fr-FR")} avec l'application de gestion. Document de travail \xE0 relire : il ne remplace pas un conseil juridique.</p>
 <table><thead><tr><th>Traitement</th><th>Finalit\xE9</th><th>Donn\xE9es</th><th>Base l\xE9gale</th><th>Conservation</th><th>Destinataires</th></tr></thead><tbody>${rows}</tbody></table>
 ${policy}</body></html>`;
@@ -30759,7 +30759,7 @@ Cette op\xE9ration est d\xE9finitive.`
           return () => window.removeEventListener("domaine_sylvaria_housekeeping_page", onPage);
         }, [staff2]);
         const [mode, setMode] = (0, import_react42.useState)("day");
-        const [day, setDay] = (0, import_react42.useState)(today6);
+        const [day2, setDay] = (0, import_react42.useState)(today6);
         const [zoneId, setZoneId] = (0, import_react42.useState)("");
         const [assignee, setAssignee] = (0, import_react42.useState)(staff2 ? "mine" : "all");
         (0, import_react42.useEffect)(() => {
@@ -30789,8 +30789,8 @@ Cette op\xE9ration est d\xE9finitive.`
         const [creating, setCreating] = (0, import_react42.useState)(null);
         const zones = (0, import_react42.useMemo)(() => getZones(settings, hk), [settings, hk]);
         const currentZone = zones.find((z) => z.id === zoneId) || zones[0];
-        const start = mode === "week" ? weekStart(day) : day;
-        const end = mode === "week" ? addDays(start, 6) : mode === "room" ? addDays(today6, 60) : day;
+        const start = mode === "week" ? weekStart(day2) : day2;
+        const end = mode === "week" ? addDays(start, 6) : mode === "room" ? addDays(today6, 60) : day2;
         const allTasks = (0, import_react42.useMemo)(
           () => buildTasks({
             settings,
@@ -30816,8 +30816,8 @@ Cette op\xE9ration est d\xE9finitive.`
         const openTask = openId ? allTasks.find((t) => t.id === openId) || null : null;
         const reservationById = (id) => reservations.find((r) => r.id === id);
         const card3 = (t, opts = {}) => /* @__PURE__ */ (0, import_jsx_runtime30.jsx)(TaskCard, { task: t, hk, settings, onOpen: () => setOpenId(t.id), onError: onToast, ...opts }, t.id);
-        const shiftDay = (n) => setDay(addDays(day, n));
-        const dayLabel3 = formatDay(day, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+        const shiftDay = (n) => setDay(addDays(day2, n));
+        const dayLabel3 = formatDay(day2, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
         const periodLabel = mode === "week" ? `Semaine du ${formatDay(start, { day: "numeric", month: "long" })} au ${formatDay(end, { day: "numeric", month: "long" })}` : dayLabel3.charAt(0).toUpperCase() + dayLabel3.slice(1);
         const emptyState = (date) => /* @__PURE__ */ (0, import_jsx_runtime30.jsxs)("div", { className: "p-6 rounded-2xl border border-dashed border-neutral-300 bg-white text-center", children: [
           /* @__PURE__ */ (0, import_jsx_runtime30.jsx)(Sparkles, { className: "w-6 h-6 text-neutral-300 mx-auto mb-2" }),
@@ -30840,9 +30840,9 @@ Cette op\xE9ration est d\xE9finitive.`
           )
         ] });
         const renderDay = () => {
-          const dayTasks = allTasks.filter((t) => t.date === day && visible(t));
-          const arrivals = arrivalsReadiness(settings, hk, reservations, allTasks, day);
-          const lateHere = day === today6 ? lateTasks.filter(visible) : [];
+          const dayTasks = allTasks.filter((t) => t.date === day2 && visible(t));
+          const arrivals = arrivalsReadiness(settings, hk, reservations, allTasks, day2);
+          const lateHere = day2 === today6 ? lateTasks.filter(visible) : [];
           return /* @__PURE__ */ (0, import_jsx_runtime30.jsxs)("div", { className: "space-y-4", children: [
             arrivals.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime30.jsxs)("div", { className: "p-3 rounded-2xl bg-white border border-neutral-200", children: [
               /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("div", { className: "text-[11px] font-bold uppercase tracking-wide text-neutral-500 mb-2", children: "Arriv\xE9es du jour" }),
@@ -30864,7 +30864,7 @@ Cette op\xE9ration est d\xE9finitive.`
               /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("div", { className: "text-[11px] font-bold uppercase tracking-wide text-red-700 mb-2", children: "En retard" }),
               /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-2.5", children: lateHere.map((t) => card3(t, { showDate: true })) })
             ] }),
-            dayTasks.length === 0 ? emptyState(day) : ["departure", "arrival", "other"].map((moment2) => {
+            dayTasks.length === 0 ? emptyState(day2) : ["departure", "arrival", "other"].map((moment2) => {
               const group = dayTasks.filter((t) => momentOf(t) === moment2);
               if (group.length === 0) return null;
               const Icon2 = MOMENT_ICONS[moment2];
@@ -31016,7 +31016,7 @@ Cette op\xE9ration est d\xE9finitive.`
                 "button",
                 {
                   type: "button",
-                  onClick: () => setCreating({ date: mode === "room" ? today6 : day, zoneId: mode === "room" ? currentZone?.id || "" : "" }),
+                  onClick: () => setCreating({ date: mode === "room" ? today6 : day2, zoneId: mode === "room" ? currentZone?.id || "" : "" }),
                   className: "flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-sy-325032 hover:bg-sy-253d25 rounded-xl shadow-xs cursor-pointer",
                   children: [
                     /* @__PURE__ */ (0, import_jsx_runtime30.jsx)(Plus, { className: "w-4 h-4" }),
@@ -37622,7 +37622,7 @@ ${m.message}
         const items = section2.items;
         const suggestions = (ITEM_SUGGESTIONS[section2.kind] || []).filter((sg) => !sg.title || !items.some((i) => i.title === sg.title));
         const update = (id, patch) => onChange(items.map((i) => i.id === id ? { ...i, ...patch } : i));
-        const blank = () => ({ id: newId6("it"), title: "", text: "", ...labels.place ? { category: "" } : {} });
+        const blank2 = () => ({ id: newId6("it"), title: "", text: "", ...labels.place ? { category: "" } : {} });
         return /* @__PURE__ */ (0, import_jsx_runtime49.jsxs)("div", { className: "space-y-2", children: [
           items.map((item2, index) => {
             const proposal = linkedProposalId(item2);
@@ -37681,7 +37681,7 @@ ${m.message}
               "button",
               {
                 type: "button",
-                onClick: () => onChange([...items, blank()]),
+                onClick: () => onChange([...items, blank2()]),
                 className: "text-[11px] font-semibold text-sy-325032 hover:underline cursor-pointer flex items-center gap-1",
                 children: [
                   /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(Plus, { className: "w-3 h-3" }),
@@ -37694,7 +37694,7 @@ ${m.message}
               "button",
               {
                 type: "button",
-                onClick: () => onChange([...items, ...suggestions.map((sg) => ({ ...blank(), title: sg.title, text: sg.text || "", ...sg.category !== void 0 ? { category: sg.category } : {} }))]),
+                onClick: () => onChange([...items, ...suggestions.map((sg) => ({ ...blank2(), title: sg.title, text: sg.text || "", ...sg.category !== void 0 ? { category: sg.category } : {} }))]),
                 className: "text-[11px] font-semibold text-sy-325032 hover:underline cursor-pointer flex items-center gap-1",
                 children: [
                   /* @__PURE__ */ (0, import_jsx_runtime49.jsx)(Plus, { className: "w-3 h-3" }),
@@ -38225,12 +38225,12 @@ ${m.message}
   function depreciationInPeriod(asset, from, to) {
     const base = Math.max(0, (asset.amount || 0) - (asset.residual || 0));
     if (!(asset.years > 0) || !asset.purchaseDate || base <= 0) return 0;
-    const day = 864e5;
+    const day2 = 864e5;
     const start = Date.parse(`${asset.purchaseDate}T00:00:00Z`);
     const totalDays = assetLifeDays(asset);
     if (isNaN(start)) return 0;
-    const end = start + totalDays * day;
-    const overlap = Math.max(0, Math.min(end, Date.parse(`${to}T00:00:00Z`) + day) - Math.max(start, Date.parse(`${from}T00:00:00Z`))) / day;
+    const end = start + totalDays * day2;
+    const overlap = Math.max(0, Math.min(end, Date.parse(`${to}T00:00:00Z`) + day2) - Math.max(start, Date.parse(`${from}T00:00:00Z`))) / day2;
     return base * overlap / totalDays;
   }
   function computeStats(reservations, expenses2, period, settings, prof, registry = readInvoiceRegistry(), assets2 = {}) {
@@ -44185,14 +44185,14 @@ Cliquer pour modifier le tarif`,
         const rows = planningRows(settings);
         const getDayOfWeek = (d) => {
           const date = new Date(year, month, d);
-          const day = date.getDay();
-          const frenchIndex = day === 0 ? 6 : day - 1;
+          const day2 = date.getDay();
+          const frenchIndex = day2 === 0 ? 6 : day2 - 1;
           return DAYS_SHORT_FR[frenchIndex];
         };
         const isWeekend = (d) => {
           const date = new Date(year, month, d);
-          const day = date.getDay();
-          return day === 0 || day === 6;
+          const day2 = date.getDay();
+          return day2 === 0 || day2 === 6;
         };
         const calculatePosition = (res2) => {
           const parseLocalDate3 = (dStr) => {
@@ -44269,25 +44269,25 @@ Cliquer pour modifier le tarif`,
                 },
                 children: [
                   /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("div", { className: "p-2 flex items-center font-semibold text-xs text-neutral-500 uppercase tracking-wider", children: "Chambre" }),
-                  daysArray.map((day) => {
-                    const dow = getDayOfWeek(day);
-                    const weekend = isWeekend(day);
-                    const isToday = day === todayDay;
-                    const band = showRates ? dayBand(day) : null;
+                  daysArray.map((day2) => {
+                    const dow = getDayOfWeek(day2);
+                    const weekend = isWeekend(day2);
+                    const isToday = day2 === todayDay;
+                    const band = showRates ? dayBand(day2) : null;
                     return /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)(
                       "div",
                       {
-                        onClick: band ? () => setRateEdit({ date: dayIso(day), roomIds: rateAccommodations.map((a) => a.id) }) : void 0,
+                        onClick: band ? () => setRateEdit({ date: dayIso(day2), roomIds: rateAccommodations.map((a) => a.id) }) : void 0,
                         title: band ? `${band.title}
 Cliquer pour modifier le tarif` : void 0,
                         className: `text-center py-2 px-0.5 rounded-lg border flex flex-col justify-center items-center ${band ? "cursor-pointer hover:ring-1 hover:ring-sy-325032 " : ""}${isToday ? "bg-sy-3a5a40 text-white border-sy-3a5a40 font-bold shadow-xs" : weekend ? "bg-neutral-100/90 text-neutral-700 border-neutral-200/70" : "bg-neutral-50 text-neutral-600 border-neutral-200/50"}`,
                         children: [
                           /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("span", { className: `text-[10px] uppercase font-medium ${isToday ? "text-emerald-100" : "text-neutral-500"}`, children: dow }),
-                          /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("span", { className: `text-xs font-mono font-bold tabular-nums leading-tight ${isToday ? "text-white" : "text-neutral-800"}`, children: day }),
+                          /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("span", { className: `text-xs font-mono font-bold tabular-nums leading-tight ${isToday ? "text-white" : "text-neutral-800"}`, children: day2 }),
                           band && /* @__PURE__ */ (0, import_jsx_runtime71.jsx)("span", { className: "mt-1 w-full max-w-[22px] h-1.5 rounded-full", style: { background: band.background } })
                         ]
                       },
-                      `day-head-${day}`
+                      `day-head-${day2}`
                     );
                   }),
                   rows.map((row, rowIndex) => {
@@ -44319,9 +44319,9 @@ Cliquer pour modifier le tarif` : void 0,
                             ...L.grid.s
                           },
                           children: [
-                            daysArray.map((day) => {
-                              const weekend = isWeekend(day);
-                              const dayStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                            daysArray.map((day2) => {
+                              const weekend = isWeekend(day2);
+                              const dayStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day2).padStart(2, "0")}`;
                               const closed = showOpening && rateAccommodations.some((a) => a.id === row.id) && !isOpenNight(dayStr, settings);
                               return /* @__PURE__ */ (0, import_jsx_runtime71.jsxs)(
                                 "button",
@@ -44330,13 +44330,13 @@ Cliquer pour modifier le tarif` : void 0,
                                   onClick: () => onNewReservationAtDate(row.id, dayStr),
                                   className: `h-full border-r border-neutral-100 ${L.slot.c} transition-colors group flex items-center justify-center cursor-pointer relative ${weekend ? "bg-neutral-50/50" : ""}`,
                                   style: closed ? { backgroundImage: "repeating-linear-gradient(45deg, rgba(100,116,139,0.18) 0 4px, transparent 4px 8px)" } : void 0,
-                                  title: closed ? `Ferm\xE9 le ${day} : ${row.room.name} (r\xE9servation possible malgr\xE9 tout)` : `Ajouter une r\xE9servation pour ${row.room.name} le ${day} ${row.room.name}`,
+                                  title: closed ? `Ferm\xE9 le ${day2} : ${row.room.name} (r\xE9servation possible malgr\xE9 tout)` : `Ajouter une r\xE9servation pour ${row.room.name} le ${day2} ${row.room.name}`,
                                   children: [
                                     /* @__PURE__ */ (0, import_jsx_runtime71.jsx)(Plus, { className: `w-3.5 h-3.5 text-neutral-300 opacity-0 group-hover:opacity-100 ${L.plus.c} transition-opacity` }),
-                                    roomRateStrip(row.id, day)
+                                    roomRateStrip(row.id, day2)
                                   ]
                                 },
-                                `slot-${row.id}-${day}`
+                                `slot-${row.id}-${day2}`
                               );
                             }),
                             roomReservations.map((res2) => {
@@ -44654,8 +44654,8 @@ Cliquer pour modifier le tarif` : void 0,
         const todayObj = /* @__PURE__ */ new Date();
         const isCurrentMonthView = year === todayObj.getFullYear() && month === todayObj.getMonth();
         const todayDay = isCurrentMonthView ? todayObj.getDate() : -1;
-        const getReservationsForDay = (day) => {
-          const currentNight = new Date(year, month, day);
+        const getReservationsForDay = (day2) => {
+          const currentNight = new Date(year, month, day2);
           return reservations.filter((r) => {
             const inDate = parseLocalDate2(r.checkIn);
             const outDate = parseLocalDate2(r.checkOut);
@@ -58607,7 +58607,7 @@ Cliquer pour modifier le tarif` : void 0,
       ] });
       Dashboard2 = ({ records: records4, onGo }) => {
         const today6 = todayIso2();
-        const [day, setDay] = (0, import_react114.useState)(today6);
+        const [day2, setDay] = (0, import_react114.useState)(today6);
         const d = (0, import_react114.useMemo)(() => {
           const temps = tempList(records4).filter((r) => !r.archived);
           const logs = cleanLogList(records4).filter((r) => !r.archived);
@@ -58616,17 +58616,17 @@ Cliquer pour modifier le tarif` : void 0,
           const ops = cleanOpList(records4).filter((o) => !o.archived);
           const incidents = incidentList2(records4);
           const lots = lotList(records4);
-          const doneT = temps.filter((r) => r.date === day);
-          const doneC = logs.filter((r) => r.date === day);
-          const doneR = receipts.filter((r) => r.date === day);
+          const doneT = temps.filter((r) => r.date === day2);
+          const doneC = logs.filter((r) => r.date === day2);
+          const doneR = receipts.filter((r) => r.date === day2);
           const results = [...doneT, ...doneC, ...doneR].map((r) => r.result);
           const toRead = equips.filter((q) => q.daily && !doneT.some((r) => r.equipmentId === q.id));
-          const dueOps = ops.filter((o) => (cleanOpDays(o, day) ?? 1) === 0);
-          const stockToCheck = placeList(records4).filter((p) => !p.archived && p.daily && !stockCheckList(records4).some((c) => !c.archived && c.placeId === p.id && c.date === day));
-          const lateOps = ops.filter((o) => (cleanOpDays(o, day) ?? 0) < 0);
-          const missed = equips.map((q) => ({ q, days: missedDays(q, temps, day) })).filter((x) => x.days.length > 0);
+          const dueOps = ops.filter((o) => (cleanOpDays(o, day2) ?? 1) === 0);
+          const stockToCheck = placeList(records4).filter((p) => !p.archived && p.daily && !stockCheckList(records4).some((c) => !c.archived && c.placeId === p.id && c.date === day2));
+          const lateOps = ops.filter((o) => (cleanOpDays(o, day2) ?? 0) < 0);
+          const missed = equips.map((q) => ({ q, days: missedDays(q, temps, day2) })).filter((x) => x.days.length > 0);
           const open = incidents.filter(isOpenIncident2);
-          const lateInc = open.filter((i) => (incidentDays2(i, day) ?? 0) < 0);
+          const lateInc = open.filter((i) => (incidentDays2(i, day2) ?? 0) < 0);
           const actions = [
             ...temps.filter((r) => r.action.trim()).map((r) => ({ id: r.id, date: r.date, time: r.time, text: r.action, from: "Temp\xE9rature", section: "temperatures", result: r.result })),
             ...logs.filter((r) => r.action.trim()).map((r) => ({ id: r.id, date: r.date, time: r.time, text: r.action, from: "Nettoyage", section: "cleaning", result: r.result })),
@@ -58645,11 +58645,11 @@ Cliquer pour modifier le tarif` : void 0,
             open,
             lateInc,
             actions,
-            lotsLate: lots.filter((l) => lotLate(l, day)),
-            lotsSoon: lots.filter((l) => lotSoon(l, day)),
+            lotsLate: lots.filter((l) => lotLate(l, day2)),
+            lotsSoon: lots.filter((l) => lotSoon(l, day2)),
             empty: temps.length + logs.length + receipts.length + equips.length + ops.length + incidents.length + lots.length === 0
           };
-        }, [records4, day]);
+        }, [records4, day2]);
         const late = d.lateOps.length + d.missed.length + d.lateInc.length;
         const extra = (0, import_react114.useMemo)(() => entryAlerts(records4, today6), [records4, today6]);
         const al = (0, import_react114.useMemo)(() => {
@@ -58666,11 +58666,11 @@ Cliquer pour modifier le tarif` : void 0,
         }, [records4, today6]);
         return /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("div", { className: "space-y-3", "data-hy-dashboard": true, children: [
           /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200 p-3 flex flex-wrap items-center gap-2", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("button", { type: "button", "aria-label": "Jour pr\xE9c\xE9dent", className: bigBtn, onClick: () => setDay(isoShift2(day, -1)), children: /* @__PURE__ */ (0, import_jsx_runtime110.jsx)(ChevronLeft, { className: "w-4 h-4" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("div", { className: "w-40", children: /* @__PURE__ */ (0, import_jsx_runtime110.jsx)(DateInput, { value: day, onChange: (v) => v && setDay(v) }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("button", { type: "button", "aria-label": "Jour suivant", className: bigBtn, onClick: () => setDay(isoShift2(day, 1)), children: /* @__PURE__ */ (0, import_jsx_runtime110.jsx)(ChevronRight, { className: "w-4 h-4" }) }),
-            day !== today6 && /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("button", { type: "button", className: bigBtn, onClick: () => setDay(today6), children: "Aujourd'hui" }),
-            /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("span", { className: "text-xs font-semibold text-neutral-700 ml-1", children: day === today6 ? "Aujourd'hui" : frDate(day) }),
+            /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("button", { type: "button", "aria-label": "Jour pr\xE9c\xE9dent", className: bigBtn, onClick: () => setDay(isoShift2(day2, -1)), children: /* @__PURE__ */ (0, import_jsx_runtime110.jsx)(ChevronLeft, { className: "w-4 h-4" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("div", { className: "w-40", children: /* @__PURE__ */ (0, import_jsx_runtime110.jsx)(DateInput, { value: day2, onChange: (v) => v && setDay(v) }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("button", { type: "button", "aria-label": "Jour suivant", className: bigBtn, onClick: () => setDay(isoShift2(day2, 1)), children: /* @__PURE__ */ (0, import_jsx_runtime110.jsx)(ChevronRight, { className: "w-4 h-4" }) }),
+            day2 !== today6 && /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("button", { type: "button", className: bigBtn, onClick: () => setDay(today6), children: "Aujourd'hui" }),
+            /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("span", { className: "text-xs font-semibold text-neutral-700 ml-1", children: day2 === today6 ? "Aujourd'hui" : frDate(day2) }),
             /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("div", { className: "flex flex-wrap gap-1.5 ml-auto", children: [
               /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("button", { type: "button", className: primaryBtn, "data-quick": "temp", onClick: () => onGo("temperatures", "new"), children: [
                 /* @__PURE__ */ (0, import_jsx_runtime110.jsx)(Thermometer, { className: "w-4 h-4" }),
@@ -58845,8 +58845,8 @@ Cliquer pour modifier le tarif` : void 0,
                   l.lotRef && ` \xB7 lot ${l.lotRef}`,
                   l.storage && ` \xB7 ${l.storage}`
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)(Chip, { tone: l.dlc < day ? "red" : "amber", children: [
-                  l.dlc < day ? "D\xE9pass\xE9e" : "Proche",
+                /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)(Chip, { tone: l.dlc < day2 ? "red" : "amber", children: [
+                  l.dlc < day2 ? "D\xE9pass\xE9e" : "Proche",
                   " \xB7 ",
                   frDate(l.dlc)
                 ] })
@@ -62544,9 +62544,9 @@ if(C.preview){
     const [y1, m1, d1] = start.split("-").map(Number);
     const [y2, m2, d2] = end.split("-").map(Number);
     if (!m1 || !m2) return "";
-    const day = (d) => d === 1 ? "1er" : String(d);
-    if (everyYear) return `du ${day(d1)} ${MONTHS3[m1 - 1]} au ${day(d2)} ${MONTHS3[m2 - 1]}`;
-    return `du ${day(d1)} ${MONTHS3[m1 - 1]} ${y1} au ${day(d2)} ${MONTHS3[m2 - 1]} ${y2}`;
+    const day2 = (d) => d === 1 ? "1er" : String(d);
+    if (everyYear) return `du ${day2(d1)} ${MONTHS3[m1 - 1]} au ${day2(d2)} ${MONTHS3[m2 - 1]}`;
+    return `du ${day2(d1)} ${MONTHS3[m1 - 1]} ${y1} au ${day2(d2)} ${MONTHS3[m2 - 1]} ${y2}`;
   }
   function servicePrice2(s) {
     if (s.billing === "inclus") return "Inclus";
@@ -64851,6 +64851,27 @@ Sitemap: ${base}sitemap.xml
     }
   });
 
+  // src/core/contract/caution.ts
+  function cautionAlerts(reservations, today6) {
+    const out = [];
+    reservations.filter((r) => !r.isBlocked && r.reservationStatus !== "cancelled" && r.cautionStatus).forEach((r) => {
+      const amount = r.cautionAmount ? ` (${r.cautionAmount.toLocaleString("fr-FR")} \u20AC)` : "";
+      if (r.cautionStatus === "received" && r.checkOut <= today6) {
+        out.push({ id: `caution-r${r.id}`, label: `Caution \xE0 restituer : ${r.guestName}${amount}`, detail: `D\xE9part le ${r.checkOut.split("-").reverse().join("/")}`, tone: day(today6) - day(r.checkOut) > 7 ? "red" : "amber" });
+      } else if (r.cautionStatus === "asked" && day(r.checkIn) - day(today6) <= 3 && r.checkOut > today6) {
+        out.push({ id: `caution-a${r.id}`, label: `Caution \xE0 encaisser : ${r.guestName}${amount}`, detail: `Arriv\xE9e le ${r.checkIn.split("-").reverse().join("/")}`, tone: r.checkIn <= today6 ? "red" : "amber" });
+      }
+    });
+    return out;
+  }
+  var day;
+  var init_caution = __esm({
+    "src/core/contract/caution.ts"() {
+      "use strict";
+      day = (iso) => Math.floor(Date.parse(`${iso}T00:00:00Z`) / 864e5);
+    }
+  });
+
   // src/core/backup/cloud.ts
   function readCloud() {
     try {
@@ -65237,6 +65258,7 @@ Sitemap: ${base}sitemap.xml
       init_connector();
       init_privacy();
       init_guests();
+      init_caution();
       init_store10();
       init_googleSheetsService();
       init_lucide_react();
@@ -65342,6 +65364,7 @@ Sitemap: ${base}sitemap.xml
           if (staffOn) {
             dues(staffList(staffMap), readStaffSettings(settings), today6).filter((d) => d.state !== "valid").slice(0, 10).forEach((d, i) => out.push({ id: `s${d.member.id}${i}`, label: `${d.member.name} : ${d.title}`, detail: STATE_LABEL[d.state] + (d.validUntil ? ` (${frDate2(d.validUntil)})` : ""), tone: d.state === "soon" ? "amber" : "red", tab: "staff" }));
           }
+          cautionAlerts(reservations, today6).forEach((a) => out.push({ id: a.id, label: a.label, detail: a.detail, tone: a.tone, tab: "list" }));
           if (isModuleEnabled("compliance", settings)) {
             const cs = readComplianceSettings(settings);
             complianceAlerts({ map: complianceMap, activities: cs.activities, answered: cs.answered, rooms: settings.accommodations.filter((a) => a.active).map((a) => ({ id: a.id, name: a.name })), reservations, today: today6 }).forEach((a) => out.push({ id: a.id, label: a.label, detail: a.detail, tone: a.tone, tab: "compliance" }));
@@ -67043,11 +67066,13 @@ ${text}` : text });
   }
   function touristTaxRows(reservations, period, roomName) {
     const stays = reservations.filter((r) => isReal(r) && r.reservationStatus !== "cancelled" && inPeriod(r.checkOut, period) && (r.touristTaxAmount || 0) > 0).sort((a, b) => a.checkOut.localeCompare(b.checkOut));
+    const statusOf4 = (r) => r.touristTaxStatus || (isOtaSource(r.bookingSource, r) ? "prise_en_charge" : "a_declarer");
     const byStatus = /* @__PURE__ */ new Map();
     stays.forEach((r) => {
-      const s = TAX_STATUS[r.touristTaxStatus || "a_declarer"] || "\xC0 d\xE9clarer";
+      const s = TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer;
       byStatus.set(s, round27((byStatus.get(s) || 0) + (r.touristTaxAmount || 0)));
     });
+    const mine = round27(stays.filter((r) => statusOf4(r) === "a_declarer").reduce((n, r) => n + (r.touristTaxAmount || 0), 0));
     return [
       ["Arriv\xE9e", "D\xE9part", "Nuits", "H\xE9bergement", "Client", "Adultes", "Enfants", "Taxe (\u20AC)", "Statut", "\xC0 v\xE9rifier"],
       ...stays.map((r) => [
@@ -67059,24 +67084,26 @@ ${text}` : text });
         r.adultsCount,
         r.childrenCount,
         round27(r.touristTaxAmount || 0),
-        TAX_STATUS[r.touristTaxStatus || "a_declarer"] || "\xC0 d\xE9clarer",
+        TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer,
         r.touristTaxNeedsVerification ? "Oui" : ""
       ]),
       [`Total (${stays.length} s\xE9jour${stays.length > 1 ? "s" : ""})`, null, null, null, null, null, null, round27(stays.reduce((n, r) => n + (r.touristTaxAmount || 0), 0)), null, null],
-      ...[...byStatus.entries()].map(([s, v]) => [`dont ${s}`, null, null, null, null, null, null, v, null, null])
+      ...[...byStatus.entries()].map(([s, v]) => [`dont ${s}`, null, null, null, null, null, null, v, null, null]),
+      ["\xC0 D\xC9CLARER ET REVERSER PAR VOUS (hors plateformes)", null, null, null, null, null, null, mine, null, null]
     ];
   }
   var inPeriod, round27, isReal, TAX_STATUS;
   var init_accounting = __esm({
     "src/core/export/accounting.ts"() {
       "use strict";
+      init_pricing();
       inPeriod = (date, p) => !!date && date >= p.from && date <= p.to;
       round27 = (n) => Math.round(n * 100) / 100;
       isReal = (r) => !r.isBlocked && !/ferm|bloq/i.test(r.guestName || "");
       TAX_STATUS = {
-        prise_en_charge: "Prise en charge par l'\xE9tablissement",
-        a_declarer: "\xC0 d\xE9clarer",
-        non_prise_en_compte: "Non prise en compte"
+        prise_en_charge: "Collect\xE9e et revers\xE9e par la plateforme",
+        a_declarer: "\xC0 d\xE9clarer et reverser par l'\xE9tablissement",
+        non_prise_en_compte: "Non prise en compte (exon\xE9ration ou autre)"
       };
     }
   });
@@ -68598,6 +68625,15 @@ Cette action supprimera la facture du registre et la retirera du Google Sheet.`)
     }
   });
 
+  // src/types/index.ts
+  var CAUTION_LABEL;
+  var init_types4 = __esm({
+    "src/types/index.ts"() {
+      "use strict";
+      CAUTION_LABEL = { asked: "Demand\xE9e", received: "Re\xE7ue", returned: "Restitu\xE9e", kept: "Retenue (en tout ou partie)" };
+    }
+  });
+
   // src/components/BreakfastCalculatorModal.tsx
   var import_react146, import_jsx_runtime145, fmtNum, parseNum2, NumField, BreakfastCalculatorModal;
   var init_BreakfastCalculatorModal = __esm({
@@ -69671,6 +69707,7 @@ ${establishment}`;
     "src/components/ReservationModal.tsx"() {
       "use strict";
       import_react149 = __require("react");
+      init_types4();
       init_bookingUtils();
       init_lucide_react();
       init_BreakfastCalculatorModal();
@@ -69786,6 +69823,8 @@ ${establishment}`;
         const [reservationStatus, setReservationStatus] = (0, import_react149.useState)("confirmed");
         const [commissionAmountStr, setCommissionAmountStr] = (0, import_react149.useState)("");
         const [depositAmountStr, setDepositAmountStr] = (0, import_react149.useState)("");
+        const [cautionStatus, setCautionStatus] = (0, import_react149.useState)("");
+        const [cautionAmountStr, setCautionAmountStr] = (0, import_react149.useState)("");
         const [breakfastCostStr, setBreakfastCostStr] = (0, import_react149.useState)("");
         const [isBreakfastCalculatorOpen, setIsBreakfastCalculatorOpen] = (0, import_react149.useState)(false);
         const [isMealsCalculatorOpen, setIsMealsCalculatorOpen] = (0, import_react149.useState)(false);
@@ -70019,6 +70058,8 @@ ${establishment}`;
             setPaymentStatus(initialData.paymentStatus || "paid");
             setReservationStatus(initialData.reservationStatus || "confirmed");
             setDepositAmountStr(initialData.depositAmount ? formatAmountForInput(initialData.depositAmount) : "");
+            setCautionStatus(initialData.cautionStatus || "");
+            setCautionAmountStr(initialData.cautionAmount ? formatAmountForInput(initialData.cautionAmount) : "");
             setGuestPhone(initialData.guestPhone || "");
             setGuestPhone2(initialData.guestPhone2 || "");
             setGuestEmail(initialData.guestEmail || "");
@@ -70105,6 +70146,8 @@ ${establishment}`;
             setPaymentStatus("paid");
             setReservationStatus("confirmed");
             setDepositAmountStr("");
+            setCautionStatus("");
+            setCautionAmountStr("");
             setGuestPhone("");
             setGuestPhone2("");
             setGuestEmail("");
@@ -70413,6 +70456,8 @@ ${establishment}`;
             paymentStatus,
             reservationStatus,
             depositAmount: paymentStatus === "deposit" ? parseAmountInput(depositAmountStr) : void 0,
+            cautionStatus: !isBlocked2 && cautionStatus ? cautionStatus : void 0,
+            cautionAmount: !isBlocked2 && cautionStatus && parseAmountInput(cautionAmountStr) > 0 ? parseAmountInput(cautionAmountStr) : void 0,
             guestPhone: guestPhone.trim() || void 0,
             guestPhone2: guestPhone2.trim() || void 0,
             guestEmail: guestEmail.trim() || void 0,
@@ -72144,6 +72189,42 @@ ${establishment}`;
                       "Solde restant : ",
                       formatCurrency(Math.max(0, numericTotalAmount - parseAmountInput(depositAmountStr)))
                     ] })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { className: "p-3 rounded-lg border border-neutral-200 bg-neutral-50/60 space-y-2", "data-caution": true, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { className: "grid grid-cols-2 gap-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("label", { className: "block text-[11px] font-semibold text-neutral-700 mb-1", children: "Caution (d\xE9p\xF4t de garantie)" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)(
+                          "select",
+                          {
+                            value: cautionStatus,
+                            onChange: (e) => setCautionStatus(e.target.value),
+                            className: "w-full py-1.5 px-2 text-xs bg-white border border-neutral-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-sy-325032 cursor-pointer",
+                            "data-caution-status": true,
+                            children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("option", { value: "", children: "Aucune caution" }),
+                              Object.keys(CAUTION_LABEL).map((s) => /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("option", { value: s, children: CAUTION_LABEL[s] }, s))
+                            ]
+                          }
+                        )
+                      ] }),
+                      cautionStatus && /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("label", { className: "block text-[11px] font-semibold text-neutral-700 mb-1", children: "Montant (\u20AC)" }),
+                        /* @__PURE__ */ (0, import_jsx_runtime149.jsx)(
+                          "input",
+                          {
+                            type: "text",
+                            inputMode: "decimal",
+                            value: cautionAmountStr,
+                            onChange: (e) => setCautionAmountStr(e.target.value.replace(/[^0-9.,]/g, "")),
+                            placeholder: "Ex : 300",
+                            className: "w-full py-1.5 px-2.5 text-xs font-mono tabular-nums bg-white border border-neutral-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-sy-325032",
+                            "data-caution-amount": true
+                          }
+                        )
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("p", { className: "text-[10px] text-neutral-500", children: "La caution n\u2019est pas un revenu : elle n\u2019entre pas dans le total du s\xE9jour ni dans les statistiques. Pensez \xE0 la restituer apr\xE8s l\u2019\xE9tat des lieux de d\xE9part." })
                   ] })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { className: "p-4 rounded-xl bg-[#FAF8F5] border border-amber-200/70 space-y-3", children: [
@@ -72509,6 +72590,86 @@ ${establishment}`;
     }
   });
 
+  // src/core/contract/contract.ts
+  function contractAmounts(r) {
+    const total = Math.max(0, r.totalAmount || 0);
+    const deposit = r.paymentStatus === "deposit" ? Math.max(0, r.depositAmount || 0) : r.depositExpected && r.paymentStatus !== "paid" ? Math.max(0, r.depositExpected) : 0;
+    const balance = r.paymentStatus === "paid" ? 0 : Math.max(0, total - deposit);
+    return { total, deposit, balance, tax: Math.max(0, r.touristTaxAmount || 0), caution: r.cautionStatus ? Math.max(0, r.cautionAmount || 0) : 0 };
+  }
+  function contractHtml(r, est, roomName, terms = []) {
+    const place = [est.address, [est.postalCode, est.city].filter(Boolean).join(" ")].filter(Boolean).join(", ");
+    const a = contractAmounts(r);
+    const people = [`${r.adultsCount || 0} adulte(s)`, r.childrenCount ? `${r.childrenCount} enfant(s)` : "", r.babiesCount ? `${r.babiesCount} b\xE9b\xE9(s)` : ""].filter(Boolean).join(", ");
+    const row = (label2, value) => `<tr><th>${esc4(label2)}</th><td>${value}</td></tr>`;
+    const annex = terms.length ? `<div class="annex"><h2>Annexe \u2014 Conditions g\xE9n\xE9rales de vente</h2>${terms.map((t) => `<h3>Article ${t.number} \u2014 ${esc4(t.title)}</h3>${t.paragraphs.map((p) => `<p>${esc4(p)}</p>`).join("")}`).join("")}</div>` : `<p class="small">Les conditions g\xE9n\xE9rales de vente de l\u2019\xE9tablissement sont remises au locataire avec le pr\xE9sent contrat.</p>`;
+    return `<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Contrat de location \u2014 ${esc4(r.guestName)}</title>
+<style>
+body{font:13px/1.5 Arial,Helvetica,sans-serif;color:#111;margin:28px}
+h1{font-size:21px;margin:0 0 2px}h2{font-size:15px;margin:20px 0 6px;border-bottom:1px solid #999;padding-bottom:3px}h3{font-size:13px;margin:12px 0 3px}
+.sub{color:#444;margin:0 0 14px}
+table{width:100%;border-collapse:collapse;margin:0 0 10px}
+th,td{border:1px solid #888;padding:6px 8px;text-align:left;vertical-align:top}
+th{width:32%;background:#f2f2f2;font-weight:600}
+.sign{display:flex;gap:30px;margin-top:22px}.sign div{flex:1;border-top:1px solid #111;padding-top:6px;min-height:80px}
+.small{font-size:11px;color:#444;margin-top:14px}
+.annex{page-break-before:always}
+p{margin:4px 0}
+@media print{body{margin:14mm}}
+</style></head><body>
+<h1>Contrat de location</h1>
+<p class="sub">H\xE9bergement touristique \u2014 ${esc4(est.name)}${place ? ` \xB7 ${esc4(place)}` : ""}</p>
+
+<h2>1. Les parties</h2>
+<table>
+${row("Le loueur", `${esc4(est.name)}${place ? `<br>${esc4(place)}` : ""}${est.siret ? `<br>SIRET : ${esc4(est.siret)}` : ""}${est.phone ? `<br>T\xE9l. : ${esc4(est.phone)}` : ""}${est.email ? `<br>${esc4(est.email)}` : ""}`)}
+${row("Le locataire", `${esc4(r.guestName)}${r.guestAddress ? `<br>${esc4(r.guestAddress)}` : `<br>Adresse : ${blank("20em")}`}${r.guestPhone ? `<br>T\xE9l. : ${esc4(r.guestPhone)}` : ""}${r.guestEmail ? `<br>${esc4(r.guestEmail)}` : ""}`)}
+</table>
+
+<h2>2. L\u2019h\xE9bergement et le s\xE9jour</h2>
+<table>
+${row("H\xE9bergement lou\xE9", esc4(roomName))}
+${row("Adresse", place ? esc4(place) : blank("20em"))}
+${row("Arriv\xE9e", `${esc4(fr2(r.checkIn))} \u2014 \xE0 partir de ${blank("4em")} h`)}
+${row("D\xE9part", `${esc4(fr2(r.checkOut))} \u2014 avant ${blank("4em")} h`)}
+${row("Dur\xE9e", `${esc4(r.nights)} nuit${r.nights > 1 ? "s" : ""}`)}
+${row("Occupants", esc4(people))}
+</table>
+<p>Le locataire s\u2019engage \xE0 ne pas d\xE9passer le nombre d\u2019occupants indiqu\xE9, \xE0 user paisiblement des lieux et \xE0 respecter le r\xE8glement int\xE9rieur remis \xE0 l\u2019arriv\xE9e.</p>
+
+<h2>3. Prix et paiement</h2>
+<table>
+${row("Prix du s\xE9jour", a.total > 0 ? euro6(a.total) : blank())}
+${a.tax > 0 ? row("Taxe de s\xE9jour (en sus)", euro6(a.tax)) : row("Taxe de s\xE9jour", "selon le tarif de la commune, en sus du prix du s\xE9jour")}
+${row("Acompte", a.deposit > 0 ? `${euro6(a.deposit)}${r.depositDueDate ? ` \u2014 \xE0 verser avant le ${esc4(fr2(r.depositDueDate))}` : ""}` : blank())}
+${row("Solde", r.paymentStatus === "paid" ? "S\xE9jour r\xE9gl\xE9 int\xE9gralement" : `${a.total > 0 ? euro6(a.balance) : blank()} \u2014 \xE0 r\xE9gler ${blank("12em")}`)}
+</table>
+${est.vatMention ? `<p class="small">${esc4(est.vatMention)}</p>` : ""}
+
+<h2>4. Caution</h2>
+${a.caution > 0 ? `<p>Une caution de <b>${euro6(a.caution)}</b> est demand\xE9e au locataire (\xE9tat : ${esc4(CAUTION_LABEL[r.cautionStatus])}). Elle n\u2019est pas un paiement du s\xE9jour. Elle est restitu\xE9e \xE0 l\u2019issue du s\xE9jour, apr\xE8s v\xE9rification de l\u2019\xE9tat des lieux, sous d\xE9duction \xE9ventuelle des d\xE9gradations ou manquants constat\xE9s et justifi\xE9s.</p>` : `<p>Aucune caution n\u2019est demand\xE9e pour ce s\xE9jour.</p>`}
+
+<h2>5. Annulation et conditions g\xE9n\xE9rales</h2>
+<p>Les conditions d\u2019annulation, de modification et de retard figurent dans les conditions g\xE9n\xE9rales de vente ci-annex\xE9es, que le locataire d\xE9clare avoir lues et accept\xE9es.</p>
+
+<p style="margin-top:18px">Fait \xE0 ${blank("10em")}, le ${blank("8em")}, en deux exemplaires.</p>
+<div class="sign"><div>Le loueur<br><small>(\xAB lu et approuv\xE9 \xBB, signature)</small></div><div>Le locataire<br><small>(\xAB lu et approuv\xE9 \xBB, signature)</small></div></div>
+<p class="small">Mod\xE8le g\xE9n\xE9ral g\xE9n\xE9r\xE9 par Gestyria \xE0 partir des informations de la r\xE9servation : relisez-le et adaptez-le \xE0 votre situation avant de le faire signer.</p>
+${annex}
+</body></html>`;
+  }
+  var esc4, fr2, euro6, blank;
+  var init_contract = __esm({
+    "src/core/contract/contract.ts"() {
+      "use strict";
+      init_types4();
+      esc4 = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      fr2 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
+      euro6 = (n) => `${(Math.round(n * 100) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \u20AC`;
+      blank = (width = "10em") => `<span style="display:inline-block;min-width:${width};border-bottom:1px solid #555">&nbsp;</span>`;
+    }
+  });
+
   // src/components/ReservationDetailsModal.tsx
   var import_react150, import_jsx_runtime150, ReservationDetailsModal;
   var init_ReservationDetailsModal = __esm({
@@ -72522,6 +72683,10 @@ ${establishment}`;
       init_InvoiceModal();
       init_InvoiceConfigModal();
       init_StayMeals();
+      init_contract();
+      init_content13();
+      init_store13();
+      init_types4();
       init_lucide_react();
       import_jsx_runtime150 = __require("react/jsx-runtime");
       ReservationDetailsModal = ({
@@ -72538,6 +72703,17 @@ ${establishment}`;
         const [isInvoiceConfigOpen, setIsInvoiceConfigOpen] = (0, import_react150.useState)(false);
         const [isInvoiceModalOpen, setIsInvoiceModalOpen] = (0, import_react150.useState)(false);
         if (!isOpen || !reservation) return null;
+        const printContract = () => {
+          const settings = getSettings();
+          const terms = readTerms(settings);
+          const annex = termsExist(terms) ? termsDocument(terms, makeTermsContext(terms, settings)).map((t) => ({ number: t.number, title: t.title, paragraphs: t.paragraphs })) : [];
+          const w2 = window.open("", "_blank");
+          if (!w2) return;
+          w2.document.write(contractHtml(reservation, settings.establishment, roomFor(reservation.roomId).name, annex));
+          w2.document.close();
+          w2.focus();
+          window.setTimeout(() => w2.print(), 300);
+        };
         const roomIdClean = (reservation.roomId || "").toLowerCase();
         const room = roomFor(reservation.roomId);
         const sourceObj = BOOKING_SOURCES.find((s) => s.id === reservation.bookingSource) || BOOKING_SOURCES[0];
@@ -72763,6 +72939,16 @@ ${establishment}`;
                   /* @__PURE__ */ (0, import_jsx_runtime150.jsx)("span", { className: "font-mono font-bold text-amber-900 text-sm tabular-nums", children: formatCurrency(reservation.touristTaxAmount || 0) })
                 ] })
               ] })
+            ] }),
+            reservation.cautionStatus && /* @__PURE__ */ (0, import_jsx_runtime150.jsxs)("div", { className: "p-3 rounded-xl border border-neutral-200 bg-neutral-50 flex items-center justify-between text-xs", "data-caution-details": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime150.jsxs)("span", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime150.jsx)("b", { className: "text-neutral-800", children: "Caution" }),
+                " \xB7 ",
+                CAUTION_LABEL[reservation.cautionStatus],
+                " ",
+                /* @__PURE__ */ (0, import_jsx_runtime150.jsx)("span", { className: "text-neutral-500", children: "(hors revenus du s\xE9jour)" })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime150.jsx)("span", { className: "font-mono font-bold tabular-nums", children: reservation.cautionAmount ? formatCurrency(reservation.cautionAmount) : "montant non renseign\xE9" })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime150.jsxs)("div", { className: "p-3.5 rounded-xl border border-amber-200/80 bg-[#FAF8F5] space-y-2", children: [
               /* @__PURE__ */ (0, import_jsx_runtime150.jsxs)("span", { className: "font-semibold text-neutral-800 text-[11px] uppercase tracking-wider block flex items-center gap-1.5", children: [
@@ -73021,6 +73207,20 @@ ${establishment}`;
                   children: [
                     /* @__PURE__ */ (0, import_jsx_runtime150.jsx)(FileText, { className: "w-3.5 h-3.5 text-emerald-800" }),
                     /* @__PURE__ */ (0, import_jsx_runtime150.jsx)("span", { children: "Facture" })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime150.jsxs)(
+                "button",
+                {
+                  type: "button",
+                  onClick: printContract,
+                  className: "flex items-center gap-1 px-2.5 sm:px-3 py-1.5 text-xs font-semibold rounded-lg text-sky-950 bg-sky-100 hover:bg-sky-200 border border-sky-300 transition-all cursor-pointer active:scale-95 shadow-2xs shrink-0",
+                  title: "Imprimer le contrat de location (avec les conditions g\xE9n\xE9rales en annexe)",
+                  "data-contract-print": true,
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime150.jsx)(FileText, { className: "w-3.5 h-3.5 text-sky-800" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime150.jsx)("span", { children: "Contrat" })
                   ]
                 }
               ),
