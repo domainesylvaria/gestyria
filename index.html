@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestyria v233</title>
-  <meta name="application-name" content="Gestyria v233" />
+  <title>Gestyria v234</title>
+  <meta name="application-name" content="Gestyria v234" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8190,7 +8190,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "233";
+      APP_VERSION = "234";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -27740,12 +27740,12 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
           /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-950 space-y-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex items-center gap-2 font-bold", children: [
               /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(Sparkles, { className: "w-4 h-4 text-emerald-700" }),
-              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: "Connecteur Universel Google Apps Script" })
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: "Relier Gestyria \xE0 votre compte Google (facultatif)" })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { className: "text-[11px] leading-relaxed text-emerald-900", children: [
-              "Cette m\xE9thode fonctionne ",
-              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "partout sans aucune erreur OAuth (z\xE9ro origin_mismatch)" }),
-              ", que vous utilisiez l'application en ligne, sur mobile ou avec le fichier HTML autonome !"
+              "Gestyria garde vos donn\xE9es sur cet appareil. La liaison avec Google les copie dans ",
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "votre" }),
+              " Google Sheet : vous retrouvez tout sur un autre ordinateur ou un t\xE9l\xE9phone, et vous pouvez recevoir des e-mails automatiques (rappels, confirmations, demandes d'avis). Comptez 10 minutes la premi\xE8re fois. Les noms des boutons de Google peuvent l\xE9g\xE8rement changer : suivez le sens des \xE9tapes."
             ] })
           ] }),
           webhookSuccessMsg && /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl flex items-center gap-2", children: [
@@ -27753,12 +27753,14 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
             /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: webhookSuccessMsg })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "space-y-2.5", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { className: "font-bold text-neutral-800", children: "Comment l'activer en 3 \xE9tapes simples :" }),
+            /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { className: "font-bold text-neutral-800", children: "Comment l'activer, pas \xE0 pas :" }),
             /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "space-y-2 text-[11px]", children: [
               /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "p-2.5 rounded-lg bg-neutral-50 border border-neutral-200 flex items-start gap-2", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "w-5 h-5 bg-sy-325032 text-white rounded-full flex items-center justify-center shrink-0 font-bold text-[10px]", children: "1" }),
                 /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "flex-1", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { children: [
-                  "Ouvrez votre feuille Google Sheets, puis cliquez dans le menu sur : ",
+                  "Connectez-vous \xE0 votre compte Google, puis ouvrez ",
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("a", { href: "https://sheets.new", target: "_blank", rel: "noreferrer", className: "font-bold underline", children: "sheets.new" }),
+                  " : cela cr\xE9e une feuille vide (le nom importe peu, par exemple \xAB Gestyria \xBB). Dans cette feuille, cliquez sur le menu ",
                   /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Extensions > Apps Script" }),
                   "."
                 ] }) })
@@ -27767,11 +27769,11 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
                 /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "w-5 h-5 bg-sy-325032 text-white rounded-full flex items-center justify-center shrink-0 font-bold text-[10px]", children: "2" }),
                 /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex-1 space-y-1.5", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { children: [
-                    "Collez le script fourni ci-dessous, puis cliquez sur ",
-                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "D\xE9ployer > Nouveau d\xE9ploiement > Application Web" }),
-                    " (Acc\xE8s : ",
-                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("em", { children: "Tout le monde" }),
-                    ")."
+                    "Dans l'\xE9diteur qui s'ouvre, ",
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "effacez tout le code d\xE9j\xE0 pr\xE9sent" }),
+                    " (clic dans le code, puis Ctrl + A, puis Suppr), cliquez sur le bouton ci-dessous, puis ",
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "collez" }),
+                    " (Ctrl + V) et cliquez sur l'ic\xF4ne disquette \xAB Enregistrer \xBB."
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)(
                     "button",
@@ -27788,8 +27790,63 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "p-2.5 rounded-lg bg-neutral-50 border border-neutral-200 flex items-start gap-2", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "w-5 h-5 bg-sy-325032 text-white rounded-full flex items-center justify-center shrink-0 font-bold text-[10px]", children: "3" }),
+                /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex-1 space-y-1", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { children: [
+                    "Dans la barre du haut, choisissez la fonction ",
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "autoriserConnecteurV10" }),
+                    " dans la liste d\xE9roulante, puis cliquez sur ",
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Ex\xE9cuter" }),
+                    ". Google demande votre autorisation :"
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("ul", { className: "list-disc pl-4 text-neutral-600 space-y-0.5", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("li", { children: "cliquez sur \xAB Examiner les autorisations \xBB et choisissez votre compte ;" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("li", { children: [
+                      "un \xE9cran \xAB Google n'a pas valid\xE9 cette application \xBB appara\xEEt : c'est normal, le script est le v\xF4tre. Cliquez sur ",
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Avanc\xE9" }),
+                      ", puis sur ",
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Acc\xE9der \xE0 \u2026 (non s\xE9curis\xE9)" }),
+                      ", puis sur ",
+                      /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Autoriser" }),
+                      "."
+                    ] })
+                  ] })
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "p-2.5 rounded-lg bg-neutral-50 border border-neutral-200 flex items-start gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "w-5 h-5 bg-sy-325032 text-white rounded-full flex items-center justify-center shrink-0 font-bold text-[10px]", children: "4" }),
+                /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "flex-1", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { children: [
+                  "Cliquez sur ",
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "D\xE9ployer > Nouveau d\xE9ploiement" }),
+                  ", puis sur la roue dent\xE9e \xE0 c\xF4t\xE9 de \xAB S\xE9lectionner le type \xBB et choisissez ",
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Application Web" }),
+                  ". R\xE9glez ",
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("em", { children: "Ex\xE9cuter en tant que" }),
+                  " : ",
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Moi" }),
+                  " et ",
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("em", { children: "Qui a acc\xE8s" }),
+                  " : ",
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Tout le monde" }),
+                  ", puis cliquez sur ",
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "D\xE9ployer" }),
+                  ". Copiez l'",
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "URL de l'application Web" }),
+                  " qui s'affiche (elle finit par \xAB /exec \xBB)."
+                ] }) })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "p-2.5 rounded-lg bg-neutral-50 border border-neutral-200 flex items-start gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "w-5 h-5 bg-sy-325032 text-white rounded-full flex items-center justify-center shrink-0 font-bold text-[10px]", children: "5" }),
                 /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("div", { className: "flex-1 space-y-1.5", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("p", { children: "Collez l'URL de l'application Web obtenue ci-dessous :" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { children: [
+                    "Collez cette adresse ici, puis cliquez sur le bouton vert en dessous. Ensuite, allez dans ",
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "Param\xE9trage > Personnes et acc\xE8s" }),
+                    " et cliquez sur \xAB Prot\xE9ger mes donn\xE9es \xBB : une cl\xE9 secr\xE8te est obligatoire pour que personne d'autre ne puisse lire votre Google Sheet."
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("p", { className: "text-neutral-500", children: [
+                    "Plus tard, quand vous mettrez \xE0 jour le script, recollez-le comme \xE0 l'\xE9tape 2 puis faites ",
+                    /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("strong", { children: "D\xE9ployer > G\xE9rer les d\xE9ploiements > crayon > Version : Nouvelle version > D\xE9ployer" }),
+                    " (l'adresse ne change pas)."
+                  ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("div", { className: "flex gap-2", children: /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(
                     "input",
                     {
@@ -41049,6 +41106,85 @@ Cordialement`
     }
   });
 
+  // src/modules/assistant/demo.ts
+  function buildDemoReservations(settings, today5, now = (/* @__PURE__ */ new Date()).toISOString()) {
+    const rooms = settings.accommodations.filter((a) => a.active).slice(0, 2);
+    if (rooms.length === 0) return [];
+    return STAYS.map((s, i) => {
+      const room = rooms[s.room % rooms.length];
+      const nights = s.to - s.from;
+      const extra = Math.max(0, s.adults + s.children - (room.baseGuestsCount || 2));
+      const roomAmount = Math.round(nights * ((room.basePrice || 0) + extra * (room.extraGuestPrice || 0)));
+      return {
+        id: `${DEMO_PREFIX}${i + 1}`,
+        roomId: room.id,
+        guestName: s.name,
+        checkIn: addDaysIso(today5, s.from),
+        checkOut: addDaysIso(today5, s.to),
+        nights,
+        adultsCount: s.adults,
+        childrenCount: s.children,
+        babiesCount: 0,
+        guestsCount: s.adults + s.children,
+        bookingSource: s.source,
+        clientOriginType: s.source === "direct" ? "Direct" : "Indirect",
+        roomAmount,
+        totalAmount: roomAmount,
+        paymentStatus: s.paid,
+        reservationStatus: s.status,
+        notes: "R\xE9servation d'exemple : elle dispara\xEEt avec \xAB Supprimer les exemples \xBB.",
+        createdAt: now
+      };
+    });
+  }
+  function applyProfile(settings, profile, today5) {
+    const def = PROFILES.find((p) => p.id === profile);
+    if (!def || def.modules.length === 0) return settings;
+    const modules = { ...settings.modules };
+    for (const id of def.modules) {
+      const cur = modules[id];
+      if (cur?.enabled) continue;
+      modules[id] = { ...cur, enabled: true, enabledSince: cur?.enabledSince || today5 };
+    }
+    return { ...settings, modules };
+  }
+  var DEMO_PREFIX, isDemoReservation, STAYS, PROFILES;
+  var init_demo = __esm({
+    "src/modules/assistant/demo.ts"() {
+      "use strict";
+      init_rateCalendar();
+      DEMO_PREFIX = "demo_";
+      isDemoReservation = (r) => r.id.startsWith(DEMO_PREFIX);
+      STAYS = [
+        { name: "Famille Exemple (s\xE9jour en cours)", from: -1, to: 2, adults: 2, children: 2, source: "direct", paid: "paid", status: "confirmed", room: 0 },
+        { name: "Arriv\xE9e demain - Exemple", from: 1, to: 4, adults: 2, children: 0, source: "booking", paid: "pending", status: "confirmed", room: 1 },
+        { name: "S\xE9jour \xE0 venir - Exemple", from: 9, to: 12, adults: 2, children: 1, source: "airbnb", paid: "deposit", status: "confirmed", room: 0 },
+        { name: "Demande \xE0 valider - Exemple", from: 20, to: 23, adults: 2, children: 0, source: "direct", paid: "pending", status: "pending", room: 1 },
+        { name: "S\xE9jour termin\xE9 - Exemple", from: -14, to: -11, adults: 2, children: 0, source: "direct", paid: "paid", status: "confirmed", room: 0 }
+      ];
+      PROFILES = [
+        {
+          id: "keep",
+          label: "R\xE9servations et facturation",
+          description: "Le plus simple pour commencer : r\xE9servations, calendrier, factures, clients et statistiques.",
+          modules: []
+        },
+        {
+          id: "repas",
+          label: "Avec repas, m\xE9nage et livret d'accueil",
+          description: "Ajoute la carte des repas, le suivi du m\xE9nage entre deux s\xE9jours et le livret d'accueil pour vos voyageurs.",
+          modules: ["meals", "housekeeping", "welcomeBook"]
+        },
+        {
+          id: "complet",
+          label: "Tout activer",
+          description: "Ajoute aussi la rentabilit\xE9, le registre d'hygi\xE8ne, le suivi de l'\xE9tablissement, le personnel, les documents administratifs et le site web.",
+          modules: ["meals", "housekeeping", "welcomeBook", "profitability", "hygiene", "establishment", "staff", "adminDocs", "website"]
+        }
+      ];
+    }
+  });
+
   // src/modules/assistant/setup.ts
   function parseAmount2(text, fallback = 0) {
     const n = Number(String(text ?? "").trim().replace(/\s/g, "").replace(",", "."));
@@ -41078,6 +41214,7 @@ Cordialement`
       email: e.email || "",
       siret: e.siret || "",
       vatMention: e.vatMention || "",
+      profile: "keep",
       rooms: s.accommodations.filter((a) => a.active).map((a) => ({ id: a.id, name: a.name, guests: num6(a.maxGuests), price: num6(a.basePrice) })),
       spaces: s.resources.filter((r) => r.active).map((r) => ({ id: r.id, name: r.name, guests: num6(r.capacity), price: num6(r.price) })),
       services: s.services.filter((x) => x.active).map((x) => ({ id: x.id, name: x.name, price: num6(x.price), unit: x.unit }))
@@ -41179,6 +41316,9 @@ Cordialement`
       services
     };
   }
+  function buildSetupSettingsWithProfile(base, a, today5 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)) {
+    return applyProfile(buildSetupSettings(base, a), a.profile, today5);
+  }
   function isFreshInstall(opts) {
     let done = false;
     try {
@@ -41197,6 +41337,7 @@ Cordialement`
   var init_setup = __esm({
     "src/modules/assistant/setup.ts"() {
       "use strict";
+      init_demo();
       SETUP_DONE_KEY = "gestyria_setup_done_v1";
       OPEN_SETUP_EVENT = "gestyria_open_setup";
       CONNECT_EVENT = "gestyria_connect";
@@ -41235,8 +41376,9 @@ Cordialement`
       init_themes2();
       init_AppearanceSection();
       init_setup();
+      init_demo();
       import_jsx_runtime64 = __require("react/jsx-runtime");
-      STEPS2 = ["Bienvenue", "Votre \xE9tablissement", "Vos coordonn\xE9es", "Vos h\xE9bergements", "Espaces et services", "Apparence", "Termin\xE9"];
+      STEPS2 = ["Bienvenue", "Votre \xE9tablissement", "Vos coordonn\xE9es", "Vos h\xE9bergements", "Espaces et services", "Apparence", "Vos besoins", "Termin\xE9"];
       inputClass3 = "w-full text-sm border border-neutral-300 rounded-xl px-3 py-2.5 bg-white focus:outline-none focus:ring-2 focus:ring-sy-325032/30 focus:border-sy-325032";
       Label = ({ text, hint, children, className = "" }) => /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { className: `block ${className}`, children: [
         /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "block text-xs font-semibold text-neutral-700 mb-1", children: text }),
@@ -41248,6 +41390,7 @@ Cordialement`
         const [a, setA] = (0, import_react72.useState)(() => answersFromSettings(getSettings()));
         const [theme, setTheme] = (0, import_react72.useState)(() => getAppearance().theme);
         const [error, setError] = (0, import_react72.useState)("");
+        const [withDemo, setWithDemo] = (0, import_react72.useState)(false);
         const fileRef = (0, import_react72.useRef)(null);
         const [restore, setRestore] = (0, import_react72.useState)(null);
         const [restoreMsg, setRestoreMsg] = (0, import_react72.useState)("");
@@ -41280,10 +41423,10 @@ Cordialement`
         };
         const finish = () => {
           const current2 = getSettings();
-          saveSettings(buildSetupSettings(current2, a), "Assistant de d\xE9marrage : \xE9tablissement configur\xE9.");
+          saveSettings(buildSetupSettingsWithProfile(current2, a), "Assistant de d\xE9marrage : \xE9tablissement configur\xE9.");
           setAppearance({ theme, colors: getAppearance().colors }, getSettings().establishment.themeColor);
           markSetupDone();
-          onClose(true);
+          onClose(true, withDemo && !locked);
         };
         const onBackupFile = async (files) => {
           const f = files && files[0];
@@ -41516,6 +41659,33 @@ Cordialement`
                 );
               }) })
             ] }),
+            step === lastStep - 1 && /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "space-y-4", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h2", { className: "font-serif font-bold text-xl text-neutral-900", children: "De quoi avez-vous besoin ?" }),
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { className: "text-sm text-neutral-600", children: "Choisissez ce que vous voulez voir dans les onglets. Ce n'est pas d\xE9finitif : chaque fonction s'active ou se retire plus tard dans Param\xE9trage > Modules, sans rien perdre." }),
+              /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "space-y-2.5", role: "radiogroup", "aria-label": "Fonctions \xE0 activer", children: PROFILES.map((p) => {
+                const active2 = a.profile === p.id;
+                return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(
+                  "button",
+                  {
+                    type: "button",
+                    role: "radio",
+                    "aria-checked": active2,
+                    onClick: () => set({ profile: p.id }),
+                    className: `w-full text-left p-3.5 rounded-2xl border-2 cursor-pointer transition-colors ${active2 ? "border-sy-325032 bg-sy-e9efea/60" : "border-neutral-200 hover:border-neutral-300"}`,
+                    "data-setup-profile": p.id,
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("p", { className: "text-sm font-bold text-neutral-900 flex items-center gap-1.5", children: [
+                        p.label,
+                        p.id === "keep" && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("span", { className: "text-[10px] font-semibold text-sy-325032 bg-sy-e9efea rounded-full px-2 py-0.5", children: "Conseill\xE9 pour d\xE9buter" }),
+                        active2 && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Check, { className: "w-4 h-4 text-sy-325032" })
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { className: "text-xs text-neutral-600 mt-0.5 leading-snug", children: p.description })
+                    ]
+                  },
+                  p.id
+                );
+              }) })
+            ] }),
             step === lastStep && /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "space-y-4", children: [
               /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("div", { className: "w-14 h-14 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center", children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(Check, { className: "w-7 h-7" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h2", { className: "font-serif font-bold text-2xl text-neutral-900", children: "Tout est pr\xEAt !" }),
@@ -41539,6 +41709,13 @@ Cordialement`
                 /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("li", { children: "Cliquez sur \xAB Nouvelle r\xE9servation \xBB pour saisir votre premier s\xE9jour." }),
                 /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("li", { children: "Dans Param\xE9trage > Plateformes, reliez vos calendriers Airbnb ou Booking si vous en avez." }),
                 /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("li", { children: "Pensez \xE0 faire une sauvegarde de temps en temps : bouton \xAB T\xE9l\xE9charger \xBB en haut de l'\xE9cran." })
+              ] }),
+              !locked && /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("label", { className: "flex items-start gap-2.5 p-3 rounded-xl bg-neutral-50 border border-neutral-200 text-sm text-neutral-800 cursor-pointer", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("input", { type: "checkbox", checked: withDemo, onChange: (e) => setWithDemo(e.target.checked), className: "mt-0.5 w-4 h-4 accent-sy-325032", "data-setup-demo": true }),
+                /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("span", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("b", { children: "Ajouter quelques r\xE9servations d'exemple" }),
+                  " pour d\xE9couvrir le calendrier, les factures et les statistiques. Un bandeau permet de toutes les supprimer en un clic."
+                ] })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { className: "text-xs text-neutral-500", children: "Besoin de refaire ce parcours ? Param\xE9trage > \xC9tablissement > \xAB Assistant de d\xE9marrage \xBB." })
             ] })
@@ -72173,6 +72350,18 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       } : void 0);
       triggerBackgroundSync(updated, externalReviews);
     };
+    const handleAddDemo = () => {
+      const demo = buildDemoReservations(getSettings(), (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
+      if (demo.length === 0) return;
+      setReservations((prev) => [...prev.filter((r) => !isDemoReservation(r)), ...demo]);
+      showToast("R\xE9servations d'exemple ajout\xE9es. Un bandeau permet de les supprimer.");
+    };
+    const handleRemoveDemo = () => {
+      const kept = reservations.filter((r) => !isDemoReservation(r));
+      setReservations(kept);
+      showToast("R\xE9servations d'exemple supprim\xE9es.");
+      triggerBackgroundSync(kept, externalReviews);
+    };
     const handleDecideSiteRequest = async (res2, decision, message) => {
       const updated = reservations.map((r) => {
         if (r.id !== res2.id) return r;
@@ -72291,6 +72480,13 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
         `header-${dataVersion}`
       ),
       /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("main", { className: "flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-4 sm:space-y-6", children: [
+        reservations.some(isDemoReservation) && /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { className: "flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900", "data-demo-banner": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("span", { className: "flex-1 min-w-[14rem]", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("b", { children: "R\xE9servations d'exemple affich\xE9es." }),
+            " Elles servent \xE0 d\xE9couvrir Gestyria et comptent dans les statistiques tant qu'elles sont l\xE0."
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("button", { type: "button", onClick: handleRemoveDemo, className: "px-3 py-1.5 font-bold text-white bg-amber-700 hover:bg-amber-800 rounded-lg cursor-pointer", "data-demo-remove": true, children: "Supprimer les exemples" })
+        ] }),
         /* @__PURE__ */ (0, import_jsx_runtime149.jsx)(
           RequestsBanner,
           {
@@ -72559,7 +72755,10 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
           onLinkSheet: handleLinkSheet
         }
       ),
-      setupOpen && /* @__PURE__ */ (0, import_jsx_runtime149.jsx)(SetupWizard, { reservationsCount: reservations.length, onClose: () => setSetupOpen(false) }),
+      setupOpen && /* @__PURE__ */ (0, import_jsx_runtime149.jsx)(SetupWizard, { reservationsCount: reservations.length, onClose: (_done, withDemo) => {
+        setSetupOpen(false);
+        if (withDemo) handleAddDemo();
+      } }),
       /* @__PURE__ */ (0, import_jsx_runtime149.jsx)(
         SettingsModal,
         {
@@ -72684,6 +72883,7 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       init_PublicBookApp();
       init_settingsStore();
       init_SetupWizard();
+      init_demo();
       init_catalog();
       init_setup();
       init_links();
