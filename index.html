@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v282</title>
-  <meta name="application-name" content="Gestyria v282" />
+  <title>Gestyria v283</title>
+  <meta name="application-name" content="Gestyria v283" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -4813,7 +4813,10 @@ footer{background:#111}
           dependsOn: ["reservations"],
           worksWith: ["rates", "planning"],
           available: true,
-          defaultEnabled: false
+          defaultEnabled: false,
+          hidden: true,
+          // Plus un module à activer : fait partie de Calendrier > Visualisation tarif
+          followsModule: "rates"
         },
         {
           id: "utilities",
@@ -4879,6 +4882,8 @@ footer{background:#111}
       HOSTED_TABS = {
         report: "profitability",
         annual: "profitability",
+        priceAdvice: "planning",
+        // Conseils de prix : rangé dans Calendrier > Visualisation tarif
         utilities: "profitability"
         // Énergie et eau : rangé dans Rentabilité (les factures y sont saisies) quand les deux modules sont actifs
       };
@@ -8608,7 +8613,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "282";
+      APP_VERSION = "283";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -24229,7 +24234,7 @@ function beds24Bookings_() {
         { title: "Documents : contrats, assurances, \xE9ch\xE9ances", where: "Assistant administratif", tab: "adminDocs", text: "document contrat assurance echeance rappel piece administrative attestation recepisse" },
         { title: "Mod\xE8les de documents (PDF, Word)", where: "G\xE9n\xE9rateur de documents", tab: "docgen", text: "document modele pdf word bandeau logo courrier affiche generer" },
         { title: "Entretien, interventions, incidents", where: "Suivi de l'\xE9tablissement", tab: "establishment", text: "entretien intervention incident piscine securite controle maintenance travaux releve" },
-        { title: "Conseils de prix", where: "Conseils de prix", tab: "priceAdvice", text: "conseil prix suggestion saison occupation augmenter baisser tarif" }
+        { title: "Conseils de prix", where: "Calendrier > Visualisation tarif", tab: "priceAdvice", text: "conseil prix suggestion saison occupation augmenter baisser tarif" }
       ];
     }
   });
@@ -77984,6 +77989,7 @@ ${annex}
   });
   function openHostedView(tab2, host) {
     if (host === "meals") requestMealsView("ingredients");
+    else if (host === "planning") setPlanningView("rates");
     else if (host === "profitability") requestProfitabilityView(tab2 === "annual" ? "annual" : tab2 === "utilities" ? "energy" : "monthly");
   }
   function App() {
@@ -78892,7 +78898,10 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
               onNewReservationAtDate: handleOpenNewReservation
             }
           ),
-          activeTab === "timeline" && planningView === "rates" && /* @__PURE__ */ (0, import_jsx_runtime165.jsx)(RateGridView, { year: selectedYear, month: selectedMonth, onToast: showToast }),
+          activeTab === "timeline" && planningView === "rates" && /* @__PURE__ */ (0, import_jsx_runtime165.jsxs)("div", { className: "space-y-4 sm:space-y-6", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime165.jsx)(RateGridView, { year: selectedYear, month: selectedMonth, onToast: showToast }),
+            isModuleEnabled("priceAdvice", settings) && /* @__PURE__ */ (0, import_jsx_runtime165.jsx)(AdviceView, { reservations: effectiveReservations, onToast: showToast })
+          ] }),
           activeTab === "timeline" && planningView === "calendar" && /* @__PURE__ */ (0, import_jsx_runtime165.jsxs)("div", { className: "space-y-4 sm:space-y-6", children: [
             /* @__PURE__ */ (0, import_jsx_runtime165.jsx)(
               MonthCalendarGrid,
@@ -79020,7 +79029,6 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
           activeTab === "docgen" && /* @__PURE__ */ (0, import_jsx_runtime165.jsx)(DocView, { onToast: showToast }),
           activeTab === "website" && /* @__PURE__ */ (0, import_jsx_runtime165.jsx)(WebsiteView, { reservations, externalReviews, onToast: showToast, onDecideRequest: handleDecideSiteRequest }),
           activeTab === "staff" && /* @__PURE__ */ (0, import_jsx_runtime165.jsx)(StaffView, { onToast: showToast, reservations: effectiveReservations }),
-          activeTab === "priceAdvice" && /* @__PURE__ */ (0, import_jsx_runtime165.jsx)(AdviceView, { reservations: effectiveReservations, onToast: showToast }),
           activeTab === "utilities" && /* @__PURE__ */ (0, import_jsx_runtime165.jsx)(UtilitiesView, { reservations: effectiveReservations, onToast: showToast }),
           activeTab === "compliance" && /* @__PURE__ */ (0, import_jsx_runtime165.jsx)(ComplianceView, { reservations: effectiveReservations, onToast: showToast, onOpen: (tab2) => setActiveTab(tab2) }),
           activeTab === "today" && /* @__PURE__ */ (0, import_jsx_runtime165.jsx)(TodayView, { reservations: effectiveReservations, onToast: showToast, onOpen: (tab2, section2) => {
