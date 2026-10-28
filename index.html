@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v279</title>
-  <meta name="application-name" content="Gestyria v279" />
+  <title>Gestyria v280</title>
+  <meta name="application-name" content="Gestyria v280" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8608,7 +8608,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "279";
+      APP_VERSION = "280";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -14735,8 +14735,8 @@ footer{background:#111}
           category: CATEGORIES[1],
           title: "Fiche individuelle de police des voyageurs \xE9trangers",
           level: "obligatoire",
-          summary: "Les h\xE9bergeurs (h\xF4tels, chambres d\u2019h\xF4tes, meubl\xE9s, campings) font remplir et signer une fiche individuelle de police par chaque voyageur \xE9tranger, y compris ressortissant de l\u2019Union europ\xE9enne. Elle est conserv\xE9e 6 mois et remise aux autorit\xE9s seulement sur demande.",
-          steps: ["Faire remplir la fiche d\xE8s l\u2019arriv\xE9e (nom, naissance, nationalit\xE9, domicile, coordonn\xE9es, dates de s\xE9jour).", "La conserver 6 mois, puis la d\xE9truire.", "Gestyria la collecte depuis le formulaire du site ou la fiche de r\xE9servation, et la purge au bout de 6 mois."],
+          summary: "Les h\xE9bergeurs (h\xF4tels, chambres d\u2019h\xF4tes, meubl\xE9s, campings) font remplir et signer une fiche individuelle de police par chaque voyageur \xE9tranger, y compris ressortissant de l\u2019Union europ\xE9enne. Elle est conserv\xE9e 6 mois et remise aux autorit\xE9s seulement sur demande. R\xE9servations par une plateforme (Booking, Airbnb\u2026) : rien \xE0 faire de votre c\xF4t\xE9, la plateforme s\u2019en occupe. R\xE9servations directes : la fiche est dans la fiche de r\xE9servation ; si le voyageur a r\xE9serv\xE9 par le site web, il l\u2019a d\xE9j\xE0 remplie.",
+          steps: ["R\xE9servation par une plateforme (Booking, Airbnb, Abritel\u2026) : aucune fiche \xE0 faire remplir par vous.", "R\xE9servation directe pass\xE9e par le site web : la fiche est remplie par le voyageur et d\xE9j\xE0 dans la fiche de r\xE9servation.", "R\xE9servation directe sans passer par le site : ouvrez la fiche de r\xE9servation (onglet R\xE9servations) et utilisez \xAB Fiche individuelle de police \xBB pour la remplir et l\u2019imprimer \xE0 faire signer, ou imprimez ci-dessous une fiche vierge au format PDF.", "Conserver la fiche 6 mois, puis la d\xE9truire : Gestyria la supprime automatiquement au bout de 6 mois."],
           risk: "Contravention (de 4e classe selon un site professionnel : \xE0 confirmer).",
           source: { label: "justice.fr \u2014 fiche individuelle de police", url: "https://www.justice.fr/fiche/faire-remplir-fiche-individuelle-police-touriste-etranger" },
           confirm: "Les sources citent des articles diff\xE9rents du CESEDA pour la dur\xE9e et la sanction : confirmer sur L\xE9gifrance.",
@@ -68270,12 +68270,21 @@ Sitemap: ${base}sitemap.xml
   });
 
   // src/modules/reglementation/ComplianceView.tsx
+  function printBlankPoliceSheet(establishment) {
+    const w2 = window.open("", "_blank");
+    if (!w2) return;
+    w2.document.write(policeSheetHtml({ checkIn: "", checkOut: "" }, emptyPoliceSheet({ guestName: "" }), establishment));
+    w2.document.close();
+    w2.focus();
+    window.setTimeout(() => w2.print(), 300);
+  }
   var import_react145, import_jsx_runtime144, LEVEL_TONE, STATUS_TONE, inputClass7, frDate13, Badge2, TextField, savedAt, RowEditor, DEFAULT_DOC_LABEL, OTHER_DOC, ComplianceDocs, Bar, ComplianceView;
   var init_ComplianceView = __esm({
     "src/modules/reglementation/ComplianceView.tsx"() {
       "use strict";
       import_react145 = __require("react");
       init_lucide_react();
+      init_police();
       init_store6();
       init_content5();
       init_files();
@@ -68674,6 +68683,14 @@ Sitemap: ${base}sitemap.xml
                         threshold > 0 && /* @__PURE__ */ (0, import_jsx_runtime144.jsx)(Bar, { value: revenueInYear(reservations, year), max: threshold })
                       ] }),
                       /* @__PURE__ */ (0, import_jsx_runtime144.jsx)("div", { className: "space-y-2", children: rowsOf(item2, rooms).map((r) => /* @__PURE__ */ (0, import_jsx_runtime144.jsx)(RowEditor, { item: item2, rowKey: r.key, label: r.label, record: normalizeRecord(map[r.key]), sources, onSave: save }, r.key)) }),
+                      item2.id === "fiche-police" && /* @__PURE__ */ (0, import_jsx_runtime144.jsxs)("div", { className: "p-2.5 rounded-xl bg-sky-50 border border-sky-200 space-y-1.5", "data-police-blank": true, children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime144.jsx)("p", { className: "text-xs text-sky-950", children: "Fiche vierge \xE0 imprimer, \xE0 utiliser pour une r\xE9servation directe qui n\u2019est pas pass\xE9e par le site web. Dans la fen\xEAtre d\u2019impression, choisissez \xAB Enregistrer au format PDF \xBB pour en faire un fichier." }),
+                        /* @__PURE__ */ (0, import_jsx_runtime144.jsxs)("button", { type: "button", onClick: () => printBlankPoliceSheet(settings.establishment), className: "flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-sy-325032 hover:bg-sy-253d25 rounded-lg cursor-pointer", "data-police-blank-print": true, children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime144.jsx)(Printer, { className: "w-3.5 h-3.5" }),
+                          " Imprimer ou enregistrer la fiche vierge (PDF)"
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime144.jsx)("p", { className: "text-[11px] text-sky-900", children: "Cette fiche est aussi disponible dans chaque r\xE9servation (onglet R\xE9servations, puis fiche de r\xE9servation, rubrique \xAB Fiche individuelle de police \xBB), d\xE9j\xE0 pr\xE9remplie avec les dates du s\xE9jour." })
+                      ] }),
                       /* @__PURE__ */ (0, import_jsx_runtime144.jsx)(ComplianceDocs, { item: item2, onToast }),
                       /* @__PURE__ */ (0, import_jsx_runtime144.jsxs)("div", { className: "flex flex-wrap items-center gap-3 text-[11px]", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime144.jsxs)("a", { href: item2.source.url, target: "_blank", rel: "noreferrer", className: "inline-flex items-center gap-1 font-semibold text-sy-325032 underline", children: [
