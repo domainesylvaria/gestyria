@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v269</title>
-  <meta name="application-name" content="Gestyria v269" />
+  <title>Gestyria v272</title>
+  <meta name="application-name" content="Gestyria v272" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -4931,6 +4931,9 @@ footer{background:#111}
   function setWriteGuard(guard) {
     writeGuard = guard;
   }
+  function writeAllowed(key) {
+    return !blockedByGuard(key);
+  }
   function blockedByGuard(key) {
     if (!writeGuard || writeGuard(key)) return false;
     try {
@@ -5228,7 +5231,12 @@ footer{background:#111}
         domaine_sylvaria_assets_v1: "profitability",
         domaine_sylvaria_site_content_v1: "website",
         domaine_sylvaria_site_library_v1: "website",
-        domaine_sylvaria_welcome_photos_v1: "welcomeBook"
+        domaine_sylvaria_welcome_photos_v1: "welcomeBook",
+        domaine_sylvaria_housekeeping_tasks_v1: "housekeeping",
+        domaine_sylvaria_meals_items_v1: "ingredients",
+        domaine_sylvaria_breakfast_ingredients_v1: "ingredients",
+        domaine_sylvaria_invoices_registry_v1: "invoicing",
+        domaine_sylvaria_contact_edits_v1: "contacts"
       };
       setWriteGuard(licenseAllowsWrite);
       try {
@@ -8242,7 +8250,7 @@ footer{background:#111}
         },
         setItem: (key, value) => {
           try {
-            localStorage.setItem(key, value);
+            safeSetItem(key, value);
           } catch (e) {
             console.warn("localStorage setItem failed:", e);
           }
@@ -8508,6 +8516,7 @@ footer{background:#111}
     }
   }
   function persist(next) {
+    if (!writeAllowed(TASKS_STORAGE_KEY)) return;
     tasks = next;
     safeSetItem(TASKS_STORAGE_KEY, JSON.stringify(next));
     notify4();
@@ -8588,7 +8597,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "269";
+      APP_VERSION = "272";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -12306,7 +12315,14 @@ footer{background:#111}
     }
     const data = await connectorGet({ action: "diagnostic" }, target);
     if (data?.status !== "success" || !Array.isArray(data.checks)) throw new Error(data?.message || "V\xE9rification impossible.");
-    return data.checks.map((c) => ({ id: String(c.id), ok: c.ok === true, detail: String(c.detail || "") }));
+    return {
+      version: typeof data.version === "number" ? data.version : info.version,
+      checks: data.checks.map((c) => ({ id: String(c.id), ok: c.ok === true, detail: String(c.detail || "") }))
+    };
+  }
+  function expectedConnectorVersion() {
+    const m = /var CONNECTOR_VERSION = (\d+);/.exec(getAppsScriptCode());
+    return m ? Number(m[1]) : 0;
   }
   async function requireV22(target = currentTarget()) {
     const info = await connectorInfo(target, true);
@@ -29308,6 +29324,11 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
           label: "Adresse de l'application connue du connecteur",
           fix: "Elle est transmise automatiquement quand l'application est ouverte depuis son adresse en ligne (https) avec l'adresse prot\xE9g\xE9e. Ouvrez l'application en ligne puis rev\xE9rifiez."
         },
+        cgv: {
+          label: "Conditions g\xE9n\xE9rales de vente jointes aux confirmations",
+          fix: "Enregistrez vos conditions g\xE9n\xE9rales de vente (Facturation > Conditions g\xE9n\xE9rales de vente), puis cliquez sur \xAB Enregistrer \xBB dans Param\xE9trage > Google Sheets. Sans elles, les confirmations de r\xE9servation du site partent sans pi\xE8ce jointe.",
+          optional: true
+        },
         email: {
           label: "Adresse e-mail de l'\xE9tablissement",
           fix: "Renseignez-la dans Param\xE9trage > \xC9tablissement : c'est l\xE0 que le connecteur envoie ses messages (commandes, messages du livret\u2026).",
@@ -29320,7 +29341,8 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
         const run = async () => {
           setState({ kind: "loading" });
           try {
-            setState({ kind: "done", checks: await connectorDiagnostic() });
+            const result = await connectorDiagnostic();
+            setState({ kind: "done", checks: result.checks, version: result.version });
           } catch (err) {
             setState({ kind: "error", message: err?.message || "V\xE9rification impossible." });
           }
@@ -29328,6 +29350,8 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
         if (!hasUrl) return null;
         const missing = state2.kind === "done" ? state2.checks.filter((c) => !c.ok && CHECK_TEXTS[c.id]) : [];
         const blocking = missing.filter((c) => !CHECK_TEXTS[c.id]?.optional);
+        const expected = expectedConnectorVersion();
+        const outdated = state2.kind === "done" && expected > 0 && state2.version < expected;
         return /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "mt-5 p-3.5 rounded-xl border border-neutral-200 bg-white", children: [
           /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "flex items-center gap-1.5 font-serif font-bold text-sm text-neutral-900", children: [
             /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(Stethoscope, { className: "w-4 h-4 text-sy-325032" }),
@@ -29350,6 +29374,18 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
           state2.kind === "error" && /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("p", { className: "text-[11px] text-orange-800 mt-2", children: state2.message }),
           state2.kind === "done" && /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "mt-3 space-y-1.5", children: [
             /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("p", { className: `text-[11px] font-semibold ${blocking.length ? "text-orange-800" : "text-emerald-800"}`, children: blocking.length ? `${blocking.length} point${blocking.length > 1 ? "s" : ""} \xE0 r\xE9gler.` : "Tout est en place." }),
+            /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: `flex items-start gap-1.5 text-[11px] ${outdated ? "text-orange-800" : "text-emerald-800"}`, "data-connector-version": true, children: [
+              outdated ? /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(TriangleAlert, { className: "w-3.5 h-3.5 shrink-0 mt-px" }) : /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(CircleCheck, { className: "w-3.5 h-3.5 shrink-0 mt-px" }),
+              /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("span", { className: "font-semibold", children: [
+                "Version du connecteur : V",
+                state2.version
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("span", { className: "text-neutral-500", children: [
+                "\xB7 ",
+                outdated ? `la derni\xE8re est V${expected}` : "\xE0 jour"
+              ] })
+            ] }),
+            outdated && /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("p", { className: "ml-5 text-[11px] text-neutral-600", children: "Mettez-le \xE0 jour : Param\xE9trage > Google Sheets, copiez TOUT le code, collez-le dans Apps Script (Extensions > Apps Script), puis D\xE9ployer > G\xE9rer les d\xE9ploiements > crayon > Version : Nouvelle version > D\xE9ployer. L'adresse ne change pas." }),
             state2.checks.filter((c) => CHECK_TEXTS[c.id]).map((c) => {
               const t = CHECK_TEXTS[c.id];
               return /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "text-[11px]", children: [
@@ -71244,6 +71280,7 @@ ${text}` : text });
   var init_invoiceTrash = __esm({
     "src/core/invoiceTrash.ts"() {
       "use strict";
+      init_storage();
       REGISTRY_KEY2 = "domaine_sylvaria_invoices_registry_v1";
       TRASH_KEY = "domaine_sylvaria_invoices_trash_v1";
       TRASH_MAX = 20;
@@ -71259,7 +71296,7 @@ ${text}` : text });
       trashInvoice = (reservationId) => {
         const registry = readJson3(REGISTRY_KEY2, {});
         const config = registry[reservationId];
-        if (config) {
+        if (config && writeAllowed(REGISTRY_KEY2)) {
           const trash = listTrashedInvoices().filter((t) => t.reservationId !== reservationId);
           trash.unshift({ reservationId, config, deletedAt: (/* @__PURE__ */ new Date()).toISOString() });
           localStorage.setItem(TRASH_KEY, JSON.stringify(trash.slice(0, TRASH_MAX)));
@@ -71270,6 +71307,7 @@ ${text}` : text });
       };
       restoreInvoice = (reservationId) => {
         const registry = readJson3(REGISTRY_KEY2, {});
+        if (!writeAllowed(REGISTRY_KEY2)) return registry;
         const trash = listTrashedInvoices();
         const found = trash.find((t) => t.reservationId === reservationId);
         if (found && !registry[reservationId]) {
