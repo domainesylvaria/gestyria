@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v287</title>
-  <meta name="application-name" content="Gestyria v287" />
+  <title>Gestyria v288</title>
+  <meta name="application-name" content="Gestyria v288" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -5961,19 +5961,28 @@ footer{background:#111}
       }
     };
   }
-  var SETTINGS_SCHEMA_VERSION, DEFAULT_PLATFORMS;
+  var SETTINGS_SCHEMA_VERSION, SAFE_PLATFORM_HEX, LEGACY_PLATFORM_HEX, DEFAULT_PLATFORMS;
   var init_defaults = __esm({
     "src/core/settings/defaults.ts"() {
       "use strict";
       init_registry();
       SETTINGS_SCHEMA_VERSION = 1;
+      SAFE_PLATFORM_HEX = {
+        direct: "#2a78d6",
+        airbnb: "#eb6834",
+        booking: "#6250d6",
+        abritel: "#1baf7a",
+        google: "#eda100",
+        simmy: "#e87ba4"
+      };
+      LEGACY_PLATFORM_HEX = { direct: "#059669", airbnb: "#FF5A5F", booking: "#003580", abritel: "#4F46E5", google: "#F59E0B", simmy: "#8B5CF6" };
       DEFAULT_PLATFORMS = [
-        { id: "direct", label: "Direct", badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200", color: "emerald", hex: "#059669", active: true, builtin: true },
-        { id: "airbnb", label: "Airbnb", badgeClass: "bg-rose-50 text-rose-800 border-rose-200", color: "rose", hex: "#FF5A5F", active: true, builtin: true },
-        { id: "booking", label: "Booking", badgeClass: "bg-blue-50 text-blue-800 border-blue-200", color: "blue", hex: "#003580", active: true, builtin: true },
-        { id: "abritel", label: "Abritel", badgeClass: "bg-indigo-50 text-indigo-800 border-indigo-200", color: "indigo", hex: "#4F46E5", active: true, builtin: true },
-        { id: "google", label: "Google", badgeClass: "bg-amber-50 text-amber-800 border-amber-200", color: "amber", hex: "#F59E0B", active: true, builtin: true },
-        { id: "simmy", label: "Simmy", badgeClass: "bg-purple-50 text-purple-800 border-purple-200", color: "purple", hex: "#8B5CF6", active: false, builtin: true },
+        { id: "direct", label: "Direct", badgeClass: "bg-emerald-50 text-emerald-800 border-emerald-200", color: "emerald", hex: SAFE_PLATFORM_HEX.direct, active: true, builtin: true },
+        { id: "airbnb", label: "Airbnb", badgeClass: "bg-rose-50 text-rose-800 border-rose-200", color: "rose", hex: SAFE_PLATFORM_HEX.airbnb, active: true, builtin: true },
+        { id: "booking", label: "Booking", badgeClass: "bg-blue-50 text-blue-800 border-blue-200", color: "blue", hex: SAFE_PLATFORM_HEX.booking, active: true, builtin: true },
+        { id: "abritel", label: "Abritel", badgeClass: "bg-indigo-50 text-indigo-800 border-indigo-200", color: "indigo", hex: SAFE_PLATFORM_HEX.abritel, active: true, builtin: true },
+        { id: "google", label: "Google", badgeClass: "bg-amber-50 text-amber-800 border-amber-200", color: "amber", hex: SAFE_PLATFORM_HEX.google, active: true, builtin: true },
+        { id: "simmy", label: "Simmy", badgeClass: "bg-purple-50 text-purple-800 border-purple-200", color: "purple", hex: SAFE_PLATFORM_HEX.simmy, active: false, builtin: true },
         { id: "autre", label: "Autre", badgeClass: "bg-neutral-100 text-neutral-800 border-neutral-200", color: "neutral", hex: "#64748B", active: true, builtin: true }
       ];
     }
@@ -5987,6 +5996,7 @@ footer{background:#111}
       if (!platforms.some((x) => x.id === p.id)) platforms = [...platforms, p];
     });
     platforms = platforms.map((p) => p.id === "direct" ? { ...p, active: true } : p);
+    platforms = platforms.map((p) => LEGACY_PLATFORM_HEX[p.id] && String(p.hex || "").toLowerCase() === LEGACY_PLATFORM_HEX[p.id].toLowerCase() ? { ...p, hex: SAFE_PLATFORM_HEX[p.id] } : p);
     const accommodations = Array.isArray(stored.accommodations) ? stored.accommodations.map(
       (a) => a.icalFeeds ? a : { ...a, icalFeeds: defaults.accommodations.find((d) => d.id === a.id)?.icalFeeds || [] }
     ) : defaults.accommodations;
@@ -8614,7 +8624,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "287";
+      APP_VERSION = "288";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -14742,7 +14752,7 @@ footer{background:#111}
           title: "Fiche individuelle de police des voyageurs \xE9trangers",
           level: "obligatoire",
           summary: "Les h\xE9bergeurs (h\xF4tels, chambres d\u2019h\xF4tes, meubl\xE9s, campings) font remplir et signer une fiche individuelle de police par chaque voyageur \xE9tranger, y compris ressortissant de l\u2019Union europ\xE9enne. Elle est conserv\xE9e 6 mois et remise aux autorit\xE9s seulement sur demande. R\xE9servations par une plateforme (Booking, Airbnb\u2026) : rien \xE0 faire de votre c\xF4t\xE9, la plateforme s\u2019en occupe. R\xE9servations directes : la fiche est dans la fiche de r\xE9servation ; si le voyageur a r\xE9serv\xE9 par le site web, il l\u2019a d\xE9j\xE0 remplie.",
-          steps: ["R\xE9servation par une plateforme (Booking, Airbnb, Abritel\u2026) : aucune fiche \xE0 faire remplir par vous.", "R\xE9servation directe pass\xE9e par le site web : la fiche est remplie par le voyageur et d\xE9j\xE0 dans la fiche de r\xE9servation.", "R\xE9servation directe sans passer par le site : ouvrez la fiche de r\xE9servation (onglet R\xE9servations) et utilisez \xAB Fiche individuelle de police \xBB pour la remplir et l\u2019imprimer \xE0 faire signer, ou imprimez ci-dessous une fiche vierge au format PDF.", "Conserver la fiche 6 mois, puis la d\xE9truire : Gestyria la supprime automatiquement au bout de 6 mois."],
+          steps: ["R\xE9servation par une plateforme (Booking, Airbnb, Abritel\u2026) : aucune fiche \xE0 faire remplir par vous (Gestyria ne propose d\u2019ailleurs pas l\u2019\xE9diteur de fiche pour ces r\xE9servations).", "R\xE9servation directe pass\xE9e par le site web : la fiche est remplie par le voyageur et d\xE9j\xE0 dans la fiche de r\xE9servation.", "R\xE9servation directe sans passer par le site : ouvrez la fiche de r\xE9servation (onglet R\xE9servations) et utilisez \xAB Fiche individuelle de police \xBB pour la remplir et l\u2019imprimer \xE0 faire signer, ou imprimez ci-dessous une fiche vierge au format PDF.", "Conserver la fiche 6 mois, puis la d\xE9truire : Gestyria la supprime automatiquement au bout de 6 mois."],
           risk: "Contravention (de 4e classe selon un site professionnel : \xE0 confirmer).",
           source: { label: "justice.fr \u2014 fiche individuelle de police", url: "https://www.justice.fr/fiche/faire-remplir-fiche-individuelle-police-touriste-etranger" },
           confirm: "Les sources citent des articles diff\xE9rents du CESEDA pour la dur\xE9e et la sanction : confirmer sur L\xE9gifrance.",
@@ -29233,6 +29243,7 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
       init_ImportModal();
       init_Beds24Panel();
       init_settingsStore();
+      init_defaults();
       init_IcalExport();
       init_fields();
       import_jsx_runtime20 = __require("react/jsx-runtime");
@@ -29281,6 +29292,18 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
           ),
           /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("h4", { className: "font-serif font-bold text-sm text-neutral-900 mb-2", children: "Plateformes de r\xE9servation" }),
           /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(InfoNote, { children: "Les plateformes actives sont propos\xE9es dans \xAB Site de r\xE9servation \xBB des nouvelles r\xE9servations. Une plateforme d\xE9sactiv\xE9e reste affich\xE9e sur les r\xE9servations qui l'utilisent d\xE9j\xE0. La case \xAB En ligne \xBB coche par d\xE9faut URSSAF et Imp\xF4t, la taxe de s\xE9jour \xAB prise en charge \xBB et la provenance \xAB Indirect \xBB des nouvelles r\xE9servations." }),
+          /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: "flex flex-wrap items-center gap-2 mb-2 text-[11px] text-neutral-600", "data-safe-colors": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(
+              "button",
+              {
+                type: "button",
+                onClick: () => setDraft({ ...draft, platforms: draft.platforms.map((p) => SAFE_PLATFORM_HEX[p.id] ? { ...p, hex: SAFE_PLATFORM_HEX[p.id] } : p) }),
+                className: "px-3 py-1.5 text-xs font-semibold border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer",
+                children: "Couleurs lisibles par tous (daltonisme)"
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("span", { children: "Remplace les couleurs des plateformes par une s\xE9rie o\xF9 deux plateformes voisines restent distinguables (le vert et le rouge se confondent pour certaines personnes). Cliquez ensuite sur \xAB Enregistrer \xBB." })
+          ] }),
           /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("div", { className: "space-y-2", children: draft.platforms.map((p) => /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)(
             "div",
             {
@@ -51849,9 +51872,10 @@ Cliquer pour modifier le tarif` : void 0,
               {
                 months: annual.months.map((m) => ({ label: m.monthName, values: { breakfast: m.totalBreakfastCost || 0, meals: m.totalMealsCost || 0, other: (m.totalDrinksCost || 0) + (m.totalOtherCost || 0) } })),
                 parts: [
-                  { key: "breakfast", label: "Petits-d\xE9jeuners", look: look("", { backgroundColor: "#E9A93B" }) },
-                  { key: "meals", label: "Repas", look: look("", { backgroundColor: "#D9695F" }) },
-                  { key: "other", label: "Boissons et autres", look: look("", { backgroundColor: "#8B7CC8" }) }
+                  // Bleu, orange et vert d'eau : série validée pour rester distinguable en cas de daltonisme
+                  { key: "breakfast", label: "Petits-d\xE9jeuners", look: look("", { backgroundColor: "#2a78d6" }) },
+                  { key: "meals", label: "Repas", look: look("", { backgroundColor: "#eb6834" }) },
+                  { key: "other", label: "Boissons et autres", look: look("", { backgroundColor: "#1baf7a" }) }
                 ],
                 emptyText: "Aucun co\xFBt direct cette ann\xE9e. Ils apparaissent d\xE8s qu'une r\xE9servation comporte des petits-d\xE9jeuners, des repas ou des boissons.",
                 format: euro4,
@@ -51874,9 +51898,10 @@ Cliquer pour modifier le tarif` : void 0,
               {
                 months: annual.months.map((m) => ({ label: m.monthName, values: { adults: m.totalAdults || 0, children: m.totalChildren || 0, babies: m.totalBabies || 0 } })),
                 parts: [
-                  { key: "adults", label: "Adultes", look: look("", { backgroundColor: "#C2570C" }) },
-                  { key: "children", label: "Enfants", look: look("", { backgroundColor: "#F0A24B" }) },
-                  { key: "babies", label: "B\xE9b\xE9s", look: look("", { backgroundColor: "#F8D9A8" }) }
+                  // Une seule teinte, du foncé au clair : lisible par tous, l'ordre des parts suffit à les reconnaître
+                  { key: "adults", label: "Adultes", look: look("", { backgroundColor: "#1c5cab" }) },
+                  { key: "children", label: "Enfants", look: look("", { backgroundColor: "#5598e7" }) },
+                  { key: "babies", label: "B\xE9b\xE9s", look: look("", { backgroundColor: "#b7d3f6" }) }
                 ],
                 format: (v) => `${v} pers.`,
                 short: (v) => `${v}`,
@@ -69364,6 +69389,10 @@ Sitemap: ${base}sitemap.xml
       comparables: Array.isArray(raw.comparables) ? raw.comparables.filter((c) => c && typeof c.id === "string" && /^\d{4}-\d{2}-\d{2}$/.test(c.from) && /^\d{4}-\d{2}-\d{2}$/.test(c.to) && typeof c.price === "number" && c.price > 0).map((c) => ({ id: c.id, label: String(c.label || ""), from: c.from, to: c.to, price: c.price })) : []
     };
   }
+  function monthSeason(mi) {
+    const g = GENERIC_MONTH[mi] / (GENERIC_MONTH.reduce((s, v) => s + v, 0) / 12);
+    return mi === 6 || mi === 7 || g >= 1.1 ? "high" : g <= 0.9 ? "low" : "mid";
+  }
   function nightlyPrice(r, rule) {
     if (!(r.nights > 0)) return null;
     let amount = r.roomAmount && r.roomAmount > 0 ? r.roomAmount : r.totalAmount > 0 ? r.totalAmount - (r.touristTaxAmount || 0) : 0;
@@ -69411,6 +69440,16 @@ Sitemap: ${base}sitemap.xml
       refPrice[id] = prices.length >= 3 ? round28(median(prices)) : null;
     });
     const all2 = year.map((r) => nightlyPrice(r, rules[String(r.roomId)])).filter((p) => p !== null);
+    const seasonal = (list3) => {
+      const out = { high: null, mid: null, low: null };
+      ["high", "mid", "low"].forEach((s) => {
+        const prices = list3.filter((r) => monthSeason(monthIndex(r.checkIn)) === s).map((r) => nightlyPrice(r, rules[String(r.roomId)])).filter((p) => p !== null);
+        out[s] = prices.length >= 3 ? round28(median(prices)) : null;
+      });
+      return out;
+    };
+    const refSeason = {};
+    roomIds.forEach((id) => refSeason[id] = seasonal(stays.filter((r) => String(r.roomId) === id)));
     return {
       stays: stays.length,
       observedDays: days2,
@@ -69419,6 +69458,8 @@ Sitemap: ${base}sitemap.xml
       meanMonth,
       refPrice,
       overallRef: all2.length >= 3 ? round28(median(all2)) : null,
+      refSeason,
+      overallSeason: seasonal(stays),
       enough: stays.length >= 10 && days2 >= 180 && known.length >= 4
     };
   }
@@ -69474,8 +69515,12 @@ Sitemap: ${base}sitemap.xml
     const days2 = [];
     const maxMult = 1 + settings.maxPct / 100;
     const minMult = 1 - settings.maxPct / 100;
+    const monthSm = Array.from({ length: 12 }, (_, mi) => factor(history.month, mi, history.meanMonth, GENERIC_MONTH, gm));
+    const seasonMean = (s) => {
+      const v = monthSm.filter((_, mi) => monthSeason(mi) === s);
+      return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 1;
+    };
     rooms.forEach((room) => {
-      const statsRef = settings.source !== "market" ? history.refPrice[room.id] ?? history.overallRef : null;
       let usable = false;
       for (let i = 0; i < settings.horizonDays; i++) {
         const date = addDaysIso2(today6, i);
@@ -69488,6 +69533,10 @@ Sitemap: ${base}sitemap.xml
         const zones = zonesOnHoliday(date);
         const mi = monthIndex(date);
         const sm = factor(history.month, mi, history.meanMonth, GENERIC_MONTH, gm);
+        const monthKind = monthSeason(mi);
+        const seasonRef = settings.source !== "market" ? history.refSeason[room.id]?.[monthKind] ?? history.overallSeason[monthKind] : null;
+        const statsRef = settings.source !== "market" ? seasonRef ?? history.refPrice[room.id] ?? history.overallRef : null;
+        const smEff = seasonRef ? sm / seasonMean(monthKind) : sm;
         const summer = mi === 6 || mi === 7;
         const season = sm >= 1.1 || zones.length >= 2 || summer ? "high" : sm <= 0.9 && zones.length === 0 ? "low" : "mid";
         const weekdayWeight = season === "high" ? 0.35 : season === "low" ? 0.12 : 0.25;
@@ -69496,7 +69545,8 @@ Sitemap: ${base}sitemap.xml
         if (zones.length > 0) reasons.push(`Vacances scolaires (zone${zones.length > 1 ? "s" : ""} ${zones.join(", ")})`);
         if (statsRef) {
           const sw2 = factor(history.weekday, weekdayOf2(date), wMean, GENERIC_WEEKDAY, gw);
-          let m = (1 + 0.5 * (sm - 1)) * (1 + weekdayWeight * (sw2 - 1)) * holidayBoost;
+          let m = (1 + 0.5 * (smEff - 1)) * (1 + weekdayWeight * (sw2 - 1)) * holidayBoost;
+          if (seasonRef) reasons.unshift(`Prix de base de la ${SEASON_LABEL[monthKind]} (vos s\xE9jours de la m\xEAme saison)`);
           if (sm >= 1.1) reasons.push(`${generic ? "P\xE9riode g\xE9n\xE9ralement tr\xE8s demand\xE9e" : "Mois tr\xE8s demand\xE9 chez vous"} (${MONTHS4[mi]})`);
           else if (sm <= 0.9) reasons.push(`${generic ? "P\xE9riode g\xE9n\xE9ralement calme" : "Mois calme chez vous"} (${MONTHS4[mi]})`);
           if (sw2 >= 1.05 && season === "low") reasons.push(`${WEEKDAYS[weekdayOf2(date)]} hors vacances en basse saison : peu de hausse possible`);
@@ -69598,7 +69648,7 @@ Sitemap: ${base}sitemap.xml
       ...rows.map((r) => [roomName(r.roomId), r.from, r.to, r.nights, r.suggested, r.current, r.gapPct, r.level === "up" ? "Augmenter" : r.level === "down" ? "Baisser" : "Garder", r.reasons.join(" ; ")])
     ];
   }
-  var DAY5, dayNumber4, isoOf4, weekdayOf2, monthIndex, round5, median, GENERIC_MONTH, GENERIC_WEEKDAY, real2, round28, addDaysIso2, MONTHS4, WEEKDAYS;
+  var DAY5, dayNumber4, isoOf4, weekdayOf2, monthIndex, round5, median, GENERIC_MONTH, GENERIC_WEEKDAY, real2, SEASON_LABEL, round28, addDaysIso2, MONTHS4, WEEKDAYS;
   var init_content19 = __esm({
     "src/modules/conseils/content.ts"() {
       "use strict";
@@ -69618,6 +69668,7 @@ Sitemap: ${base}sitemap.xml
       GENERIC_MONTH = [0.75, 0.85, 0.8, 1, 1.05, 1.05, 1.35, 1.4, 1, 0.9, 0.7, 1];
       GENERIC_WEEKDAY = [0.9, 0.9, 0.9, 0.95, 1.1, 1.15, 0.95];
       real2 = (r) => !r.isBlocked && r.reservationStatus !== "cancelled" && !/ferm|bloq/i.test(r.guestName || "");
+      SEASON_LABEL = { high: "haute saison", mid: "saison interm\xE9diaire", low: "basse saison" };
       round28 = (n) => Math.round(n * 100) / 100;
       addDaysIso2 = (iso, n) => isoOf4(dayNumber4(iso) + n);
       MONTHS4 = ["janvier", "f\xE9vrier", "mars", "avril", "mai", "juin", "juillet", "ao\xFBt", "septembre", "octobre", "novembre", "d\xE9cembre"];
@@ -69826,7 +69877,7 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
             /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("summary", { className: "cursor-pointer font-bold text-sm", children: "Comment est calcul\xE9 le prix conseill\xE9 ?" }),
             /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("p", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("b", { children: "Prix conseill\xE9 = prix de base de l\u2019h\xE9bergement \xD7 coefficient du moment." }),
-              " Le prix de base est ce que vous facturez r\xE9ellement \xE0 cet h\xE9bergement pour le nombre de personnes inclus dans son tarif (m\xE9diane des 12 derniers mois, le suppl\xE9ment par personne en plus \xE9tant retir\xE9), pas son tarif affich\xE9. Le coefficient d\xE9pend de la saison, des vacances scolaires et du jour de la semaine, et il est le m\xEAme pour tous les h\xE9bergements \xE0 une date donn\xE9e. Deux h\xE9bergements peuvent donc aller dans des sens oppos\xE9s quand leur tarif affich\xE9 est plus ou moins \xE9loign\xE9 de leur prix de base :"
+              " Le prix de base est ce que vous facturez r\xE9ellement \xE0 cet h\xE9bergement pour le nombre de personnes inclus dans son tarif (m\xE9diane de vos s\xE9jours de la m\xEAme saison, basse, interm\xE9diaire ou haute, sur 24 mois, le suppl\xE9ment par personne en plus \xE9tant retir\xE9 ; \xE0 d\xE9faut de 3 s\xE9jours dans la saison, m\xE9diane de l'ann\xE9e), pas son tarif affich\xE9. Le coefficient d\xE9pend de la saison, des vacances scolaires et du jour de la semaine, et il est le m\xEAme pour tous les h\xE9bergements \xE0 une date donn\xE9e. Deux h\xE9bergements peuvent donc aller dans des sens oppos\xE9s quand leur tarif affich\xE9 est plus ou moins \xE9loign\xE9 de leur prix de base :"
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("ul", { className: "list-disc pl-5 space-y-0.5", children: columns.map((c) => {
               const ref = matrix.map((m) => m.cells[c.id]?.reference).find((v) => v) || 0;
@@ -70563,29 +70614,29 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
               ] })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { className: "grid lg:grid-cols-2 gap-3", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-today-upcoming": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2 min-w-0 overflow-hidden", "data-today-upcoming": true, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "7 prochains jours" }),
-                upcoming.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucune arriv\xE9e ni d\xE9part dans les 7 prochains jours." }) : /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("ul", { className: "space-y-1", children: upcoming.map((s) => /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("button", { type: "button", onClick: () => onOpen("list"), className: "w-full text-left flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-neutral-50 cursor-pointer", children: [
+                upcoming.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucune arriv\xE9e ni d\xE9part dans les 7 prochains jours." }) : /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("ul", { className: "space-y-1", children: upcoming.map((s) => /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("button", { type: "button", onClick: () => onOpen("list"), className: "w-full min-w-0 text-left flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs p-1.5 rounded-lg hover:bg-neutral-50 cursor-pointer", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "w-16 shrink-0 font-mono text-neutral-500", children: frDate3(s.date) }),
                   /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: `px-1.5 py-0.5 rounded-md text-[10px] font-bold shrink-0 ${s.kind === "arrival" ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`, children: s.kind === "arrival" ? "Arriv\xE9e" : "D\xE9part" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "font-semibold text-neutral-900 truncate", children: s.guest }),
-                  /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("span", { className: "text-neutral-500 ml-auto whitespace-nowrap", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "font-semibold text-neutral-900 truncate min-w-0 flex-1", children: s.guest }),
+                  /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("span", { className: "text-neutral-500 sm:ml-auto basis-full sm:basis-auto pl-[4.5rem] sm:pl-0", children: [
                     s.room,
                     s.people ? ` \xB7 ${s.people} pers.` : ""
                   ] })
                 ] }) }, s.id)) })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-today-due": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2 min-w-0 overflow-hidden", "data-today-due": true, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { className: "flex items-baseline justify-between gap-2", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "\xC0 encaisser" }),
                   due.items.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "font-mono font-bold text-sm text-neutral-900", children: due.total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" }) })
                 ] }),
                 due.items.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucun solde en attente pour les s\xE9jours en cours ou des 30 prochains jours." }) : /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("ul", { className: "space-y-1", children: [
-                  due.items.slice(0, 8).map((i) => /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("button", { type: "button", onClick: () => onOpen("list"), className: "w-full text-left flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-neutral-50 cursor-pointer", children: [
+                  due.items.slice(0, 8).map((i) => /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("button", { type: "button", onClick: () => onOpen("list"), className: "w-full min-w-0 text-left flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-neutral-50 cursor-pointer", children: [
                     /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "w-16 shrink-0 font-mono text-neutral-500", children: frDate3(i.checkIn) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "font-semibold text-neutral-900 truncate", children: i.guest }),
-                    i.late && /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-red-100 text-red-900 shrink-0", children: "S\xE9jour commenc\xE9" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "font-mono font-semibold text-neutral-900 ml-auto whitespace-nowrap", children: i.due.toLocaleString("fr-FR", { style: "currency", currency: "EUR" }) })
+                    /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "font-semibold text-neutral-900 truncate min-w-0 flex-1", children: i.guest }),
+                    i.late && /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-red-100 text-red-900 shrink-0", children: "En cours" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "font-mono font-semibold text-neutral-900 whitespace-nowrap shrink-0", children: i.due.toLocaleString("fr-FR", { style: "currency", currency: "EUR" }) })
                   ] }) }, i.id)),
                   due.items.length > 8 && /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("li", { className: "text-[11px] text-neutral-500", children: [
                     "\u2026 et ",
@@ -76010,14 +76061,14 @@ ${establishment}`;
                     )
                   ] })
                 ] }),
-                !isBlocked2 && !isServiceRow(roomId) && isForeignNationality(guestResidence) && /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(
+                !isBlocked2 && !isServiceRow(roomId) && isForeignNationality(guestResidence) && (isOtaSource(bookingSource) && !policeSheet ? /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("p", { className: "p-2.5 rounded-xl border border-neutral-200 bg-neutral-50 text-[11px] text-neutral-600", "data-police-platform": true, children: "Voyageur \xE9tranger, r\xE9servation pass\xE9e par une plateforme : la fiche individuelle de police est prise en charge par la plateforme, rien \xE0 remplir ici." }) : /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(
                   PoliceSheetEditor,
                   {
                     value: policeSheet,
                     onChange: setPoliceSheet,
                     guest: { guestName: guestName.trim(), guestEmail, guestPhone, guestResidence, checkIn, checkOut }
                   }
-                ),
+                )),
                 /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "p-3.5 rounded-xl bg-neutral-50/90 border border-neutral-200 space-y-2", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "flex items-center justify-between", children: [
                     /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "text-xs font-bold text-neutral-800 uppercase tracking-wider flex items-center gap-1.5", children: [
