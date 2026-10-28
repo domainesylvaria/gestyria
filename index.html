@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v286</title>
-  <meta name="application-name" content="Gestyria v286" />
+  <title>Gestyria v287</title>
+  <meta name="application-name" content="Gestyria v287" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8614,7 +8614,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "286";
+      APP_VERSION = "287";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -24604,7 +24604,8 @@ function beds24Bookings_() {
         appVersion = "complete",
         onToggleAppVersion
       }) => {
-        const years = [2025, 2026, 2027];
+        const firstYear = Math.min(2024, selectedYear);
+        const years = Array.from({ length: Math.max(selectedYear, (/* @__PURE__ */ new Date()).getFullYear()) + 10 - firstYear + 1 }, (_, i) => firstYear + i);
         const settings = useSettings();
         const establishmentName = settings.establishment.name;
         (0, import_react21.useEffect)(() => {
@@ -37464,7 +37465,7 @@ ${stock.map((s) => `- ${s.name}${s.place ? ` (${s.place})` : ""} : ${String(s.ga
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)("div", { className: "hidden lg:block sticky top-4", children: [
               /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("div", { className: "text-[11px] font-bold text-neutral-600 uppercase tracking-wider mb-2", children: "Aper\xE7u dans le livret" }),
-              /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("div", { className: "mx-auto w-[370px] h-[calc(100vh-170px)] max-h-[760px] min-h-[480px] rounded-[2.2rem] border-[10px] border-neutral-900 bg-neutral-50 shadow-xl overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("div", { className: "h-full overflow-y-auto hide-scrollbar", "data-meals-preview": true, children: preview }) })
+              /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("div", { className: "mx-auto w-[370px] min-h-[300px] rounded-[2.2rem] border-[10px] border-neutral-900 bg-neutral-50 shadow-xl overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("div", { className: "max-h-[min(740px,calc(100vh-190px))] min-h-[280px] overflow-y-auto hide-scrollbar", "data-meals-preview": true, children: preview }) })
             ] })
           ] }),
           picker && (() => {
@@ -46817,6 +46818,11 @@ Cliquer pour modifier le tarif` : void 0,
   function holidayOf(zone, date) {
     return SCHOOL_HOLIDAYS.find((h2) => h2.zone === zone && date >= h2.from && date < h2.to);
   }
+  function holidaysUpdateDue(today6) {
+    const year = parseInt(today6.slice(0, 4), 10);
+    if (!(year > 0) || today6 < `${year}-09-25`) return false;
+    return parseInt(HOLIDAYS_LAST_DAY.slice(0, 4), 10) < year + 2;
+  }
   var SCHOOL_ZONES, HOLIDAYS_YEARS, HOLIDAYS_LAST_DAY, all, SCHOOL_HOLIDAYS;
   var init_schoolHolidays = __esm({
     "src/core/pricing/schoolHolidays.ts"() {
@@ -49631,9 +49637,8 @@ Cliquer pour modifier le tarif` : void 0,
                         "button",
                         {
                           type: "button",
-                          onClick: () => onYearChange(Math.max(2026, selectedYear - 1)),
-                          disabled: selectedYear <= 2026,
-                          className: "px-2 py-1 text-xs font-bold rounded-lg text-neutral-700 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs",
+                          onClick: () => onYearChange(selectedYear - 1),
+                          className: "px-2 py-1 text-xs font-bold rounded-lg text-neutral-700 hover:bg-white transition-all cursor-pointer shadow-2xs",
                           title: "Ann\xE9e pr\xE9c\xE9dente",
                           children: "\u2190"
                         }
@@ -49644,7 +49649,7 @@ Cliquer pour modifier le tarif` : void 0,
                           value: selectedYear,
                           onChange: (e) => onYearChange(Number(e.target.value)),
                           className: "bg-white border border-neutral-300 font-bold font-serif text-neutral-900 rounded-lg px-2.5 py-1 text-xs sm:text-sm focus:outline-none cursor-pointer shadow-2xs",
-                          children: Array.from({ length: 15 }, (_, i) => 2026 + i).map((yr) => /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("option", { value: yr, children: yr }, yr))
+                          children: Array.from({ length: Math.max(selectedYear, (/* @__PURE__ */ new Date()).getFullYear()) + 10 - Math.min(2024, selectedYear) + 1 }, (_, i) => Math.min(2024, selectedYear) + i).map((yr) => /* @__PURE__ */ (0, import_jsx_runtime81.jsx)("option", { value: yr, children: yr }, yr))
                         }
                       ),
                       /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(
@@ -51620,9 +51625,8 @@ Cliquer pour modifier le tarif` : void 0,
                       "button",
                       {
                         type: "button",
-                        onClick: () => onYearChange(Math.max(2026, selectedYear - 1)),
-                        disabled: selectedYear <= 2026,
-                        className: "px-2 py-1 text-xs font-bold rounded-lg text-neutral-700 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs",
+                        onClick: () => onYearChange(selectedYear - 1),
+                        className: "px-2 py-1 text-xs font-bold rounded-lg text-neutral-700 hover:bg-white transition-all cursor-pointer shadow-2xs",
                         children: "\u2190"
                       }
                     ),
@@ -51632,8 +51636,7 @@ Cliquer pour modifier le tarif` : void 0,
                       {
                         type: "button",
                         onClick: () => onYearChange(selectedYear + 1),
-                        disabled: selectedYear >= 2030,
-                        className: "px-2 py-1 text-xs font-bold rounded-lg text-neutral-700 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs",
+                        className: "px-2 py-1 text-xs font-bold rounded-lg text-neutral-700 hover:bg-white transition-all cursor-pointer shadow-2xs",
                         children: "\u2192"
                       }
                     )
@@ -52418,7 +52421,10 @@ Cliquer pour modifier le tarif` : void 0,
                   ] })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { className: "text-xl sm:text-2xl font-bold font-mono text-emerald-950 tabular-nums mt-0.5", children: formatCurrency(totals2.directMargin) }),
-                /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { className: "text-[10px] text-emerald-700 mt-0.5 block", children: "Revenus - co\xFBts directs" })
+                /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("span", { className: "text-[10px] text-emerald-700 mt-0.5 block", children: [
+                  "Revenus - co\xFBts directs",
+                  totals2.directMargin > 0 && totals2.directMargin === totals2.revenues && " \xB7 aucun co\xFBt direct saisi (repas, petits-d\xE9jeuners, boissons)"
+                ] })
               ] }),
               (() => {
                 const marginApresTax = totals2.directMargin - totals2.urssafCost - totals2.taxCost;
@@ -65480,6 +65486,7 @@ ${r.current.trim()}` : ""
       iconBtn = "p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 cursor-pointer disabled:opacity-30";
       PagesPanel = ({ site, settings, onChange, onToast }) => {
         const [selectedId, setSelectedId] = (0, import_react139.useState)(site.pages[0]?.id || "");
+        const [openBlocks, setOpenBlocks] = (0, import_react139.useState)({});
         const page = site.pages.find((p) => p.id === selectedId) || site.pages[0];
         const est = settings.establishment.name || "Domaine";
         const setPage = (patch) => onChange({ ...site, pages: site.pages.map((p) => p.id === page.id ? { ...p, ...patch } : p) });
@@ -65596,38 +65603,52 @@ ${r.current.trim()}` : ""
                   " \xBB"
                 ] }, t)) })
               ] }),
-              page.blocks.map((b, i) => /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "p-3 rounded-xl border border-neutral-200 space-y-2", "data-site-block": true, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "flex items-center gap-1", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("span", { className: "text-xs font-bold text-neutral-800 flex-1", children: BLOCK_LABELS[b.type] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("button", { type: "button", className: iconBtn, disabled: i === 0, onClick: () => setPage({ blocks: move4(page.blocks, i, -1) }), "aria-label": "Monter", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(ArrowUp, { className: "w-3.5 h-3.5" }) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("button", { type: "button", className: iconBtn, disabled: i === page.blocks.length - 1, onClick: () => setPage({ blocks: move4(page.blocks, i, 1) }), "aria-label": "Descendre", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(ArrowDown, { className: "w-3.5 h-3.5" }) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("button", { type: "button", className: iconBtn, onClick: () => setPage({ blocks: page.blocks.filter((x) => x.id !== b.id) }), "aria-label": "Supprimer", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Trash2, { className: "w-3.5 h-3.5" }) })
-                ] }),
-                b.type !== "button" && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Titre (facultatif)", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(TextInput, { value: b.title, onChange: (v) => setBlock(b.id, { title: v }) }) }),
-                b.type === "article" && /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)(import_jsx_runtime137.Fragment, { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Date ou p\xE9riode (facultatif)", hint: "Texte libre, par exemple \xAB Samedi 14 novembre \xE0 19 h \xBB.", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(TextInput, { value: b.date || "", onChange: (v) => setBlock(b.id, { date: v }) }) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Texte (vide, la rubrique n'appara\xEEt pas sur le site)", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(RichTextArea, { value: b.text, onChange: (v) => setBlock(b.id, { text: v }), rows: 5 }) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(AiWriter, { establishment: est, kind: `rubrique \xAB ${b.title || page.title} \xBB`, name: b.title || page.title, facts: "", current: b.text, keywords: site.extras[`block:${b.id}`]?.keywords || "", onKeywords: (k) => setExtra(`block:${b.id}`, { keywords: k }), onUse: (t) => setBlock(b.id, { text: t }), onToast }),
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(PhotoField, { label: "Photos", ids: b.photos, onChange: (ids) => setBlock(b.id, { photos: ids }), onToast })
-                ] }),
-                b.type === "text" && /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)(import_jsx_runtime137.Fragment, { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Texte", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(RichTextArea, { value: b.text, onChange: (v) => setBlock(b.id, { text: v }), rows: 4 }) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(AiWriter, { establishment: est, kind: `texte \xAB ${b.title || page.title} \xBB`, name: b.title || page.title, facts: "", current: b.text, keywords: site.extras[`block:${b.id}`]?.keywords || "", onKeywords: (k) => setExtra(`block:${b.id}`, { keywords: k }), onUse: (t) => setBlock(b.id, { text: t }), onToast })
-                ] }),
-                b.type === "gallery" && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(PhotoField, { ids: b.photos, onChange: (ids) => setBlock(b.id, { photos: ids }), onToast }),
-                b.type === "list" && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Points forts (un par ligne)", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(TextArea, { value: b.items.join("\n"), onChange: (v) => setBlock(b.id, { items: v.split("\n") }), rows: 4 }) }),
-                b.type === "button" && /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "grid sm:grid-cols-2 gap-3", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Texte du bouton", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(TextInput, { value: b.text, onChange: (v) => setBlock(b.id, { text: v }) }) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)(Field, { label: "Adresse ou page du site", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("select", { value: b.url, onChange: (e) => setBlock(b.id, { url: e.target.value }), className: "w-full py-2 px-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("option", { value: "", children: "\u2014 choisir une page \u2014" }),
-                      site.pages.filter((p) => p.id !== page.id).map((p) => /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("option", { value: `page:${p.id}`, children: p.title }, p.id)),
-                      b.url && !b.url.startsWith("page:") && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("option", { value: b.url, children: b.url })
+              page.blocks.map((b, i) => {
+                const isEmpty = b.type === "article" || b.type === "text" ? !(b.text || "").replace(/<[^>]*>/g, "").trim() && !("photos" in b && b.photos && b.photos.length || false) : b.type === "gallery" ? !(b.photos && b.photos.length) : b.type === "list" ? !b.items.some((x) => x.trim()) : !(b.text || "").trim() && !(b.url || "").trim();
+                const open = openBlocks[b.id] ?? !isEmpty;
+                const Chevron = open ? ChevronDown : ChevronRight;
+                return /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "p-3 rounded-xl border border-neutral-200 space-y-2", "data-site-block": true, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "flex items-center gap-1", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("button", { type: "button", onClick: () => setOpenBlocks((s) => ({ ...s, [b.id]: !open })), "aria-expanded": open, className: "flex items-center gap-1.5 flex-1 text-left cursor-pointer min-w-0", "data-site-block-toggle": true, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Chevron, { className: "w-3.5 h-3.5 text-neutral-400 shrink-0" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("span", { className: "text-xs font-bold text-neutral-800 truncate", children: [
+                        BLOCK_LABELS[b.type],
+                        "title" in b && b.title ? ` \xB7 ${b.title}` : ""
+                      ] }),
+                      isEmpty && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("span", { className: "text-[10px] font-normal text-neutral-400 shrink-0", children: "(vide : n'appara\xEEt pas sur le site)" })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(TextInput, { value: b.url.startsWith("page:") ? "" : b.url, onChange: (v) => setBlock(b.id, { url: v }), placeholder: "ou https://\u2026" })
+                    /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("button", { type: "button", className: iconBtn, disabled: i === 0, onClick: () => setPage({ blocks: move4(page.blocks, i, -1) }), "aria-label": "Monter", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(ArrowUp, { className: "w-3.5 h-3.5" }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("button", { type: "button", className: iconBtn, disabled: i === page.blocks.length - 1, onClick: () => setPage({ blocks: move4(page.blocks, i, 1) }), "aria-label": "Descendre", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(ArrowDown, { className: "w-3.5 h-3.5" }) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("button", { type: "button", className: iconBtn, onClick: () => setPage({ blocks: page.blocks.filter((x) => x.id !== b.id) }), "aria-label": "Supprimer", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Trash2, { className: "w-3.5 h-3.5" }) })
+                  ] }),
+                  open && /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)(import_jsx_runtime137.Fragment, { children: [
+                    b.type !== "button" && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Titre (facultatif)", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(TextInput, { value: b.title, onChange: (v) => setBlock(b.id, { title: v }) }) }),
+                    b.type === "article" && /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)(import_jsx_runtime137.Fragment, { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Date ou p\xE9riode (facultatif)", hint: "Texte libre, par exemple \xAB Samedi 14 novembre \xE0 19 h \xBB.", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(TextInput, { value: b.date || "", onChange: (v) => setBlock(b.id, { date: v }) }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Texte (vide, la rubrique n'appara\xEEt pas sur le site)", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(RichTextArea, { value: b.text, onChange: (v) => setBlock(b.id, { text: v }), rows: 5 }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(AiWriter, { establishment: est, kind: `rubrique \xAB ${b.title || page.title} \xBB`, name: b.title || page.title, facts: "", current: b.text, keywords: site.extras[`block:${b.id}`]?.keywords || "", onKeywords: (k) => setExtra(`block:${b.id}`, { keywords: k }), onUse: (t) => setBlock(b.id, { text: t }), onToast }),
+                      /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(PhotoField, { label: "Photos", ids: b.photos, onChange: (ids) => setBlock(b.id, { photos: ids }), onToast })
+                    ] }),
+                    b.type === "text" && /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)(import_jsx_runtime137.Fragment, { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Texte", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(RichTextArea, { value: b.text, onChange: (v) => setBlock(b.id, { text: v }), rows: 4 }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(AiWriter, { establishment: est, kind: `texte \xAB ${b.title || page.title} \xBB`, name: b.title || page.title, facts: "", current: b.text, keywords: site.extras[`block:${b.id}`]?.keywords || "", onKeywords: (k) => setExtra(`block:${b.id}`, { keywords: k }), onUse: (t) => setBlock(b.id, { text: t }), onToast })
+                    ] }),
+                    b.type === "gallery" && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(PhotoField, { ids: b.photos, onChange: (ids) => setBlock(b.id, { photos: ids }), onToast }),
+                    b.type === "list" && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Points forts (un par ligne)", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(TextArea, { value: b.items.join("\n"), onChange: (v) => setBlock(b.id, { items: v.split("\n") }), rows: 4 }) }),
+                    b.type === "button" && /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("div", { className: "grid sm:grid-cols-2 gap-3", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Field, { label: "Texte du bouton", children: /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(TextInput, { value: b.text, onChange: (v) => setBlock(b.id, { text: v }) }) }),
+                      /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)(Field, { label: "Adresse ou page du site", children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)("select", { value: b.url, onChange: (e) => setBlock(b.id, { url: e.target.value }), className: "w-full py-2 px-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("option", { value: "", children: "\u2014 choisir une page \u2014" }),
+                          site.pages.filter((p) => p.id !== page.id).map((p) => /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("option", { value: `page:${p.id}`, children: p.title }, p.id)),
+                          b.url && !b.url.startsWith("page:") && /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("option", { value: b.url, children: b.url })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(TextInput, { value: b.url.startsWith("page:") ? "" : b.url, onChange: (v) => setBlock(b.id, { url: v }), placeholder: "ou https://\u2026" })
+                      ] })
+                    ] })
                   ] })
-                ] })
-              ] }, b.id)),
+                ] }, b.id);
+              }),
               /* @__PURE__ */ (0, import_jsx_runtime137.jsx)("div", { className: "flex flex-wrap gap-2", children: Object.keys(BLOCK_LABELS).map((t) => /* @__PURE__ */ (0, import_jsx_runtime137.jsxs)(SecondaryButton, { onClick: () => setPage({ blocks: [...page.blocks, newBlock(t)] }), children: [
                 /* @__PURE__ */ (0, import_jsx_runtime137.jsx)(Plus, { className: "w-3.5 h-3.5" }),
                 " ",
@@ -68548,10 +68569,10 @@ Sitemap: ${base}sitemap.xml
               ] })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("div", { className: "bg-white p-1.5 rounded-2xl border border-neutral-200 grid grid-cols-2 sm:grid-cols-4 gap-1", role: "tablist", children: [["planning", "Planning"], ["team", `\xC9quipe (${members.filter((m) => !m.archived).length})`], ["dues", `\xC9ch\xE9ances${due.length ? ` (${due.length})` : ""}`], ["settings", "R\xE9glages"]].map(([id, label2]) => /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("button", { type: "button", role: "tab", "aria-selected": tab2 === id, "data-staff-tab": id, onClick: () => {
+          /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("div", { className: "bg-white p-1.5 rounded-2xl border border-neutral-200 flex flex-wrap gap-1", role: "tablist", children: [["planning", "Planning"], ["team", `\xC9quipe (${members.filter((m) => !m.archived).length})`], ["dues", `\xC9ch\xE9ances${due.length ? ` (${due.length})` : ""}`], ["settings", "R\xE9glages"]].map(([id, label2]) => /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("button", { type: "button", role: "tab", "aria-selected": tab2 === id, "data-staff-tab": id, onClick: () => {
             setTab(id);
             setEditing(null);
-          }, className: `py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold cursor-pointer ${tab2 === id ? "bg-sy-325032 text-white" : "text-neutral-600 hover:bg-neutral-100"}`, children: label2 }, id)) }),
+          }, className: `py-2 px-3.5 rounded-xl text-xs font-bold cursor-pointer ${tab2 === id ? "bg-sy-325032 text-white" : "text-neutral-600 hover:bg-neutral-100"}`, children: label2 }, id)) }),
           tab2 === "settings" && /* @__PURE__ */ (0, import_jsx_runtime143.jsx)(SettingsPanel2, { onToast }),
           tab2 === "planning" && /* @__PURE__ */ (0, import_jsx_runtime143.jsx)(PlanningView, { members, reservations, onToast }),
           tab2 === "dues" && /* @__PURE__ */ (0, import_jsx_runtime143.jsx)("div", { className: "space-y-2", "data-staff-dues": true, children: due.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime143.jsxs)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", children: [
@@ -68909,10 +68930,8 @@ Sitemap: ${base}sitemap.xml
                     "Catalogue r\xE9vis\xE9 le ",
                     frDate13(CATALOGUE_REVISION)
                   ] }),
-                  " (il y a ",
-                  age.days,
-                  " jour",
-                  age.days > 1 ? "s" : "",
+                  " (",
+                  age.days === 0 ? "aujourd\u2019hui" : `il y a ${age.days} jour${age.days > 1 ? "s" : ""}`,
                   ").",
                   age.stale && " Il date de plus de 6 mois : des r\xE8gles ont pu changer, v\xE9rifiez chaque point sur les sources officielles."
                 ] }),
@@ -69345,12 +69364,16 @@ Sitemap: ${base}sitemap.xml
       comparables: Array.isArray(raw.comparables) ? raw.comparables.filter((c) => c && typeof c.id === "string" && /^\d{4}-\d{2}-\d{2}$/.test(c.from) && /^\d{4}-\d{2}-\d{2}$/.test(c.to) && typeof c.price === "number" && c.price > 0).map((c) => ({ id: c.id, label: String(c.label || ""), from: c.from, to: c.to, price: c.price })) : []
     };
   }
-  function nightlyPrice(r) {
+  function nightlyPrice(r, rule) {
     if (!(r.nights > 0)) return null;
-    const amount = r.roomAmount && r.roomAmount > 0 ? r.roomAmount : r.totalAmount > 0 ? r.totalAmount - (r.touristTaxAmount || 0) : 0;
+    let amount = r.roomAmount && r.roomAmount > 0 ? r.roomAmount : r.totalAmount > 0 ? r.totalAmount - (r.touristTaxAmount || 0) : 0;
+    if (rule && rule.extraPrice > 0) {
+      const extra = Math.max(0, (r.adultsCount || 0) - rule.baseGuests) + Math.max(0, r.childrenCount || 0);
+      amount -= extra * rule.extraPrice * r.nights;
+    }
     return amount > 0 ? amount / r.nights : null;
   }
-  function buildHistory(reservations, roomIds, today6) {
+  function buildHistory(reservations, roomIds, today6, rules = {}) {
     const rooms = new Set(roomIds);
     const stays = reservations.filter((r) => real2(r) && rooms.has(String(r.roomId)) && r.checkOut <= addDaysIso2(today6, 1) && r.checkOut >= addDaysIso2(today6, -730));
     const start = dayNumber4(today6) - 730;
@@ -69384,10 +69407,10 @@ Sitemap: ${base}sitemap.xml
     const year = stays.filter((r) => r.checkIn >= addDaysIso2(today6, -365));
     const refPrice = {};
     roomIds.forEach((id) => {
-      const prices = year.filter((r) => String(r.roomId) === id).map(nightlyPrice).filter((p) => p !== null);
+      const prices = year.filter((r) => String(r.roomId) === id).map((r) => nightlyPrice(r, rules[id])).filter((p) => p !== null);
       refPrice[id] = prices.length >= 3 ? round28(median(prices)) : null;
     });
-    const all2 = year.map(nightlyPrice).filter((p) => p !== null);
+    const all2 = year.map((r) => nightlyPrice(r, rules[String(r.roomId)])).filter((p) => p !== null);
     return {
       stays: stays.length,
       observedDays: days2,
@@ -69426,7 +69449,11 @@ Sitemap: ${base}sitemap.xml
   function advise(input7) {
     const { reservations, rooms, settings, today: today6 } = input7;
     const roomIds = rooms.map((r) => r.id);
-    const history = buildHistory(reservations, roomIds, today6);
+    const rules = {};
+    rooms.forEach((r) => {
+      if ((r.extraGuestPrice || 0) > 0) rules[r.id] = { baseGuests: r.baseGuests || 2, extraPrice: r.extraGuestPrice };
+    });
+    const history = buildHistory(reservations, roomIds, today6, rules);
     const pc = pace(reservations, roomIds, today6);
     const generic = !history.enough;
     const taken = /* @__PURE__ */ new Set();
@@ -69641,7 +69668,7 @@ Sitemap: ${base}sitemap.xml
         const [showKeep, setShowKeep] = (0, import_react147.useState)(false);
         const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
         const today6 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-        const rooms = (0, import_react147.useMemo)(() => settings.accommodations.filter((a) => a.active).map((a) => ({ id: a.id, name: a.name, base: a.basePrice })), [settings.accommodations]);
+        const rooms = (0, import_react147.useMemo)(() => settings.accommodations.filter((a) => a.active).map((a) => ({ id: a.id, name: a.name, base: a.basePrice, baseGuests: a.baseGuestsCount, extraGuestPrice: a.extraGuestPrice })), [settings.accommodations]);
         const roomName = (id) => rooms.find((r) => r.id === id)?.name || id;
         const result = (0, import_react147.useMemo)(() => advise({ reservations, rooms, settings: saved, today: today6 }), [reservations, rooms, saved.source, saved.horizonDays, saved.maxPct, JSON.stringify(saved.comparables), today6]);
         const current2 = (roomId, date) => nightRate(roomId, date, rooms.find((r) => r.id === roomId)?.base || 0, settings, overrides2).price;
@@ -69774,7 +69801,7 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
               " s\xE9jours des 24 derniers mois."
             ] }),
             prices.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("p", { children: [
-              "Prix de nuit r\xE9ellement factur\xE9s (m\xE9diane des 12 derniers mois) : ",
+              "Prix de nuit r\xE9ellement factur\xE9s, hors suppl\xE9ment par personne en plus (m\xE9diane des 12 derniers mois) : ",
               prices.map((p) => `${p.name} ${fr2(p.price)} \u20AC`).join(" \xB7 ")
             ] }),
             !result.usingGenericProfile && topMonths.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("p", { children: [
@@ -69799,7 +69826,7 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
             /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("summary", { className: "cursor-pointer font-bold text-sm", children: "Comment est calcul\xE9 le prix conseill\xE9 ?" }),
             /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("p", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("b", { children: "Prix conseill\xE9 = prix de base de l\u2019h\xE9bergement \xD7 coefficient du moment." }),
-              " Le prix de base est ce que vous facturez r\xE9ellement \xE0 cet h\xE9bergement (m\xE9diane des 12 derniers mois), pas son tarif affich\xE9. Le coefficient d\xE9pend de la saison, des vacances scolaires et du jour de la semaine, et il est le m\xEAme pour tous les h\xE9bergements \xE0 une date donn\xE9e. Deux h\xE9bergements peuvent donc aller dans des sens oppos\xE9s quand leur tarif affich\xE9 est plus ou moins \xE9loign\xE9 de leur prix de base :"
+              " Le prix de base est ce que vous facturez r\xE9ellement \xE0 cet h\xE9bergement pour le nombre de personnes inclus dans son tarif (m\xE9diane des 12 derniers mois, le suppl\xE9ment par personne en plus \xE9tant retir\xE9), pas son tarif affich\xE9. Le coefficient d\xE9pend de la saison, des vacances scolaires et du jour de la semaine, et il est le m\xEAme pour tous les h\xE9bergements \xE0 une date donn\xE9e. Deux h\xE9bergements peuvent donc aller dans des sens oppos\xE9s quand leur tarif affich\xE9 est plus ou moins \xE9loign\xE9 de leur prix de base :"
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("ul", { className: "list-disc pl-5 space-y-0.5", children: columns.map((c) => {
               const ref = matrix.map((m) => m.cells[c.id]?.reference).find((v) => v) || 0;
@@ -70283,6 +70310,7 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
       init_orders();
       init_content15();
       init_store13();
+      init_schoolHolidays();
       import_jsx_runtime149 = __require("react/jsx-runtime");
       TONE4 = {
         red: "bg-red-100 text-red-900 border-red-200",
@@ -70375,6 +70403,7 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
             dues(staffList(staffMap), readStaffSettings(settings), today6).filter((d) => d.state !== "valid").slice(0, 10).forEach((d, i) => out.push({ id: `s${d.member.id}${i}`, label: `${d.member.name} : ${d.title}`, detail: STATE_LABEL[d.state] + (d.validUntil ? ` (${frDate3(d.validUntil)})` : ""), tone: d.state === "soon" ? "amber" : "red", tab: "staff" }));
           }
           if (isModuleEnabled("utilities", settings)) utilityAlerts(utilitiesMap, today6).forEach((a) => out.push({ id: a.id, label: a.label, detail: a.detail, tone: a.tone, tab: "utilities" }));
+          if (canOpenSettings() && holidaysUpdateDue(today6)) out.push({ id: "yearly-update", label: "Mise \xE0 jour annuelle \xE0 faire : calendrier des vacances scolaires et r\xE9glementation", detail: "Les nouvelles dates sont publi\xE9es en septembre ; elles servent aux conseils de prix", tone: "amber", tab: "compliance" });
           cautionAlerts(reservations, today6).forEach((a) => out.push({ id: a.id, label: a.label, detail: a.detail, tone: a.tone, tab: "list" }));
           if (isModuleEnabled("compliance", settings)) {
             const cs = readComplianceSettings(settings);
@@ -78972,10 +79001,9 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       return calculateMonthlyRecap(effectiveReservations, selectedYear, selectedMonth);
     }, [effectiveReservations, selectedYear, selectedMonth, settings]);
     const handlePrevMonth = () => {
-      if (selectedYear <= 2026 && selectedMonth <= 0) return;
       if (selectedMonth === 0) {
         setSelectedMonth(11);
-        setSelectedYear((y) => Math.max(2026, y - 1));
+        setSelectedYear((y) => y - 1);
       } else {
         setSelectedMonth((m) => m - 1);
       }
@@ -78989,16 +79017,14 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       }
     };
     const handleMonthChange = (m) => {
-      if (selectedYear <= 2026 && m < 0) return;
       setSelectedMonth(m);
     };
     const handleYearChange = (yr) => {
-      const validYear = Math.max(2026, yr);
-      setSelectedYear(validYear);
+      setSelectedYear(yr);
     };
     const handleCurrentMonth = () => {
       const today6 = /* @__PURE__ */ new Date();
-      setSelectedYear(Math.max(2026, today6.getFullYear()));
+      setSelectedYear(today6.getFullYear());
       setSelectedMonth(today6.getMonth());
     };
     const handleOpenNewReservation = (roomId = firstRoomId(settings), defaultDate) => {
