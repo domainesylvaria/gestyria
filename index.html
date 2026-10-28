@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v274</title>
-  <meta name="application-name" content="Gestyria v274" />
+  <title>Gestyria v275</title>
+  <meta name="application-name" content="Gestyria v275" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8603,7 +8603,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "274";
+      APP_VERSION = "275";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -41207,6 +41207,18 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
           })()
         }));
         const totalPeriod = rows.reduce((s, r) => s + r.inPeriod, 0);
+        const totalRemaining = list3.reduce((s, a) => s + remainingToDepreciate(a, today3()), 0);
+        const yearlyTotals = (0, import_react64.useMemo)(() => {
+          const byYear = /* @__PURE__ */ new Map();
+          list3.forEach((a) => depreciationSchedule(a).forEach((s) => byYear.set(s.year, (byYear.get(s.year) || 0) + s.amount)));
+          const years = [...byYear.keys()].sort((a, b) => a - b);
+          const base = list3.reduce((s, a) => s + Math.max(0, (a.amount || 0) - (a.residual || 0)), 0);
+          let cumul = 0;
+          return years.map((year) => {
+            cumul += byYear.get(year) || 0;
+            return { year, amount: byYear.get(year) || 0, remaining: Math.max(0, base - cumul) };
+          });
+        }, [list3]);
         const startNew = () => {
           const c = categories[0];
           setIsNew(true);
@@ -41375,6 +41387,30 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
                   period.label
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { className: "font-bold font-mono", children: formatCurrency(totalPeriod) })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "flex justify-between items-center text-sm", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { className: "text-neutral-600", children: "Reste \xE0 amortir au total (tous les biens, aujourd'hui)" }),
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { className: "font-bold font-mono", children: formatCurrency(totalRemaining) })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "pt-2 border-t border-neutral-200", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("h4", { className: "text-xs font-bold uppercase tracking-wide text-neutral-500 mb-1", children: "Total de tous les biens, ann\xE9e par ann\xE9e" }),
+                /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("table", { className: "w-full text-xs", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("tr", { className: "text-neutral-500 text-left", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("th", { className: "font-semibold py-1", children: "Ann\xE9e" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("th", { className: "font-semibold py-1 text-right", children: "Dotation de l'ann\xE9e" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("th", { className: "font-semibold py-1 text-right", children: "Reste \xE0 amortir fin d'ann\xE9e" })
+                  ] }) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("tbody", { className: "font-mono", children: yearlyTotals.map((y) => /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("tr", { className: "border-t border-neutral-100", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("td", { className: "py-1", children: y.year }),
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("td", { className: "py-1 text-right", children: formatCurrency(y.amount) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("td", { className: "py-1 text-right", children: formatCurrency(y.remaining) })
+                  ] }, y.year)) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("tfoot", { className: "font-mono font-bold", children: /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("tr", { className: "border-t border-neutral-300", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("td", { className: "py-1 font-sans", children: "Total toutes ann\xE9es" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("td", { className: "py-1 text-right", children: formatCurrency(yearlyTotals.reduce((s, y) => s + y.amount, 0)) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("td", { className: "py-1" })
+                  ] }) })
+                ] })
               ] })
             ] })
           ] })
