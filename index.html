@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v273</title>
-  <meta name="application-name" content="Gestyria v273" />
+  <title>Gestyria v274</title>
+  <meta name="application-name" content="Gestyria v274" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8603,7 +8603,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "273";
+      APP_VERSION = "274";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -39869,15 +39869,31 @@ ${m.message}
   function expensesInPeriod(expenses2, period) {
     return Object.values(expenses2).filter((e) => e && e.date >= period.from && e.date <= period.to).sort((a, b) => b.date.localeCompare(a.date));
   }
-  function usageShare(asset) {
-    const days2 = Number(asset.usageDays);
-    return days2 > 0 ? Math.min(365, Math.max(1, days2)) / 365 : 1;
-  }
   function assetLifeDays(asset) {
-    return Math.round(asset.years * 365.25 / usageShare(asset));
+    return Math.round(asset.years * 365.25);
   }
   function assetPerYear(asset) {
-    return asset.years > 0 ? Math.max(0, asset.amount - asset.residual) / asset.years * usageShare(asset) : 0;
+    return asset.years > 0 ? Math.max(0, asset.amount - asset.residual) / asset.years : 0;
+  }
+  function costPerUsageDay(asset) {
+    const days2 = Number(asset.usageDays);
+    return days2 > 0 && days2 < 365 ? assetPerYear(asset) / days2 : null;
+  }
+  function remainingToDepreciate(asset, onDate) {
+    const base = Math.max(0, (asset.amount || 0) - (asset.residual || 0));
+    if (onDate < asset.purchaseDate) return base;
+    return Math.max(0, base - depreciationInPeriod(asset, asset.purchaseDate, onDate));
+  }
+  function depreciationSchedule(asset) {
+    if (!(asset.years > 0) || !asset.purchaseDate) return [];
+    const start = /* @__PURE__ */ new Date(`${asset.purchaseDate}T00:00:00Z`);
+    if (isNaN(start.getTime())) return [];
+    const end = new Date(start.getTime() + assetLifeDays(asset) * 864e5 - 864e5);
+    const out = [];
+    for (let y = start.getUTCFullYear(); y <= end.getUTCFullYear(); y++) {
+      out.push({ year: y, amount: depreciationInPeriod(asset, `${y}-01-01`, `${y}-12-31`) });
+    }
+    return out;
   }
   function depreciationInPeriod(asset, from, to) {
     const base = Math.max(0, (asset.amount || 0) - (asset.residual || 0));
@@ -41233,9 +41249,9 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
           /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)(InfoNote, { children: [
             "Un bien durable (lit, lave-linge, pompe de piscine, travaux\u2026) se r\xE9partit sur plusieurs ann\xE9es : ",
             /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("b", { children: "amortissement lin\xE9aire" }),
-            " = (prix d'achat \u2212 valeur r\xE9siduelle) \xF7 dur\xE9e, compt\xE9 au jour pr\xE8s \xE0 partir de la date d'achat, et ",
-            /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("b", { children: "ramen\xE9 au nombre de jours d'utilisation par an" }),
-            " si vous en indiquez moins que 365. Choisissez le ",
+            " = (prix d'achat \u2212 valeur r\xE9siduelle) \xF7 dur\xE9e, compt\xE9 au jour pr\xE8s \xE0 partir de la date d'achat. Chaque bien affiche son ",
+            /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("b", { children: "reste \xE0 amortir" }),
+            " et son plan ann\xE9e par ann\xE9e ; si vous indiquez des jours d'utilisation par an, le co\xFBt d'un jour d'usage est aussi calcul\xE9. Choisissez le ",
             /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("b", { children: "poste de co\xFBt" }),
             " qu'il alimente : avec vos d\xE9penses, il sert \xE0 calculer le co\xFBt par nuit\xE9e (synth\xE8se). Ce calcul est une aide de pilotage, pas une comptabilit\xE9."
           ] }),
@@ -41270,8 +41286,8 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
             /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "grid grid-cols-2 sm:grid-cols-5 gap-3", children: [
               /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(Field, { label: "Prix d'achat (\u20AC)", children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(NumberInput, { value: draft.amount, onChange: (v) => set({ amount: v || 0 }), suffix: "\u20AC" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(Field, { label: "Valeur r\xE9siduelle (\u20AC)", hint: "Valeur estim\xE9e en fin de vie (0 par d\xE9faut)", children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(NumberInput, { value: draft.residual, onChange: (v) => set({ residual: v || 0 }), suffix: "\u20AC" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(Field, { label: "Dur\xE9e d'amortissement", hint: "Dur\xE9e de vie si le bien servait tous les jours", children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(NumberInput, { value: draft.years, onChange: (v) => set({ years: v || 0 }), suffix: "ans" }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(Field, { label: "Utilisation par an", hint: "Jours d'utilisation en moyenne (365 = tous les jours). Si l'\xE9tablissement n'est pas plein toute l'ann\xE9e, comptez moins : ex. 220 pour \u2248 60 % d'occupation. Le bien s'use moins vite, l'amortissement annuel baisse d'autant.", children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(NumberInput, { value: draft.usageDays ?? 365, onChange: (v) => set({ usageDays: Math.min(365, Math.max(1, v || 365)) }), suffix: "jours" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(Field, { label: "Dur\xE9e d'amortissement", hint: "Nombre d'ann\xE9es sur lesquelles le prix est r\xE9parti : prix \xF7 dur\xE9e = dotation par an", children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(NumberInput, { value: draft.years, onChange: (v) => set({ years: v || 0 }), suffix: "ans" }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(Field, { label: "Utilisation par an", hint: "Information : jours d'utilisation en moyenne (365 = tous les jours). Sert \xE0 afficher le co\xFBt d'un jour d'usage (dotation annuelle \xF7 jours d'usage) ; ne change pas la dotation annuelle.", children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(NumberInput, { value: draft.usageDays ?? 365, onChange: (v) => set({ usageDays: Math.min(365, Math.max(1, v || 365)) }), suffix: "jours" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime53.jsx)(Field, { label: "Par an", hint: "Dotation annuelle", children: /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("div", { className: "py-2 px-2.5 text-xs font-mono font-semibold bg-neutral-100 rounded-lg", children: formatCurrency(assetPerYear(draft)) }) })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-3", children: [
@@ -41316,11 +41332,29 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
                     a.years,
                     " an",
                     a.years > 1 ? "s" : "",
-                    a.usageDays && a.usageDays < 365 ? ` \xE0 ${a.usageDays} jours d'usage par an` : "",
+                    a.usageDays && a.usageDays < 365 ? ` \xB7 ${a.usageDays} jours d'usage par an` : "",
                     " (",
                     formatCurrency(perYear),
                     "/an)",
                     a.roomId ? ` \xB7 ${roomNames[a.roomId] || a.roomId}` : ""
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("p", { className: "text-[11px] text-neutral-600", children: [
+                    "Reste \xE0 amortir : ",
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("b", { className: "font-mono", children: formatCurrency(remainingToDepreciate(a, today3())) }),
+                    " \xB7 fin de l'amortissement le ",
+                    formatDateFr(endDate),
+                    costPerUsageDay(a) !== null && /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)(import_jsx_runtime53.Fragment, { children: [
+                      " \xB7 soit ",
+                      formatCurrency(costPerUsageDay(a)),
+                      " par jour d'usage"
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("details", { className: "text-[11px] text-neutral-500", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("summary", { className: "cursor-pointer select-none hover:text-neutral-700", children: "Plan d'amortissement par ann\xE9e" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("div", { className: "mt-1 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-0.5 font-mono", children: depreciationSchedule(a).map((s) => /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "flex justify-between gap-2", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { children: s.year }),
+                      /* @__PURE__ */ (0, import_jsx_runtime53.jsx)("span", { children: formatCurrency(s.amount) })
+                    ] }, s.year)) })
                   ] })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime53.jsxs)("div", { className: "text-right shrink-0", children: [
