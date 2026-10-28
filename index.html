@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v285</title>
-  <meta name="application-name" content="Gestyria v285" />
+  <title>Gestyria v286</title>
+  <meta name="application-name" content="Gestyria v286" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8614,7 +8614,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "285";
+      APP_VERSION = "286";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -46822,8 +46822,8 @@ Cliquer pour modifier le tarif` : void 0,
     "src/core/pricing/schoolHolidays.ts"() {
       "use strict";
       SCHOOL_ZONES = ["A", "B", "C"];
-      HOLIDAYS_YEARS = "2025-2026 et 2026-2027";
-      HOLIDAYS_LAST_DAY = "2027-09-01";
+      HOLIDAYS_YEARS = "2025-2026 \xE0 2027-2028";
+      HOLIDAYS_LAST_DAY = "2028-09-01";
       all = (kind, from, to) => SCHOOL_ZONES.map((zone) => ({ kind, zone, from, to }));
       SCHOOL_HOLIDAYS = [
         // 2025-2026
@@ -46845,7 +46845,17 @@ Cliquer pour modifier le tarif` : void 0,
         { kind: "Printemps", zone: "C", from: "2027-04-03", to: "2027-04-19" },
         { kind: "Printemps", zone: "A", from: "2027-04-10", to: "2027-04-26" },
         { kind: "Printemps", zone: "B", from: "2027-04-17", to: "2027-05-03" },
-        ...all("\xC9t\xE9", "2027-07-03", HOLIDAYS_LAST_DAY)
+        ...all("\xC9t\xE9", "2027-07-03", "2027-09-02"),
+        // 2027-2028
+        ...all("Toussaint", "2027-10-23", "2027-11-08"),
+        ...all("No\xEBl", "2027-12-18", "2028-01-03"),
+        { kind: "Hiver", zone: "B", from: "2028-02-05", to: "2028-02-21" },
+        { kind: "Hiver", zone: "C", from: "2028-02-12", to: "2028-02-28" },
+        { kind: "Hiver", zone: "A", from: "2028-02-19", to: "2028-03-06" },
+        { kind: "Printemps", zone: "B", from: "2028-04-08", to: "2028-04-24" },
+        { kind: "Printemps", zone: "C", from: "2028-04-15", to: "2028-05-02" },
+        { kind: "Printemps", zone: "A", from: "2028-04-22", to: "2028-05-09" },
+        ...all("\xC9t\xE9", "2028-07-04", HOLIDAYS_LAST_DAY)
       ];
     }
   });
@@ -47034,7 +47044,7 @@ Cliquer pour modifier le tarif` : void 0,
               HOLIDAYS_YEARS,
               ", jusqu'au ",
               HOLIDAYS_LAST_DAY.split("-").reverse().join("/"),
-              "), d'apr\xE8s l'\xC9ducation nationale : \xE0 v\xE9rifier sur education.gouv.fr. Au-del\xE0, aucune vacance n'est affich\xE9e."
+              "), d'apr\xE8s service-public.gouv.fr et l'\xC9ducation nationale. Au-del\xE0, aucune vacance n'est affich\xE9e : le calendrier est \xE0 mettre \xE0 jour chaque ann\xE9e."
             ] })
           ] }),
           editing && /* @__PURE__ */ (0, import_jsx_runtime77.jsx)(
@@ -69548,7 +69558,7 @@ Sitemap: ${base}sitemap.xml
         if (list3.length === 0) return;
         const current2 = list3.reduce((s, x) => s + currentPrice(id, x.date), 0) / list3.length;
         const gap = current2 > 0 ? Math.round((list3[0].suggested - current2) / current2 * 100) : 0;
-        cells[id] = { suggested: list3[0].suggested, current: Math.round(current2), gapPct: gap, level: gap >= thresholdPct ? "up" : gap <= -thresholdPct ? "down" : "keep" };
+        cells[id] = { reference: list3[0].reference, multiplier: list3[0].multiplier, suggested: list3[0].suggested, current: Math.round(current2), gapPct: gap, level: gap >= thresholdPct ? "up" : gap <= -thresholdPct ? "down" : "keep" };
         list3[0].reasons.forEach((r) => !reasons.includes(r) && reasons.push(r));
       });
       const levels = Object.values(cells).map((c) => c.level);
@@ -69785,6 +69795,29 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
               ". Il faut au moins 3 s\xE9jours factur\xE9s sur 12 mois, ou des prix comparables saisis ci-dessus."
             ] })
           ] }),
+          columns.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("details", { open: true, className: "bg-sky-50 border border-sky-200 rounded-2xl p-3 sm:p-4 text-xs text-sky-950 space-y-1.5", "data-advice-howto": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("summary", { className: "cursor-pointer font-bold text-sm", children: "Comment est calcul\xE9 le prix conseill\xE9 ?" }),
+            /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("p", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("b", { children: "Prix conseill\xE9 = prix de base de l\u2019h\xE9bergement \xD7 coefficient du moment." }),
+              " Le prix de base est ce que vous facturez r\xE9ellement \xE0 cet h\xE9bergement (m\xE9diane des 12 derniers mois), pas son tarif affich\xE9. Le coefficient d\xE9pend de la saison, des vacances scolaires et du jour de la semaine, et il est le m\xEAme pour tous les h\xE9bergements \xE0 une date donn\xE9e. Deux h\xE9bergements peuvent donc aller dans des sens oppos\xE9s quand leur tarif affich\xE9 est plus ou moins \xE9loign\xE9 de leur prix de base :"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("ul", { className: "list-disc pl-5 space-y-0.5", children: columns.map((c) => {
+              const ref = matrix.map((m) => m.cells[c.id]?.reference).find((v) => v) || 0;
+              if (!ref) return null;
+              const gap = c.base > 0 ? Math.round((ref - c.base) / c.base * 100) : 0;
+              return /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("li", { "data-advice-howto-room": c.id, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("b", { children: c.name }),
+                " : prix de base ",
+                fr2(ref),
+                " \u20AC, tarif affich\xE9 ",
+                fr2(c.base),
+                " \u20AC.",
+                " ",
+                gap >= 5 ? `Vous la facturez en moyenne ${gap} % au-dessus de son tarif affich\xE9 : le tarif est trop bas, les conseils montent (sauf quand la p\xE9riode est tr\xE8s calme).` : gap <= -5 ? `Vous la facturez en moyenne ${-gap} % en dessous de son tarif affich\xE9 : le tarif est trop haut par rapport \xE0 ce que les voyageurs paient, les conseils baissent (sauf p\xE9riode tr\xE8s demand\xE9e).` : "Tarif affich\xE9 et prix r\xE9ellement factur\xE9s sont proches : le conseil suit surtout la saison (hausse en p\xE9riode demand\xE9e, baisse en p\xE9riode calme)."
+              ] }, c.id);
+            }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("p", { className: "text-[11px] text-sky-900", children: "Lisez chaque case ainsi : \xAB prix actuel \xBB en haut, \xAB prix conseill\xE9 \xBB en gras, et en petit le calcul (base \xD7 coefficient). Un coefficient inf\xE9rieur \xE0 1 veut dire p\xE9riode calme, sup\xE9rieur \xE0 1 p\xE9riode demand\xE9e." })
+          ] }),
           /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-3 text-xs", children: [
             /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("label", { className: "flex items-center gap-1.5 cursor-pointer", children: [
               /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("input", { type: "checkbox", checked: showKeep, onChange: (e) => setShowKeep(e.target.checked), className: "accent-sy-325032" }),
@@ -69799,10 +69832,20 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
           shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", "data-advice-empty": true, children: rows.length === 0 ? "Aucun conseil pour l\u2019instant : il n\u2019y a pas de nuit libre \xE0 \xE9tudier, ou pas de prix de r\xE9f\xE9rence (voir ci-dessus)." : "Aucune p\xE9riode \xE0 corriger : vos prix actuels sont coh\xE9rents avec ce qui se pratique." }) : /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("div", { className: "bg-white rounded-xl border border-neutral-200 overflow-x-auto", "data-advice-list": true, children: /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("table", { className: "w-full min-w-[640px] text-xs border-collapse", children: [
             /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("tr", { className: "bg-neutral-50 text-neutral-600 text-left", children: [
               /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("th", { className: "px-3 py-2 font-semibold", children: "P\xE9riode" }),
-              columns.map((c) => /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("th", { className: "px-3 py-2 font-semibold text-center", children: [
-                c.name,
-                /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("span", { className: "block text-[10px] font-normal text-neutral-400", children: "actuel \u2192 conseill\xE9" })
-              ] }, c.id)),
+              columns.map((c) => {
+                const ref = matrix.map((m) => m.cells[c.id]?.reference).find((v) => v) || 0;
+                return /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("th", { className: "px-3 py-2 font-semibold text-center", children: [
+                  c.name,
+                  /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("span", { className: "block text-[10px] font-normal text-neutral-400", children: "actuel \u2192 conseill\xE9" }),
+                  ref > 0 && /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("span", { className: "block text-[10px] font-normal text-neutral-400", children: [
+                    "base ",
+                    fr2(ref),
+                    " \u20AC \xB7 tarif ",
+                    fr2(c.base),
+                    " \u20AC"
+                  ] })
+                ] }, c.id);
+              }),
               /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("th", { className: "px-3 py-2 font-semibold", children: "Pourquoi" }),
               /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("th", { className: "px-3 py-2" })
             ] }) }),
@@ -69837,6 +69880,11 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
                       cell5.gapPct,
                       " %)"
                     ] })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "text-[10px] text-neutral-400 font-mono", title: `Prix de base ${fr2(cell5.reference)} \u20AC \xD7 coefficient ${cell5.multiplier.toFixed(2).replace(".", ",")} (${cell5.multiplier < 1 ? "p\xE9riode calme" : cell5.multiplier > 1 ? "p\xE9riode demand\xE9e" : "neutre"}), arrondi \xE0 5 \u20AC`, children: [
+                    fr2(cell5.reference),
+                    " \u20AC \xD7 ",
+                    cell5.multiplier.toFixed(2).replace(".", ",")
                   ] }),
                   cell5.level !== "keep" ? /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("button", { type: "button", onClick: () => applyRow(r, c.id), className: "mt-1 px-2 py-0.5 text-[10px] font-semibold text-sy-325032 border border-sy-cad7cd rounded-md hover:bg-sy-f4f7f4 cursor-pointer", "data-apply-cell": `${r.from}|${c.id}`, children: "Accepter" }) : /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("span", { className: "mt-1 flex items-center justify-center gap-0.5 text-[10px] text-emerald-800", children: [
                     /* @__PURE__ */ (0, import_jsx_runtime146.jsx)(Check, { className: "w-3 h-3" }),
