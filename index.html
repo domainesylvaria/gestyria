@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v284</title>
-  <meta name="application-name" content="Gestyria v284" />
+  <title>Gestyria v285</title>
+  <meta name="application-name" content="Gestyria v285" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -1226,9 +1226,9 @@ var DomaineAppBundle = (() => {
   var __esm = (fn, res2) => function __init() {
     return fn && (res2 = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res2;
   };
-  var __export = (target, all) => {
-    for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: true });
+  var __export = (target, all2) => {
+    for (var name in all2)
+      __defProp(target, name, { get: all2[name], enumerable: true });
   };
   var __copyProps = (to, from, except, desc) => {
     if (from && typeof from === "object" || typeof from === "function") {
@@ -2452,9 +2452,9 @@ var DomaineAppBundle = (() => {
     return { stats, commented };
   }
   function fillTemplate(text, values) {
-    const filled2 = text.replace(/\{([^{}]+)\}/g, (all, key) => {
+    const filled2 = text.replace(/\{([^{}]+)\}/g, (all2, key) => {
       const k = normalizeText(key).trim().replace(/\s+/g, "_");
-      return Object.prototype.hasOwnProperty.call(values, k) ? values[k] : all;
+      return Object.prototype.hasOwnProperty.call(values, k) ? values[k] : all2;
     });
     return filled2.split("\n").map((l) => l.replace(/[ \t]+$/g, "")).join("\n").replace(/\n{3,}/g, "\n\n").trim();
   }
@@ -6505,7 +6505,7 @@ footer{background:#111}
   // src/core/pricing/costFields.ts
   function costFields(settings = getSettings()) {
     const cfg = settings.pricing.costFields;
-    const all = [
+    const all2 = [
       ...BUILTIN_COSTS.map((b) => {
         const c = cfg?.builtin?.[b.key];
         const perNight = b.key === "room" ? settings.pricing.defaultRoomCostPerNight : b.key === "pool" ? settings.pricing.defaultPoolCostPerNight : c?.perNight || 0;
@@ -6514,10 +6514,10 @@ footer{background:#111}
       ...(cfg?.custom || []).map((x) => ({ id: x.id, builtin: null, label: x.label, nature: x.nature, visible: x.active, perNight: x.perNight || 0 }))
     ];
     const order = cfg?.order || [];
-    return [...all].sort((a, b) => {
+    return [...all2].sort((a, b) => {
       const ia = order.indexOf(a.id);
       const ib = order.indexOf(b.id);
-      if (ia < 0 && ib < 0) return all.indexOf(a) - all.indexOf(b);
+      if (ia < 0 && ib < 0) return all2.indexOf(a) - all2.indexOf(b);
       return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
     });
   }
@@ -8614,7 +8614,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "284";
+      APP_VERSION = "285";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -13849,15 +13849,15 @@ footer{background:#111}
     }
   }
   function supplierActivity(m, name) {
-    const all = Object.values(m).filter((r) => !r.archived);
-    const receipts = all.filter((r) => r.kind === "receipt" && sameName(r.supplier, name));
+    const all2 = Object.values(m).filter((r) => !r.archived);
+    const receipts = all2.filter((r) => r.kind === "receipt" && sameName(r.supplier, name));
     const ids = new Set(receipts.map((r) => r.id));
     return {
       receipts: receipts.length,
       nonconform: receipts.filter((r) => r.result === "nonconform").length,
       lastReceipt: receipts.map((r) => r.date).sort().pop() || "",
-      lots: all.filter((r) => r.kind === "lot" && sameName(r.supplier, name)).length,
-      openIncidents: all.filter((r) => r.kind === "incident" && ids.has(r.sourceId) && r.status !== "closed").length
+      lots: all2.filter((r) => r.kind === "lot" && sameName(r.supplier, name)).length,
+      openIncidents: all2.filter((r) => r.kind === "incident" && ids.has(r.sourceId) && r.status !== "closed").length
     };
   }
   function entryDetail(e, m) {
@@ -14505,8 +14505,8 @@ footer{background:#111}
         { token: "date", label: "Date du jour" }
       ];
       escHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      fillText = (s, vars) => s.replace(/\{\{(\w+)\}\}/g, (all, k) => k in vars ? vars[k] : all);
-      fillHtml = (s, vars) => s.replace(/\{\{(\w+)\}\}/g, (all, k) => k in vars ? escHtml(vars[k]) : all);
+      fillText = (s, vars) => s.replace(/\{\{(\w+)\}\}/g, (all2, k) => k in vars ? vars[k] : all2);
+      fillHtml = (s, vars) => s.replace(/\{\{(\w+)\}\}/g, (all2, k) => k in vars ? escHtml(vars[k]) : all2);
     }
   });
 
@@ -24177,8 +24177,8 @@ function beds24Bookings_() {
     const hits = [];
     docs3.forEach((d) => {
       const title = normalize(d.title);
-      const all = `${title} ${normalize(d.sub || "")} ${normalize(d.text)}`;
-      if (!words.every((w2) => all.includes(w2))) return;
+      const all2 = `${title} ${normalize(d.sub || "")} ${normalize(d.text)}`;
+      if (!words.every((w2) => all2.includes(w2))) return;
       let score = 10;
       if (title.startsWith(words[0])) score += 30;
       else if (title.includes(words[0])) score += 15;
@@ -24212,8 +24212,8 @@ function beds24Bookings_() {
     const hits = [];
     entries.forEach((e) => {
       const title = normalize(e.title);
-      const all = `${title} ${normalize(e.where)} ${normalize(e.text)}`;
-      if (!words.every((w2) => all.includes(w2))) return;
+      const all2 = `${title} ${normalize(e.where)} ${normalize(e.text)}`;
+      if (!words.every((w2) => all2.includes(w2))) return;
       let score = 10;
       if (title.startsWith(words[0])) score += 30;
       else if (title.includes(words[0])) score += 15;
@@ -27902,10 +27902,10 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
                         {
                           checked: concerned,
                           onChange: (v) => {
-                            const all = settings.accommodations.filter((x) => x.active).map((x) => x.id);
-                            const current2 = d.roomIds ?? all;
+                            const all2 = settings.accommodations.filter((x) => x.active).map((x) => x.id);
+                            const current2 = d.roomIds ?? all2;
                             const next = v ? [...current2, a.id] : current2.filter((id) => id !== a.id);
-                            set({ roomIds: next.length === all.length ? void 0 : next });
+                            set({ roomIds: next.length === all2.length ? void 0 : next });
                           },
                           label: a.name
                         }
@@ -28500,16 +28500,16 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
   // src/modules/importplateformes/ImportModal.tsx
   function loadChoices(platformId) {
     try {
-      const all = JSON.parse(localStorage.getItem(ROOMS_KEY) || "{}");
-      return all && typeof all === "object" && all[platformId] && typeof all[platformId] === "object" ? all[platformId] : {};
+      const all2 = JSON.parse(localStorage.getItem(ROOMS_KEY) || "{}");
+      return all2 && typeof all2 === "object" && all2[platformId] && typeof all2[platformId] === "object" ? all2[platformId] : {};
     } catch {
       return {};
     }
   }
   function saveChoices(platformId, choices) {
     try {
-      const all = JSON.parse(localStorage.getItem(ROOMS_KEY) || "{}");
-      localStorage.setItem(ROOMS_KEY, JSON.stringify({ ...all && typeof all === "object" ? all : {}, [platformId]: choices }));
+      const all2 = JSON.parse(localStorage.getItem(ROOMS_KEY) || "{}");
+      localStorage.setItem(ROOMS_KEY, JSON.stringify({ ...all2 && typeof all2 === "object" ? all2 : {}, [platformId]: choices }));
     } catch {
     }
   }
@@ -30591,10 +30591,10 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
     u16(ev, 10, files.length);
     u32(ev, 12, centralSize);
     u32(ev, 16, offset);
-    const all = [...parts, ...central, end];
-    const out = new Uint8Array(all.reduce((n, p) => n + p.length, 0));
+    const all2 = [...parts, ...central, end];
+    const out = new Uint8Array(all2.reduce((n, p) => n + p.length, 0));
     let pos = 0;
-    all.forEach((p) => {
+    all2.forEach((p) => {
       out.set(p, pos);
       pos += p.length;
     });
@@ -34434,8 +34434,8 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
           if (!d.name.trim()) return onToast("Donnez un nom.");
           const finished = withComputed({ ...draft, name: d.name.trim() }, ingredients, cost);
           try {
-            const all = getStoredMealItems();
-            saveDishes(isNew ? [...all, finished] : all.map((x) => x.id === finished.id ? finished : x));
+            const all2 = getStoredMealItems();
+            saveDishes(isNew ? [...all2, finished] : all2.map((x) => x.id === finished.id ? finished : x));
             syncMenuItems(finished, settings);
             const changedA = JSON.stringify(marks) !== JSON.stringify(fiche?.allergens || {}) || none !== (fiche?.noneValidated || false);
             if (fiche && (changedA || fiche.name !== finished.name)) {
@@ -40748,9 +40748,9 @@ ${m.message}
       VBars = ({ r }) => {
         const W2 = 600, H2 = 220, L = 44, B = 36, T = 10, R = 8;
         const unit = r.series[0].unit;
-        const all = r.series.flatMap((s) => s.values.map((v) => v ?? 0));
-        const max = Math.max(0, ...all);
-        const min = Math.min(0, ...all);
+        const all2 = r.series.flatMap((s) => s.values.map((v) => v ?? 0));
+        const max = Math.max(0, ...all2);
+        const min = Math.min(0, ...all2);
         const span = max - min || 1;
         const y = (v) => T + (max - v) / span * (H2 - T - B);
         const slot2 = (W2 - L - R) / r.groups.length;
@@ -40777,9 +40777,9 @@ ${m.message}
       Lines = ({ r }) => {
         const W2 = 600, H2 = 220, L = 44, B = 36, T = 10, R = 12;
         const unit = r.series[0].unit;
-        const all = r.series.flatMap((s) => s.values.filter((v) => v !== null));
-        const max = Math.max(0, ...all);
-        const min = Math.min(0, ...all);
+        const all2 = r.series.flatMap((s) => s.values.filter((v) => v !== null));
+        const max = Math.max(0, ...all2);
+        const min = Math.min(0, ...all2);
         const span = max - min || 1;
         const y = (v) => T + (max - v) / span * (H2 - T - B);
         const n = r.groups.length;
@@ -41533,14 +41533,14 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
         ] });
       };
       AssetsPanel = ({ settings, prof, period, stats, onToast }) => {
-        const all = useAssets();
+        const all2 = useAssets();
         const [draft, setDraft] = (0, import_react65.useState)(null);
         const [isNew, setIsNew] = (0, import_react65.useState)(false);
         const buckets = bucketOptions(settings);
         const rooms = settings.accommodations.filter((a) => a.active);
         const roomNames = (0, import_react65.useMemo)(() => Object.fromEntries(settings.accommodations.map((a) => [a.id, a.name])), [settings.accommodations]);
         const categories = prof.assetCategories.filter((c) => c.active);
-        const list3 = (0, import_react65.useMemo)(() => Object.values(all).sort((a, b) => b.purchaseDate.localeCompare(a.purchaseDate)), [all]);
+        const list3 = (0, import_react65.useMemo)(() => Object.values(all2).sort((a, b) => b.purchaseDate.localeCompare(a.purchaseDate)), [all2]);
         const bucketLabel = (id) => buckets.find((b) => b.value === id)?.label || "Poste supprim\xE9";
         const rows = list3.map((a) => ({
           asset: a,
@@ -42033,7 +42033,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
         ] });
       };
       ExpensesPanel = ({ settings, prof, period, onToast }) => {
-        const all = useExpenses();
+        const all2 = useExpenses();
         const [draft, setDraft] = (0, import_react67.useState)(null);
         const [isNew, setIsNew] = (0, import_react67.useState)(false);
         const [categoryFilter, setCategoryFilter] = (0, import_react67.useState)("all");
@@ -42041,7 +42041,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
         const rooms = (0, import_react67.useMemo)(() => settings.accommodations.filter((a) => a.active), [settings.accommodations]);
         const roomNames = (0, import_react67.useMemo)(() => Object.fromEntries(settings.accommodations.map((a) => [a.id, a.name])), [settings.accommodations]);
         const activeCategories = prof.categories.filter((c) => c.active);
-        const inPeriod2 = (0, import_react67.useMemo)(() => expensesInPeriod(all, period), [all, period]);
+        const inPeriod2 = (0, import_react67.useMemo)(() => expensesInPeriod(all2, period), [all2, period]);
         const shown = inPeriod2.filter((e) => {
           if (categoryFilter !== "all" && e.categoryId !== categoryFilter) return false;
           const q = search.trim().toLowerCase();
@@ -42342,17 +42342,17 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
           onToast("R\xE9glages de la rentabilit\xE9 enregistr\xE9s.");
         };
         const purge = async () => {
-          const all = Object.values(getExpenses());
-          if (all.length === 0) return onToast("Aucune d\xE9pense \xE0 supprimer.");
-          const photos2 = all.reduce((n, e) => n + e.photos.length, 0);
+          const all2 = Object.values(getExpenses());
+          if (all2.length === 0) return onToast("Aucune d\xE9pense \xE0 supprimer.");
+          const photos2 = all2.reduce((n, e) => n + e.photos.length, 0);
           if (!window.confirm(
-            `Supprimer d\xE9finitivement les ${all.length} d\xE9pense(s) enregistr\xE9es${photos2 ? ` et mettre \xE0 la corbeille de Google Drive leurs ${photos2} photo(s)` : ""} ?
+            `Supprimer d\xE9finitivement les ${all2.length} d\xE9pense(s) enregistr\xE9es${photos2 ? ` et mettre \xE0 la corbeille de Google Drive leurs ${photos2} photo(s)` : ""} ?
 
 Vos r\xE9servations, factures et fiches clients ne sont pas touch\xE9es. Cette action est irr\xE9versible.`
           ))
             return;
           if (window.prompt("Pour confirmer, tapez SUPPRIMER") !== "SUPPRIMER") return onToast("Suppression annul\xE9e.");
-          for (const e of all) {
+          for (const e of all2) {
             for (const id of e.photos) {
               try {
                 await connectorPost({ action: "deletePhoto", fileId: id });
@@ -43440,12 +43440,12 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
           onClose();
         };
         const remove = () => {
-          const all = [...doc.files, ...doc.versions.flatMap((v) => v.files)];
-          if (!window.confirm(`Supprimer d\xE9finitivement \xAB ${doc.title || "ce document"} \xBB, son historique${all.length ? ` et ses ${all.length} fichier(s) (mis \xE0 la corbeille de Google Drive)` : ""} ?
+          const all2 = [...doc.files, ...doc.versions.flatMap((v) => v.files)];
+          if (!window.confirm(`Supprimer d\xE9finitivement \xAB ${doc.title || "ce document"} \xBB, son historique${all2.length ? ` et ses ${all2.length} fichier(s) (mis \xE0 la corbeille de Google Drive)` : ""} ?
 
 Pour le garder sans qu'il compte dans les \xE9ch\xE9ances, utilisez plut\xF4t \xAB Archiver \xBB.`)) return;
           deleteDoc(doc.id);
-          if (all.length > 0) deleteDocFiles(all);
+          if (all2.length > 0) deleteDocFiles(all2);
           onToast("Document supprim\xE9.");
           onClose();
         };
@@ -43925,20 +43925,20 @@ Cordialement`
         };
         const save = (0, import_react75.useCallback)(
           async (changed) => {
-            const all = { ...readPending(code), ...changed };
-            writePending(code, all);
+            const all2 = { ...readPending(code), ...changed };
+            writePending(code, all2);
             if (inFlight.current) {
-              requeueSessionTasks(all);
+              requeueSessionTasks(all2);
               return;
             }
             inFlight.current = true;
             setSaveState("saving");
             try {
-              await connectorPost({ action: "staffSave", tasks: all });
+              await connectorPost({ action: "staffSave", tasks: all2 });
               writePending(code, {});
               setSaveState(hasPendingSessionTasks() ? "saving" : "saved");
             } catch (err) {
-              requeueSessionTasks(all);
+              requeueSessionTasks(all2);
               setSaveState("offline");
               if (err?.message && !/fetch|network|réseau|injoignable/i.test(err.message)) showToast(err.message);
             } finally {
@@ -45734,8 +45734,8 @@ ${line("Date d'arriv\xE9e", fr(r.checkIn))}${line("Date de d\xE9part pr\xE9vue",
     const fields = Object.keys(values);
     if (fields.length === 0) return { next: r, frozen: [], kept: [] };
     const reference = fingerprint(r);
-    const all = { ...r, ...values };
-    if (fingerprint(all) === reference) return { next: all, frozen: fields, kept: [] };
+    const all2 = { ...r, ...values };
+    if (fingerprint(all2) === reference) return { next: all2, frozen: fields, kept: [] };
     let next = r;
     const frozen = [];
     const kept = [];
@@ -46807,8 +46807,51 @@ Cliquer pour modifier le tarif` : void 0,
     }
   });
 
+  // src/core/pricing/schoolHolidays.ts
+  function holidaysOn(date) {
+    return SCHOOL_HOLIDAYS.filter((h2) => date >= h2.from && date < h2.to);
+  }
+  function zonesOnHoliday(date) {
+    return [...new Set(holidaysOn(date).map((h2) => h2.zone))].sort();
+  }
+  function holidayOf(zone, date) {
+    return SCHOOL_HOLIDAYS.find((h2) => h2.zone === zone && date >= h2.from && date < h2.to);
+  }
+  var SCHOOL_ZONES, HOLIDAYS_YEARS, HOLIDAYS_LAST_DAY, all, SCHOOL_HOLIDAYS;
+  var init_schoolHolidays = __esm({
+    "src/core/pricing/schoolHolidays.ts"() {
+      "use strict";
+      SCHOOL_ZONES = ["A", "B", "C"];
+      HOLIDAYS_YEARS = "2025-2026 et 2026-2027";
+      HOLIDAYS_LAST_DAY = "2027-09-01";
+      all = (kind, from, to) => SCHOOL_ZONES.map((zone) => ({ kind, zone, from, to }));
+      SCHOOL_HOLIDAYS = [
+        // 2025-2026
+        ...all("Toussaint", "2025-10-18", "2025-11-03"),
+        ...all("No\xEBl", "2025-12-20", "2026-01-05"),
+        { kind: "Hiver", zone: "A", from: "2026-02-07", to: "2026-02-23" },
+        { kind: "Hiver", zone: "B", from: "2026-02-14", to: "2026-03-02" },
+        { kind: "Hiver", zone: "C", from: "2026-02-21", to: "2026-03-09" },
+        { kind: "Printemps", zone: "A", from: "2026-04-04", to: "2026-04-20" },
+        { kind: "Printemps", zone: "B", from: "2026-04-11", to: "2026-04-27" },
+        { kind: "Printemps", zone: "C", from: "2026-04-18", to: "2026-05-04" },
+        ...all("\xC9t\xE9", "2026-07-04", "2026-09-01"),
+        // 2026-2027
+        ...all("Toussaint", "2026-10-17", "2026-11-02"),
+        ...all("No\xEBl", "2026-12-19", "2027-01-04"),
+        { kind: "Hiver", zone: "C", from: "2027-02-06", to: "2027-02-22" },
+        { kind: "Hiver", zone: "A", from: "2027-02-13", to: "2027-03-01" },
+        { kind: "Hiver", zone: "B", from: "2027-02-20", to: "2027-03-08" },
+        { kind: "Printemps", zone: "C", from: "2027-04-03", to: "2027-04-19" },
+        { kind: "Printemps", zone: "A", from: "2027-04-10", to: "2027-04-26" },
+        { kind: "Printemps", zone: "B", from: "2027-04-17", to: "2027-05-03" },
+        ...all("\xC9t\xE9", "2027-07-03", HOLIDAYS_LAST_DAY)
+      ];
+    }
+  });
+
   // src/modules/tarifs/RateGridView.tsx
-  var import_react84, import_jsx_runtime77, HATCH, MAX_ZONE_DAYS, priceText, RateGridView;
+  var import_react84, import_jsx_runtime77, HOLIDAY_LOOK, HATCH, MAX_ZONE_DAYS, priceText, RateGridView;
   var init_RateGridView = __esm({
     "src/modules/tarifs/RateGridView.tsx"() {
       "use strict";
@@ -46818,7 +46861,15 @@ Cliquer pour modifier le tarif` : void 0,
       init_openingCalendar();
       init_bookingUtils();
       init_DayRateEditor();
+      init_schoolHolidays();
       import_jsx_runtime77 = __require("react/jsx-runtime");
+      HOLIDAY_LOOK = {
+        Toussaint: { color: "#F59E0B", short: "Tous." },
+        No\u00EBl: { color: "#EF4444", short: "No\xEBl" },
+        Hiver: { color: "#3B82F6", short: "Hiv." },
+        Printemps: { color: "#10B981", short: "Print." },
+        \u00C9t\u00E9: { color: "#EAB308", short: "\xC9t\xE9" }
+      };
       HATCH = "repeating-linear-gradient(45deg, rgba(100,116,139,0.30) 0 4px, transparent 4px 8px)";
       MAX_ZONE_DAYS = 366;
       priceText = (n) => String(Math.round(n * 100) / 100).replace(".", ",");
@@ -46932,7 +46983,30 @@ Cliquer pour modifier le tarif` : void 0,
                   d
                 );
               })
-            ] })
+            ] }),
+            SCHOOL_ZONES.map((zone, zi) => /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("div", { className: `grid items-stretch gap-px ${zi === 0 ? "pt-2 border-t border-neutral-100 mt-1" : ""}`, style: { gridTemplateColumns: `110px repeat(${daysCount}, ${cellW})` }, "data-school-zone": zone, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("div", { className: "pr-2 flex items-center text-xs font-semibold text-neutral-600", children: [
+                "Vacances zone ",
+                zone
+              ] }),
+              days2.map((d) => {
+                const date = iso(d);
+                const h2 = holidayOf(zone, date);
+                const prev = d > 1 ? holidayOf(zone, iso(d - 1)) : void 0;
+                const look2 = h2 ? HOLIDAY_LOOK[h2.kind] : null;
+                const startsHere = !!h2 && (!prev || prev.kind !== h2.kind || d === 1);
+                return /* @__PURE__ */ (0, import_jsx_runtime77.jsx)(
+                  "div",
+                  {
+                    title: h2 ? `Zone ${zone} : vacances de ${h2.kind} (du ${h2.from.split("-").reverse().join("/")} \xE0 la reprise du ${h2.to.split("-").reverse().join("/")})` : `Zone ${zone} : pas de vacances`,
+                    className: "h-6 rounded-md text-[9px] font-bold flex items-center justify-center overflow-hidden whitespace-nowrap",
+                    style: look2 ? { backgroundColor: `${look2.color}33`, borderBottom: `3px solid ${look2.color}`, color: "#44403c" } : { backgroundColor: "#fafafa" },
+                    children: startsHere && look2 ? look2.short : ""
+                  },
+                  d
+                );
+              })
+            ] }, zone))
           ] }) }),
           /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("div", { className: "px-4 sm:px-5 py-3 border-t border-neutral-200/80 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-neutral-600", children: [
             settings.rates.tiers.map((t) => /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("span", { className: "flex items-center gap-1.5", children: [
@@ -46947,6 +47021,20 @@ Cliquer pour modifier le tarif` : void 0,
             /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("span", { className: "flex items-center gap-1.5", children: [
               /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("span", { className: "w-3 h-3 rounded-sm border border-neutral-300", style: { backgroundImage: HATCH } }),
               "\xC9tablissement ferm\xE9"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("span", { className: "flex items-center gap-1.5", "data-school-legend": true, children: [
+              "Vacances scolaires :",
+              Object.keys(HOLIDAY_LOOK).map((k) => /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("span", { className: "flex items-center gap-1", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime77.jsx)("span", { className: "w-3 h-1.5 rounded-full", style: { backgroundColor: HOLIDAY_LOOK[k].color } }),
+                k
+              ] }, k))
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime77.jsxs)("span", { className: "basis-full text-[10px] text-neutral-400", children: [
+              "Calendrier des vacances scolaires des zones A, B et C (",
+              HOLIDAYS_YEARS,
+              ", jusqu'au ",
+              HOLIDAYS_LAST_DAY.split("-").reverse().join("/"),
+              "), d'apr\xE8s l'\xC9ducation nationale : \xE0 v\xE9rifier sur education.gouv.fr. Au-del\xE0, aucune vacance n'est affich\xE9e."
             ] })
           ] }),
           editing && /* @__PURE__ */ (0, import_jsx_runtime77.jsx)(
@@ -55214,12 +55302,12 @@ Cliquer pour modifier le tarif` : void 0,
               ext: null
             }));
             const outside = external.map((e) => ({ key: e.key, title: e.title, detail: e.detail, categoryId: e.categoryId, moduleId: e.moduleId, date: e.date, expiryDate: e.expiryDate, files: e.files, doc: null, ext: e }));
-            const all = [...own, ...outside].filter((x) => catModule === "all" || x.moduleId === catModule).filter((x) => !q || `${x.title} ${x.detail} ${categoryName2(admin.categories, x.categoryId)} ${sourceLabel(x.moduleId)}`.toLowerCase().includes(q));
+            const all2 = [...own, ...outside].filter((x) => catModule === "all" || x.moduleId === catModule).filter((x) => !q || `${x.title} ${x.detail} ${categoryName2(admin.categories, x.categoryId)} ${sourceLabel(x.moduleId)}`.toLowerCase().includes(q));
             const modules = Array.from(new Set([...own, ...outside].map((x) => x.moduleId)));
             const known = new Set(admin.categories.map((c) => c.id));
             const groups2 = [
-              ...admin.categories.map((c) => ({ id: c.id, name: c.name, items: all.filter((x) => x.categoryId === c.id) })),
-              { id: "__other", name: "Autres", items: all.filter((x) => !known.has(x.categoryId)) }
+              ...admin.categories.map((c) => ({ id: c.id, name: c.name, items: all2.filter((x) => x.categoryId === c.id) })),
+              { id: "__other", name: "Autres", items: all2.filter((x) => !known.has(x.categoryId)) }
             ].filter((g) => g.items.length > 0);
             return /* @__PURE__ */ (0, import_jsx_runtime91.jsxs)("div", { className: "space-y-3", "data-admin-catalog": true, children: [
               /* @__PURE__ */ (0, import_jsx_runtime91.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200 p-3 flex flex-wrap items-center gap-2", children: [
@@ -55232,9 +55320,9 @@ Cliquer pour modifier le tarif` : void 0,
                   modules.map((m) => /* @__PURE__ */ (0, import_jsx_runtime91.jsx)("option", { value: m, children: sourceLabel(m) }, m))
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime91.jsxs)("span", { className: "text-[11px] text-neutral-500", children: [
-                  all.length,
+                  all2.length,
                   " document",
-                  all.length > 1 ? "s" : ""
+                  all2.length > 1 ? "s" : ""
                 ] })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime91.jsx)("p", { className: "text-[11px] text-neutral-500", children: "Tous les documents de l'\xE9tablissement, rang\xE9s par type. Le module indiqu\xE9 est celui o\xF9 le document est ajout\xE9 et compl\xE9t\xE9 ; ceux d'un autre module (attestations de formation\u2026) se modifient l\xE0-bas." }),
@@ -55730,10 +55818,10 @@ Cliquer pour modifier le tarif` : void 0,
         const [category, setCategory] = (0, import_react100.useState)("all");
         const [priority, setPriority] = (0, import_react100.useState)("all");
         const today6 = todayIso2();
-        const all = (0, import_react100.useMemo)(() => incidentList(records5), [records5]);
+        const all2 = (0, import_react100.useMemo)(() => incidentList(records5), [records5]);
         const catName = (id) => est.incidentCategories.find((c) => c.id === id)?.name || id;
         const areaName = (i) => [accommodations.find((a) => a.id === i.areaId)?.name, i.areaText].filter(Boolean).join(" \xB7 ");
-        const shown = all.filter((i) => {
+        const shown = all2.filter((i) => {
           if (status2 === "archived") return i.archived;
           if (i.archived) return false;
           if (status2 === "all") return true;
@@ -55742,7 +55830,7 @@ Cliquer pour modifier le tarif` : void 0,
           return i.status === status2;
         }).filter((i) => category === "all" || i.category === category).filter((i) => priority === "all" || i.priority === priority).filter((i) => !search.trim() || [i.ref, i.description, i.responsible, areaName(i), catName(i.category)].join(" ").toLowerCase().includes(search.trim().toLowerCase())).sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
         const editing = focusId && focusId !== "new" ? records5[focusId] : void 0;
-        const draft = (0, import_react100.useMemo)(() => focusId === "new" ? newIncident(nextIncidentRef(all, (/* @__PURE__ */ new Date()).getFullYear())) : null, [focusId]);
+        const draft = (0, import_react100.useMemo)(() => focusId === "new" ? newIncident(nextIncidentRef(all2, (/* @__PURE__ */ new Date()).getFullYear())) : null, [focusId]);
         const form = draft || editing;
         return /* @__PURE__ */ (0, import_jsx_runtime94.jsxs)("div", { className: "space-y-3", children: [
           /* @__PURE__ */ (0, import_jsx_runtime94.jsx)("div", { className: "flex justify-end", children: /* @__PURE__ */ (0, import_jsx_runtime94.jsxs)("button", { type: "button", className: primaryBtn, "data-new-record": true, onClick: () => setFocusId("new"), children: [
@@ -55778,7 +55866,7 @@ Cliquer pour modifier le tarif` : void 0,
               shown.length > 1 ? "s" : ""
             ] })
           ] }),
-          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime94.jsx)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", children: all.length === 0 ? "Aucun incident enregistr\xE9." : "Aucun incident ne correspond \xE0 vos filtres." }) : /* @__PURE__ */ (0, import_jsx_runtime94.jsx)("div", { className: "space-y-2", children: shown.map((i) => {
+          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime94.jsx)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", children: all2.length === 0 ? "Aucun incident enregistr\xE9." : "Aucun incident ne correspond \xE0 vos filtres." }) : /* @__PURE__ */ (0, import_jsx_runtime94.jsx)("div", { className: "space-y-2", children: shown.map((i) => {
             const st = shownIncidentStatus(i, today6);
             const d = incidentDays(i, today6);
             return /* @__PURE__ */ (0, import_jsx_runtime94.jsx)("button", { type: "button", onClick: () => setFocusId(i.id), className: "w-full text-left bg-white rounded-xl border border-neutral-200 hover:border-neutral-300 p-3 cursor-pointer", "data-incident-row": i.id, children: /* @__PURE__ */ (0, import_jsx_runtime94.jsxs)("div", { className: "flex flex-wrap items-start justify-between gap-2", children: [
@@ -56110,9 +56198,9 @@ Cliquer pour modifier le tarif` : void 0,
         const [search, setSearch] = (0, import_react102.useState)("");
         const [archived, setArchived2] = (0, import_react102.useState)(false);
         const [reading, setReading] = (0, import_react102.useState)(null);
-        const all = (0, import_react102.useMemo)(() => guideList(records5), [records5]);
-        const categories = (0, import_react102.useMemo)(() => Array.from(new Set(all.map((g) => g.category).filter(Boolean))).sort(), [all]);
-        const shown = all.filter((g) => g.archived === archived).filter((g) => !search.trim() || [g.title, g.category, g.body].join(" ").toLowerCase().includes(search.trim().toLowerCase())).sort((a, b) => Number(!a.category) - Number(!b.category) || a.category.localeCompare(b.category, "fr") || a.title.localeCompare(b.title, "fr"));
+        const all2 = (0, import_react102.useMemo)(() => guideList(records5), [records5]);
+        const categories = (0, import_react102.useMemo)(() => Array.from(new Set(all2.map((g) => g.category).filter(Boolean))).sort(), [all2]);
+        const shown = all2.filter((g) => g.archived === archived).filter((g) => !search.trim() || [g.title, g.category, g.body].join(" ").toLowerCase().includes(search.trim().toLowerCase())).sort((a, b) => Number(!a.category) - Number(!b.category) || a.category.localeCompare(b.category, "fr") || a.title.localeCompare(b.title, "fr"));
         const groups = Array.from(new Set(shown.map((g) => g.category || "Sans cat\xE9gorie")));
         const draft = (0, import_react102.useMemo)(() => focusId === "new" ? newGuide() : null, [focusId]);
         const form = draft || (focusId && focusId !== "new" ? records5[focusId] : void 0);
@@ -56143,8 +56231,8 @@ Cliquer pour modifier le tarif` : void 0,
           ] }),
           shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime96.jsxs)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 space-y-3", "data-guides-empty": true, children: [
             /* @__PURE__ */ (0, import_jsx_runtime96.jsx)(BookOpen, { className: "w-6 h-6 text-neutral-400 mx-auto" }),
-            /* @__PURE__ */ (0, import_jsx_runtime96.jsx)("p", { className: "text-xs text-neutral-600", children: all.length === 0 ? "Aucune fiche. R\xE9digez vos m\xE9mos : fonctionnement d'un appareil, r\xE9glages, dosages\u2026" : "Aucune fiche ne correspond." }),
-            all.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime96.jsx)("button", { type: "button", onClick: createTemplate, className: bigBtn + " mx-auto", "data-guide-template": true, children: "Cr\xE9er la fiche \xAB Entretien de la piscine \xBB (reprise de votre tableau)" })
+            /* @__PURE__ */ (0, import_jsx_runtime96.jsx)("p", { className: "text-xs text-neutral-600", children: all2.length === 0 ? "Aucune fiche. R\xE9digez vos m\xE9mos : fonctionnement d'un appareil, r\xE9glages, dosages\u2026" : "Aucune fiche ne correspond." }),
+            all2.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime96.jsx)("button", { type: "button", onClick: createTemplate, className: bigBtn + " mx-auto", "data-guide-template": true, children: "Cr\xE9er la fiche \xAB Entretien de la piscine \xBB (reprise de votre tableau)" })
           ] }) : groups.map((cat) => /* @__PURE__ */ (0, import_jsx_runtime96.jsxs)("section", { className: "space-y-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime96.jsx)("h3", { className: "text-xs font-bold uppercase tracking-wide text-neutral-500", children: cat }),
             shown.filter((g) => (g.category || "Sans cat\xE9gorie") === cat).map((g) => /* @__PURE__ */ (0, import_jsx_runtime96.jsxs)("button", { type: "button", onClick: () => setReading(g.id), className: "w-full text-left bg-white rounded-xl border border-neutral-200 hover:border-neutral-300 p-3 cursor-pointer min-h-[3rem]", "data-guide-row": g.id, children: [
@@ -56288,9 +56376,9 @@ Cliquer pour modifier le tarif` : void 0,
         const [from, setFrom] = (0, import_react103.useState)("");
         const [to, setTo] = (0, import_react103.useState)("");
         const [archived, setArchived2] = (0, import_react103.useState)(false);
-        const all = (0, import_react103.useMemo)(() => lossList(records5), [records5]);
-        const shown = all.filter((l) => l.archived === archived && (status2 === "all" || l.status === status2) && (!from || l.date >= from) && (!to || l.date <= to)).sort((a, b) => b.date.localeCompare(a.date));
-        const summary = (0, import_react103.useMemo)(() => summarizeLosses(all, from, to), [all, from, to]);
+        const all2 = (0, import_react103.useMemo)(() => lossList(records5), [records5]);
+        const shown = all2.filter((l) => l.archived === archived && (status2 === "all" || l.status === status2) && (!from || l.date >= from) && (!to || l.date <= to)).sort((a, b) => b.date.localeCompare(a.date));
+        const summary = (0, import_react103.useMemo)(() => summarizeLosses(all2, from, to), [all2, from, to]);
         const roomName = (id) => accommodations.find((a) => a.id === id)?.name || "";
         const exportCsv = () => downloadCsv(
           `casses-et-pertes_${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.csv`,
@@ -56336,7 +56424,7 @@ Cliquer pour modifier le tarif` : void 0,
               " Archiv\xE9s"
             ] })
           ] }),
-          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime98.jsx)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", children: all.length === 0 ? "Aucune casse ni perte enregistr\xE9e. Ce registre est facultatif : il aide \xE0 savoir ce qu\u2019il faut racheter et ce que cela co\xFBte." : "Aucun enregistrement ne correspond." }) : /* @__PURE__ */ (0, import_jsx_runtime98.jsx)("div", { className: "space-y-2", children: shown.map((l) => /* @__PURE__ */ (0, import_jsx_runtime98.jsx)("button", { type: "button", onClick: () => setForm({ entry: l, isNew: false }), className: "w-full text-left bg-white rounded-xl border border-neutral-200 hover:border-neutral-300 p-3 cursor-pointer", "data-loss-row": l.id, children: /* @__PURE__ */ (0, import_jsx_runtime98.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [
+          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime98.jsx)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", children: all2.length === 0 ? "Aucune casse ni perte enregistr\xE9e. Ce registre est facultatif : il aide \xE0 savoir ce qu\u2019il faut racheter et ce que cela co\xFBte." : "Aucun enregistrement ne correspond." }) : /* @__PURE__ */ (0, import_jsx_runtime98.jsx)("div", { className: "space-y-2", children: shown.map((l) => /* @__PURE__ */ (0, import_jsx_runtime98.jsx)("button", { type: "button", onClick: () => setForm({ entry: l, isNew: false }), className: "w-full text-left bg-white rounded-xl border border-neutral-200 hover:border-neutral-300 p-3 cursor-pointer", "data-loss-row": l.id, children: /* @__PURE__ */ (0, import_jsx_runtime98.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime98.jsxs)("div", { className: "min-w-0", children: [
               /* @__PURE__ */ (0, import_jsx_runtime98.jsxs)("div", { className: "font-serif font-bold text-sm text-neutral-900", children: [
                 l.qty,
@@ -56762,8 +56850,8 @@ Cliquer pour modifier le tarif` : void 0,
         const [from, setFrom] = (0, import_react105.useState)("");
         const [to, setTo] = (0, import_react105.useState)("");
         const [archived, setArchived2] = (0, import_react105.useState)(false);
-        const all = (0, import_react105.useMemo)(() => wasteList(records5), [records5]);
-        const shown = all.filter((w2) => w2.archived === archived).filter((w2) => type === "all" || w2.wasteType === type).filter((w2) => (!from || w2.date >= from) && (!to || w2.date <= to)).sort((a, b) => b.date.localeCompare(a.date));
+        const all2 = (0, import_react105.useMemo)(() => wasteList(records5), [records5]);
+        const shown = all2.filter((w2) => w2.archived === archived).filter((w2) => type === "all" || w2.wasteType === type).filter((w2) => (!from || w2.date >= from) && (!to || w2.date <= to)).sort((a, b) => b.date.localeCompare(a.date));
         return /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("div", { className: "space-y-3", children: [
           /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("details", { className: "text-xs", children: [
@@ -56796,7 +56884,7 @@ Cliquer pour modifier le tarif` : void 0,
           ] }),
           shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500 space-y-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(Trash2, { className: "w-6 h-6 text-neutral-400 mx-auto" }),
-            /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("p", { children: all.length === 0 ? "Aucun enl\xE8vement enregistr\xE9. Ce registre est facultatif : utilisez-le pour garder une trace et les justificatifs de ce que vous faites r\xE9ellement." : "Aucun enregistrement ne correspond." })
+            /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("p", { children: all2.length === 0 ? "Aucun enl\xE8vement enregistr\xE9. Ce registre est facultatif : utilisez-le pour garder une trace et les justificatifs de ce que vous faites r\xE9ellement." : "Aucun enregistrement ne correspond." })
           ] }) : /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("div", { className: "space-y-2", children: shown.map((w2) => /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("button", { type: "button", onClick: () => setForm({ entry: w2, isNew: false }), className: "w-full text-left bg-white rounded-xl border border-neutral-200 hover:border-neutral-300 p-3 cursor-pointer", "data-waste-row": w2.id, children: /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("div", { children: [
               /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("div", { className: "font-serif font-bold text-sm text-neutral-900", children: w2.wasteType }),
@@ -56977,9 +57065,9 @@ Cliquer pour modifier le tarif` : void 0,
         const [reportId, setReportId] = (0, import_react106.useState)("interventions");
         const { printing, print } = usePrint();
         const today6 = todayIso2();
-        const all = (0, import_react106.useMemo)(() => Object.values(records5), [records5]);
+        const all2 = (0, import_react106.useMemo)(() => Object.values(records5), [records5]);
         const responsibles = (0, import_react106.useMemo)(() => Array.from(new Set([...taskList(records5).map((t) => t.assignee), ...incidentList(records5).map((i) => i.responsible)].filter(Boolean))).sort(), [records5]);
-        const shown = all.filter((r) => archived === r.archived).filter((r) => kind === "all" || r.kind === kind).filter((r) => (!from || dateOf(r) >= from) && (!to || dateOf(r) <= to)).filter((r) => !responsible || whoOf(r) === responsible).filter((r) => {
+        const shown = all2.filter((r) => archived === r.archived).filter((r) => kind === "all" || r.kind === kind).filter((r) => (!from || dateOf(r) >= from) && (!to || dateOf(r) <= to)).filter((r) => !responsible || whoOf(r) === responsible).filter((r) => {
           const q = search.trim().toLowerCase();
           if (!q) return true;
           return searchText(r, records5).includes(q);
@@ -57047,7 +57135,7 @@ Cliquer pour modifier le tarif` : void 0,
             ] }),
             shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", children: [
               "Aucun enregistrement",
-              all.length ? " ne correspond \xE0 vos filtres" : "",
+              all2.length ? " ne correspond \xE0 vos filtres" : "",
               "."
             ] }) : /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("div", { className: "space-y-2", children: shown.map((r) => /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 space-y-1.5", "data-history-row": r.id, children: [
               /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("button", { type: "button", onClick: () => onOpen(r), className: "w-full text-left flex flex-wrap items-center justify-between gap-2 cursor-pointer", children: [
@@ -62187,8 +62275,8 @@ Cliquer pour modifier le tarif` : void 0,
         const { printing, print } = usePrint();
         const today6 = todayIso2();
         const establishment = getSettings().establishment.name;
-        const all = (0, import_react123.useMemo)(() => Object.values(records5), [records5]);
-        const shown = all.filter((r) => archived === r.archived).filter((r) => kind === "all" || r.kind === kind).filter((r) => result === "all" || (r.kind === "temp" || r.kind === "cleanLog" || r.kind === "receipt") && r.result === result).filter((r) => (!from || dateOf2(r) >= from) && (!to || dateOf2(r) <= to)).filter((r) => !search.trim() || searchText2(r, records5).includes(search.trim().toLowerCase())).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+        const all2 = (0, import_react123.useMemo)(() => Object.values(records5), [records5]);
+        const shown = all2.filter((r) => archived === r.archived).filter((r) => kind === "all" || r.kind === kind).filter((r) => result === "all" || (r.kind === "temp" || r.kind === "cleanLog" || r.kind === "receipt") && r.result === result).filter((r) => (!from || dateOf2(r) >= from) && (!to || dateOf2(r) <= to)).filter((r) => !search.trim() || searchText2(r, records5).includes(search.trim().toLowerCase())).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
         const staleDays = getHygiene().staleDays;
         const isDish = isDishReport(reportId);
         const categories = (0, import_react123.useMemo)(() => Array.from(new Set(Object.values(records5).filter((r) => r.kind === "dish").map((d) => dishCategory(d)).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fr")), [records5]);
@@ -62262,7 +62350,7 @@ Cliquer pour modifier le tarif` : void 0,
             ] }),
             shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)(Empty, { children: [
               "Aucun enregistrement",
-              all.length ? " ne correspond \xE0 vos filtres" : "",
+              all2.length ? " ne correspond \xE0 vos filtres" : "",
               "."
             ] }) : /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("div", { className: "space-y-2", children: shown.map((r) => /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 space-y-1.5", "data-history-row": r.id, children: [
               /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("button", { type: "button", onClick: () => setOpen(open === r.id ? null : r.id), "aria-expanded": open === r.id, className: "w-full text-left flex flex-wrap items-center justify-between gap-2 cursor-pointer", children: [
@@ -62442,9 +62530,9 @@ Cliquer pour modifier le tarif` : void 0,
         const [search, setSearch] = (0, import_react124.useState)("");
         const [status2, setStatus2] = (0, import_react124.useState)("open");
         const today6 = todayIso2();
-        const all = (0, import_react124.useMemo)(() => incidentList2(records5), [records5]);
-        const shown = all.filter((i) => status2 === "archived" ? i.archived : !i.archived && (status2 === "all" || (status2 === "open" ? isOpenIncident2(i) : status2 === "late" ? isOpenIncident2(i) && (incidentDays2(i, today6) ?? 0) < 0 : i.status === status2))).filter((i) => !search.trim() || [i.ref, i.type, i.subject, i.description, i.responsible, i.corrective].join(" ").toLowerCase().includes(search.trim().toLowerCase())).sort(sortRecent);
-        const draft = (0, import_react124.useMemo)(() => focusId === "new" ? newHIncident(nextIncidentRef2(all, (/* @__PURE__ */ new Date()).getFullYear()), getSiteActor(), { responsible: getSiteActor(), time: nowTime() }) : null, [focusId]);
+        const all2 = (0, import_react124.useMemo)(() => incidentList2(records5), [records5]);
+        const shown = all2.filter((i) => status2 === "archived" ? i.archived : !i.archived && (status2 === "all" || (status2 === "open" ? isOpenIncident2(i) : status2 === "late" ? isOpenIncident2(i) && (incidentDays2(i, today6) ?? 0) < 0 : i.status === status2))).filter((i) => !search.trim() || [i.ref, i.type, i.subject, i.description, i.responsible, i.corrective].join(" ").toLowerCase().includes(search.trim().toLowerCase())).sort(sortRecent);
+        const draft = (0, import_react124.useMemo)(() => focusId === "new" ? newHIncident(nextIncidentRef2(all2, (/* @__PURE__ */ new Date()).getFullYear()), getSiteActor(), { responsible: getSiteActor(), time: nowTime() }) : null, [focusId]);
         const editing = focusId && focusId !== "new" ? records5[focusId] : void 0;
         const form = draft || (editing && editing.kind === "incident" ? editing : null);
         return /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)("div", { className: "space-y-3", children: [
@@ -62469,7 +62557,7 @@ Cliquer pour modifier le tarif` : void 0,
               shown.length > 1 ? "s" : ""
             ] })
           ] }),
-          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(Empty, { children: all.length === 0 ? "Aucun incident enregistr\xE9." : "Aucun incident ne correspond \xE0 vos filtres." }) : /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("div", { className: "space-y-2", children: shown.map((i) => {
+          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(Empty, { children: all2.length === 0 ? "Aucun incident enregistr\xE9." : "Aucun incident ne correspond \xE0 vos filtres." }) : /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("div", { className: "space-y-2", children: shown.map((i) => {
             const d = incidentDays2(i, today6);
             return /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("button", { type: "button", onClick: () => setFocusId(i.id), className: "w-full text-left bg-white rounded-xl border border-neutral-200 hover:border-neutral-300 p-3 cursor-pointer", "data-incident-row": i.id, children: /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)("div", { className: "flex flex-wrap items-start justify-between gap-2", children: [
               /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)("div", { className: "min-w-0", children: [
@@ -62633,9 +62721,9 @@ Cliquer pour modifier le tarif` : void 0,
         const [archived, setArchived2] = (0, import_react125.useState)(false);
         const [dup, setDup] = (0, import_react125.useState)(null);
         const actor2 = getSiteActor();
-        const all = (0, import_react125.useMemo)(() => receiptList(records5), [records5]);
-        const suppliers = (0, import_react125.useMemo)(() => Array.from(new Set(all.map((r) => r.supplier).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fr")), [all]);
-        const shown = all.filter((r) => archived === r.archived).filter((r) => supplier === "all" || r.supplier === supplier).filter((r) => decision === "all" || (decision === "none" ? r.decision === "" : r.decision === decision)).filter((r) => (!from || r.date >= from) && (!to || r.date <= to)).filter((r) => !search.trim() || [r.supplier, r.products, r.lot, r.comment, r.reason].join(" ").toLowerCase().includes(search.trim().toLowerCase())).sort(sortRecent);
+        const all2 = (0, import_react125.useMemo)(() => receiptList(records5), [records5]);
+        const suppliers = (0, import_react125.useMemo)(() => Array.from(new Set(all2.map((r) => r.supplier).filter(Boolean))).sort((a, b) => a.localeCompare(b, "fr")), [all2]);
+        const shown = all2.filter((r) => archived === r.archived).filter((r) => supplier === "all" || r.supplier === supplier).filter((r) => decision === "all" || (decision === "none" ? r.decision === "" : r.decision === decision)).filter((r) => (!from || r.date >= from) && (!to || r.date <= to)).filter((r) => !search.trim() || [r.supplier, r.products, r.lot, r.comment, r.reason].join(" ").toLowerCase().includes(search.trim().toLowerCase())).sort(sortRecent);
         const draft = (0, import_react125.useMemo)(() => focusId === "new" ? newReceipt(actor2) : null, [focusId]);
         const editing = focusId && focusId !== "new" && focusId !== "dup" ? records5[focusId] : void 0;
         const form = dup || draft || (editing && editing.kind === "receipt" ? editing : null);
@@ -62680,7 +62768,7 @@ Cliquer pour modifier le tarif` : void 0,
               ] })
             ] })
           ] }),
-          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Empty, { children: all.length === 0 ? "Aucune r\xE9ception enregistr\xE9e." : "Aucune r\xE9ception ne correspond \xE0 vos filtres." }) : /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("div", { className: "space-y-2", children: shown.map((r) => /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 flex items-start gap-2", "data-receipt-row": r.id, children: [
+          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Empty, { children: all2.length === 0 ? "Aucune r\xE9ception enregistr\xE9e." : "Aucune r\xE9ception ne correspond \xE0 vos filtres." }) : /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("div", { className: "space-y-2", children: shown.map((r) => /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 flex items-start gap-2", "data-receipt-row": r.id, children: [
             /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("button", { type: "button", onClick: () => close(r.id), className: "flex-1 min-w-0 text-left cursor-pointer", children: [
               /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("span", { className: "text-sm font-serif font-bold text-neutral-900", children: [
@@ -62956,13 +63044,13 @@ Cliquer pour modifier le tarif` : void 0,
         const [view, setView] = (0, import_react127.useState)("readings");
         const actor2 = getSiteActor();
         const today6 = todayIso2();
-        const all = (0, import_react127.useMemo)(() => tempList(records5), [records5]);
+        const all2 = (0, import_react127.useMemo)(() => tempList(records5), [records5]);
         const equipments = (0, import_react127.useMemo)(() => thermoList(records5), [records5]);
         const equipName = (id) => {
           const q = equipments.find((x) => x.id === id);
           return q ? q.location ? `${q.name} (${q.location})` : q.name : "";
         };
-        const shown = all.filter((r) => archived === r.archived).filter((r) => result === "all" || r.result === result).filter((r) => control === "all" || r.controlType === control).filter((r) => !search.trim() || [equipName(r.equipmentId), r.subject, r.by, r.comment, r.action].join(" ").toLowerCase().includes(search.trim().toLowerCase())).sort(sortRecent);
+        const shown = all2.filter((r) => archived === r.archived).filter((r) => result === "all" || r.result === result).filter((r) => control === "all" || r.controlType === control).filter((r) => !search.trim() || [equipName(r.equipmentId), r.subject, r.by, r.comment, r.action].join(" ").toLowerCase().includes(search.trim().toLowerCase())).sort(sortRecent);
         const draft = (0, import_react127.useMemo)(() => {
           if (focusId === "new") return newTemp(actor2);
           if (focusId?.startsWith("new:")) {
@@ -63018,7 +63106,7 @@ Cliquer pour modifier le tarif` : void 0,
                 shown.length > 1 ? "s" : ""
               ] })
             ] }),
-            shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime124.jsx)(Empty, { children: all.length === 0 ? "Aucun relev\xE9 enregistr\xE9." : "Aucun relev\xE9 ne correspond \xE0 vos filtres." }) : /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("div", { className: "space-y-2", children: shown.map((r) => /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 flex items-start gap-2", "data-temp-row": r.id, children: [
+            shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime124.jsx)(Empty, { children: all2.length === 0 ? "Aucun relev\xE9 enregistr\xE9." : "Aucun relev\xE9 ne correspond \xE0 vos filtres." }) : /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("div", { className: "space-y-2", children: shown.map((r) => /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 flex items-start gap-2", "data-temp-row": r.id, children: [
               /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("button", { type: "button", onClick: () => {
                 setDup(null);
                 setFocusId(r.id);
@@ -63048,8 +63136,8 @@ Cliquer pour modifier le tarif` : void 0,
               }, className: "p-2 text-neutral-400 hover:text-sy-325032 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime124.jsx)(Copy, { className: "w-4 h-4" }) })
             ] }, r.id)) })
           ] }) : equipments.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime124.jsx)(Empty, { children: "Aucun \xE9quipement. Cr\xE9ez \xAB R\xE9frig\xE9rateur cuisine \xBB, \xAB Cong\xE9lateur \xBB\u2026 pour y rattacher vos relev\xE9s." }) : /* @__PURE__ */ (0, import_jsx_runtime124.jsx)("div", { className: "space-y-2", children: equipments.filter((q) => !q.archived).map((q) => {
-            const missed = missedDays(q, all, today6).length;
-            const last = all.filter((r) => r.equipmentId === q.id && !r.archived).sort(sortRecent)[0];
+            const missed = missedDays(q, all2, today6).length;
+            const last = all2.filter((r) => r.equipmentId === q.id && !r.archived).sort(sortRecent)[0];
             const th3 = thresholdFor(hy, q.equipType, q);
             return /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("button", { type: "button", onClick: () => setFocusId(`equip:${q.id}`), "data-equip-row": q.id, className: "w-full text-left bg-white rounded-xl border border-neutral-200 hover:border-neutral-300 p-3 cursor-pointer", children: [
               /* @__PURE__ */ (0, import_jsx_runtime124.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-2", children: [
@@ -63216,7 +63304,7 @@ Cliquer pour modifier le tarif` : void 0,
         const [l, setL] = (0, import_react129.useState)(initial);
         const set = (p) => setL((x) => ({ ...x, ...p }));
         const toggle = (id) => set({ allergens: l.allergens.includes(id) ? l.allergens.filter((a) => a !== id) : [...l.allergens, id] });
-        const all = lotList(records5);
+        const all2 = lotList(records5);
         const submit = () => {
           if (!l.product.trim()) return onToast("Indiquez la d\xE9signation du produit.");
           try {
@@ -63257,9 +63345,9 @@ Cliquer pour modifier le tarif` : void 0,
             }
           ),
           /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(Field, { label: "Commentaires", children: /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(TextArea, { value: l.notes, onChange: (v) => set({ notes: v }) }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(Suggest, { id: "hy-lotproducts", values: all.map((x) => x.product) }),
-          /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(Suggest, { id: "hy-lotsuppliers", values: all.map((x) => x.supplier) }),
-          /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(Suggest, { id: "hy-storage", values: [...hy.storagePlaces, ...placeList(records5).filter((p) => !p.archived).map((p) => p.name), ...all.map((x) => x.storage)] }),
+          /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(Suggest, { id: "hy-lotproducts", values: all2.map((x) => x.product) }),
+          /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(Suggest, { id: "hy-lotsuppliers", values: all2.map((x) => x.supplier) }),
+          /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(Suggest, { id: "hy-storage", values: [...hy.storagePlaces, ...placeList(records5).filter((p) => !p.archived).map((p) => p.name), ...all2.map((x) => x.storage)] }),
           !isNew && /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(HistoryList, { history: l.history }),
           /* @__PURE__ */ (0, import_jsx_runtime126.jsxs)("div", { className: "flex flex-wrap gap-2 justify-end", children: [
             !isNew && /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(ArchiveBar, { id: l.id, archived: l.archived, label: "Annuler cette fiche", onDone: () => setFocusId(null), onToast }),
@@ -63276,8 +63364,8 @@ Cliquer pour modifier le tarif` : void 0,
         const [labels, setLabels] = (0, import_react129.useState)(false);
         const actor2 = getSiteActor();
         const today6 = todayIso2();
-        const all = (0, import_react129.useMemo)(() => lotList(records5), [records5]);
-        const shown = all.filter((l) => status2 === "archived" ? l.archived : !l.archived && (status2 === "all" || (status2 === "active" ? l.status === "stock" : l.status === status2))).filter((l) => !search.trim() || [l.product, l.supplier, l.lotRef, l.storage, l.notes].join(" ").toLowerCase().includes(search.trim().toLowerCase())).sort((a, b) => (a.dlc || "9999").localeCompare(b.dlc || "9999") || a.product.localeCompare(b.product, "fr"));
+        const all2 = (0, import_react129.useMemo)(() => lotList(records5), [records5]);
+        const shown = all2.filter((l) => status2 === "archived" ? l.archived : !l.archived && (status2 === "all" || (status2 === "active" ? l.status === "stock" : l.status === status2))).filter((l) => !search.trim() || [l.product, l.supplier, l.lotRef, l.storage, l.notes].join(" ").toLowerCase().includes(search.trim().toLowerCase())).sort((a, b) => (a.dlc || "9999").localeCompare(b.dlc || "9999") || a.product.localeCompare(b.product, "fr"));
         const draft = (0, import_react129.useMemo)(() => focusId === "new" ? newLot(actor2) : null, [focusId]);
         const editing = focusId && focusId !== "new" && focusId !== "dup" ? records5[focusId] : void 0;
         const form = dup || draft || (editing && editing.kind === "lot" ? editing : null);
@@ -63309,7 +63397,7 @@ Cliquer pour modifier le tarif` : void 0,
               shown.length > 1 ? "s" : ""
             ] })
           ] }),
-          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(Empty, { children: all.length === 0 ? "Aucune fiche de tra\xE7abilit\xE9. Elles peuvent aussi \xEAtre cr\xE9\xE9es depuis une r\xE9ception." : "Aucune fiche ne correspond \xE0 vos filtres." }) : /* @__PURE__ */ (0, import_jsx_runtime126.jsx)("div", { className: "space-y-2", children: shown.map((l) => {
+          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime126.jsx)(Empty, { children: all2.length === 0 ? "Aucune fiche de tra\xE7abilit\xE9. Elles peuvent aussi \xEAtre cr\xE9\xE9es depuis une r\xE9ception." : "Aucune fiche ne correspond \xE0 vos filtres." }) : /* @__PURE__ */ (0, import_jsx_runtime126.jsx)("div", { className: "space-y-2", children: shown.map((l) => {
             const a = allergenText(l);
             return /* @__PURE__ */ (0, import_jsx_runtime126.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 flex items-start gap-2", "data-lot-row": l.id, children: [
               /* @__PURE__ */ (0, import_jsx_runtime126.jsxs)("button", { type: "button", onClick: () => close(l.id), className: "flex-1 min-w-0 text-left cursor-pointer", children: [
@@ -66591,9 +66679,9 @@ Sitemap: ${base}sitemap.xml
   function unifiedReviews(reservations, externalReviews) {
     return calculateReviewStats(reservations, externalReviews).unifiedReviews.filter((r) => r.guestRating > 0);
   }
-  function chosenReviews(all, ids) {
+  function chosenReviews(all2, ids) {
     const wanted = new Set(ids);
-    return all.filter((r) => wanted.has(r.id) && (r.guestComment || "").trim()).sort((a, b) => (b.date || "").localeCompare(a.date || "")).map((r) => ({
+    return all2.filter((r) => wanted.has(r.id) && (r.guestComment || "").trim()).sort((a, b) => (b.date || "").localeCompare(a.date || "")).map((r) => ({
       id: r.id,
       author: firstName(r.authorName),
       date: r.date ? new Date(r.date).toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) : "",
@@ -66616,9 +66704,9 @@ Sitemap: ${base}sitemap.xml
         terms = { title: t.title, date: t.effectiveDate ? `En vigueur au ${dateFr(t.effectiveDate)}` : "", articles };
       }
     }
-    const all = unifiedReviews(args.reservations, args.externalReviews);
-    const average = all.length > 0 ? Math.round(all.reduce((n, r) => n + r.guestRating, 0) / all.length * 10) / 10 : 0;
-    const reviews = isModuleEnabled("reviews", settings) && site.reviews.show ? chosenReviews(all, site.reviews.ids) : [];
+    const all2 = unifiedReviews(args.reservations, args.externalReviews);
+    const average = all2.length > 0 ? Math.round(all2.reduce((n, r) => n + r.guestRating, 0) / all2.length * 10) / 10 : 0;
+    const reviews = isModuleEnabled("reviews", settings) && site.reviews.show ? chosenReviews(all2, site.reviews.ids) : [];
     let guestbook = [];
     const reviewsPage = site.pages.find((p) => p.kind === "reviews" && p.enabled);
     if (site.guestbook.show && reviewsPage && reviewsPage.options.guestbook !== false && getStoredAppsScriptUrl()) {
@@ -66653,7 +66741,7 @@ Sitemap: ${base}sitemap.xml
       preview: args.preview,
       reviews,
       averageRating: average,
-      reviewCount: all.length,
+      reviewCount: all2.length,
       guestbook,
       logo: readLogo() || ""
     };
@@ -69289,7 +69377,7 @@ Sitemap: ${base}sitemap.xml
       const prices = year.filter((r) => String(r.roomId) === id).map(nightlyPrice).filter((p) => p !== null);
       refPrice[id] = prices.length >= 3 ? round28(median(prices)) : null;
     });
-    const all = year.map(nightlyPrice).filter((p) => p !== null);
+    const all2 = year.map(nightlyPrice).filter((p) => p !== null);
     return {
       stays: stays.length,
       observedDays: days2,
@@ -69297,7 +69385,7 @@ Sitemap: ${base}sitemap.xml
       weekday,
       meanMonth,
       refPrice,
-      overallRef: all.length >= 3 ? round28(median(all)) : null,
+      overallRef: all2.length >= 3 ? round28(median(all2)) : null,
       enough: stays.length >= 10 && days2 >= 180 && known.length >= 4
     };
   }
@@ -69360,13 +69448,22 @@ Sitemap: ${base}sitemap.xml
         let suggestions = [];
         let reference = 0;
         let multiplier = 1;
+        const zones = zonesOnHoliday(date);
+        const mi = monthIndex(date);
+        const sm = factor(history.month, mi, history.meanMonth, GENERIC_MONTH, gm);
+        const summer = mi === 6 || mi === 7;
+        const season = sm >= 1.1 || zones.length >= 2 || summer ? "high" : sm <= 0.9 && zones.length === 0 ? "low" : "mid";
+        const weekdayWeight = season === "high" ? 0.35 : season === "low" ? 0.12 : 0.25;
+        const holidayBoost = 1 + 0.05 * zones.length;
+        const upCap = season === "low" ? Math.min(maxMult, 1.05) : season === "mid" ? Math.min(maxMult, 1 + (maxMult - 1) * 0.6) : maxMult;
+        if (zones.length > 0) reasons.push(`Vacances scolaires (zone${zones.length > 1 ? "s" : ""} ${zones.join(", ")})`);
         if (statsRef) {
-          const sm = factor(history.month, monthIndex(date), history.meanMonth, GENERIC_MONTH, gm);
           const sw2 = factor(history.weekday, weekdayOf2(date), wMean, GENERIC_WEEKDAY, gw);
-          let m = (1 + 0.5 * (sm - 1)) * (1 + 0.3 * (sw2 - 1));
-          if (sm >= 1.1) reasons.push(`${generic ? "P\xE9riode g\xE9n\xE9ralement tr\xE8s demand\xE9e" : "Mois tr\xE8s demand\xE9 chez vous"} (${MONTHS4[monthIndex(date)]})`);
-          else if (sm <= 0.9) reasons.push(`${generic ? "P\xE9riode g\xE9n\xE9ralement calme" : "Mois calme chez vous"} (${MONTHS4[monthIndex(date)]})`);
-          if (sw2 >= 1.05) reasons.push(`${WEEKDAYS[weekdayOf2(date)]} : jour de forte demande`);
+          let m = (1 + 0.5 * (sm - 1)) * (1 + weekdayWeight * (sw2 - 1)) * holidayBoost;
+          if (sm >= 1.1) reasons.push(`${generic ? "P\xE9riode g\xE9n\xE9ralement tr\xE8s demand\xE9e" : "Mois tr\xE8s demand\xE9 chez vous"} (${MONTHS4[mi]})`);
+          else if (sm <= 0.9) reasons.push(`${generic ? "P\xE9riode g\xE9n\xE9ralement calme" : "Mois calme chez vous"} (${MONTHS4[mi]})`);
+          if (sw2 >= 1.05 && season === "low") reasons.push(`${WEEKDAYS[weekdayOf2(date)]} hors vacances en basse saison : peu de hausse possible`);
+          else if (sw2 >= 1.05) reasons.push(`${WEEKDAYS[weekdayOf2(date)]} : jour de forte demande`);
           else if (sw2 <= 0.95) reasons.push(`${WEEKDAYS[weekdayOf2(date)]} : jour de faible demande`);
           if (pc && i < 30 && !generic) {
             const mp = Math.min(1.1, Math.max(0.9, 1 + 0.4 * (pc.ratio - 1)));
@@ -69378,15 +69475,16 @@ Sitemap: ${base}sitemap.xml
             m *= 0.92;
             reasons.push("Date tr\xE8s proche encore libre");
           }
-          m = Math.min(maxMult, Math.max(minMult, m));
+          m = Math.min(upCap, Math.max(minMult, m));
           reference = statsRef;
           multiplier = m;
           suggestions.push(round5(statsRef * m));
         }
         if (market) {
           const wm = factor(history.weekday, weekdayOf2(date), wMean, GENERIC_WEEKDAY, gw);
-          const mm = Math.min(maxMult, Math.max(minMult, 1 + 0.3 * (wm - 1)));
+          const mm = Math.min(upCap, Math.max(minMult, (1 + weekdayWeight * (wm - 1)) * holidayBoost));
           suggestions.push(round5(market * mm));
+          if (!statsRef && wm >= 1.05 && season === "low") reasons.push(`${WEEKDAYS[weekdayOf2(date)]} hors vacances en basse saison : peu de hausse possible`);
           reasons.push(`Prix constat\xE9s sur des biens comparables : ${String(market).replace(".", ",")} \u20AC en m\xE9diane`);
           if (!statsRef) {
             reference = market;
@@ -69430,6 +69528,33 @@ Sitemap: ${base}sitemap.xml
     flush();
     return rows;
   }
+  function groupAdviceMatrix(days2, roomIds, currentPrice, thresholdPct = 5) {
+    const byDate2 = /* @__PURE__ */ new Map();
+    days2.forEach((d) => byDate2.set(d.date, { ...byDate2.get(d.date) || {}, [d.roomId]: d }));
+    const dates = [...byDate2.keys()].sort();
+    const sig = (date) => roomIds.map((id) => byDate2.get(date)[id]?.suggested ?? "x").join("|");
+    const groups = [];
+    dates.forEach((date) => {
+      const g = groups[groups.length - 1];
+      const prev = g && g[g.length - 1];
+      if (g && prev && dayNumber4(date) - dayNumber4(prev) === 1 && sig(date) === sig(prev)) g.push(date);
+      else groups.push([date]);
+    });
+    return groups.map((g) => {
+      const cells = {};
+      const reasons = [];
+      roomIds.forEach((id) => {
+        const list3 = g.map((date) => byDate2.get(date)[id]).filter((x) => !!x);
+        if (list3.length === 0) return;
+        const current2 = list3.reduce((s, x) => s + currentPrice(id, x.date), 0) / list3.length;
+        const gap = current2 > 0 ? Math.round((list3[0].suggested - current2) / current2 * 100) : 0;
+        cells[id] = { suggested: list3[0].suggested, current: Math.round(current2), gapPct: gap, level: gap >= thresholdPct ? "up" : gap <= -thresholdPct ? "down" : "keep" };
+        list3[0].reasons.forEach((r) => !reasons.includes(r) && reasons.push(r));
+      });
+      const levels = Object.values(cells).map((c) => c.level);
+      return { from: g[0], to: g[g.length - 1], nights: g.length, cells, level: levels.includes("up") ? "up" : levels.includes("down") ? "down" : "keep", reasons: reasons.slice(0, 4) };
+    });
+  }
   function adviceRows(rows, roomName) {
     return [
       ["H\xE9bergement", "Du", "Au", "Nuits", "Prix conseill\xE9 (\u20AC)", "Prix actuel (\u20AC)", "\xC9cart (%)", "Conseil", "Raisons"],
@@ -69440,6 +69565,7 @@ Sitemap: ${base}sitemap.xml
   var init_content19 = __esm({
     "src/modules/conseils/content.ts"() {
       "use strict";
+      init_schoolHolidays();
       DAY5 = 864e5;
       dayNumber4 = (iso) => Math.floor(Date.parse(`${iso}T00:00:00Z`) / DAY5);
       isoOf4 = (n) => new Date(n * DAY5).toISOString().slice(0, 10);
@@ -69503,7 +69629,6 @@ Sitemap: ${base}sitemap.xml
         const saved = readAdviceSettings(settings);
         const [draft, setDraft] = (0, import_react147.useState)(saved);
         const [showKeep, setShowKeep] = (0, import_react147.useState)(false);
-        const [roomFilter, setRoomFilter] = (0, import_react147.useState)("all");
         const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
         const today6 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
         const rooms = (0, import_react147.useMemo)(() => settings.accommodations.filter((a) => a.active).map((a) => ({ id: a.id, name: a.name, base: a.basePrice })), [settings.accommodations]);
@@ -69511,21 +69636,38 @@ Sitemap: ${base}sitemap.xml
         const result = (0, import_react147.useMemo)(() => advise({ reservations, rooms, settings: saved, today: today6 }), [reservations, rooms, saved.source, saved.horizonDays, saved.maxPct, JSON.stringify(saved.comparables), today6]);
         const current2 = (roomId, date) => nightRate(roomId, date, rooms.find((r) => r.id === roomId)?.base || 0, settings, overrides2).price;
         const rows = (0, import_react147.useMemo)(() => groupAdvice(result.days, current2, 5), [result.days, overrides2, settings]);
-        const shown = rows.filter((r) => (roomFilter === "all" || r.roomId === roomFilter) && (showKeep || r.level !== "keep"));
+        const matrix = (0, import_react147.useMemo)(() => groupAdviceMatrix(result.days, rooms.map((r) => r.id), current2, 5), [result.days, overrides2, settings]);
+        const shown = matrix.filter((r) => showKeep || r.level !== "keep");
+        const columns = rooms.filter((r) => matrix.some((m) => m.cells[r.id]));
+        const toApply = shown.flatMap((r) => columns.filter((c) => r.cells[c.id] && r.cells[c.id].level !== "keep").map((c) => ({ row: r, roomId: c.id, price: r.cells[c.id].suggested })));
         const save = () => {
           saveAdviceSettings(draft, "Conseils de prix : r\xE9glages enregistr\xE9s.");
           onToast("R\xE9glages enregistr\xE9s : les conseils sont recalcul\xE9s.");
         };
         const addComparable = () => setDraft((d) => ({ ...d, comparables: [...d.comparables, { id: `cmp_${Date.now().toString(36)}`, label: "", from: today6, to: addDaysIso2(today6, 30), price: 0 }] }));
         const setComparable = (id, patch) => setDraft((d) => ({ ...d, comparables: d.comparables.map((c) => c.id === id ? { ...c, ...patch } : c) }));
-        const apply = (r) => {
-          const dates = Array.from({ length: r.nights }, (_, i) => isoOf4(dayNumber4(r.from) + i));
-          setDayRates(dates, [r.roomId], { price: r.suggested });
-          onToast(`Prix de ${r.suggested} \u20AC appliqu\xE9 du ${frDate15(r.from)} au ${frDate15(r.to)} (${roomName(r.roomId)}). Modifiable depuis le Calendrier > Visualisation tarif.`);
+        const sync = () => {
           try {
             window.dispatchEvent(new CustomEvent("domaine_sylvaria_trigger_sync"));
           } catch {
           }
+        };
+        const datesOf = (r) => Array.from({ length: r.nights }, (_, i) => isoOf4(dayNumber4(r.from) + i));
+        const applyRow = (r, onlyRoom) => {
+          const targets = columns.filter((c) => (!onlyRoom || c.id === onlyRoom) && r.cells[c.id] && r.cells[c.id].level !== "keep");
+          targets.forEach((c) => setDayRates(datesOf(r), [c.id], { price: r.cells[c.id].suggested }));
+          if (targets.length === 0) return;
+          onToast(`${targets.map((c) => `${c.name} ${r.cells[c.id].suggested} \u20AC`).join(", ")} appliqu\xE9${targets.length > 1 ? "s" : ""} du ${frDate15(r.from)} au ${frDate15(r.to)}. Modifiable depuis le Calendrier > Visualisation tarif.`);
+          sync();
+        };
+        const applyAll = () => {
+          if (toApply.length === 0) return;
+          if (!window.confirm(`Appliquer ${toApply.length} prix conseill\xE9${toApply.length > 1 ? "s" : ""} sur ${shown.filter((r) => r.level !== "keep").length} p\xE9riode${shown.filter((r) => r.level !== "keep").length > 1 ? "s" : ""} ?
+
+Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, annulables dans Calendrier > Visualisation tarif).`)) return;
+          toApply.forEach((t) => setDayRates(datesOf(t.row), [t.roomId], { price: t.price }));
+          onToast(`${toApply.length} prix conseill\xE9${toApply.length > 1 ? "s" : ""} appliqu\xE9${toApply.length > 1 ? "s" : ""}.`);
+          sync();
         };
         const h2 = result.history;
         const topMonths = h2.month.map((v, i) => ({ i, v })).filter((x) => x.v !== null).sort((a, b) => b.v - a.v).slice(0, 3);
@@ -69613,7 +69755,9 @@ Sitemap: ${base}sitemap.xml
               h2.observedDays,
               " jours) : les conseils utilisent un ",
               /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("b", { children: "profil g\xE9n\xE9ral de saisonnalit\xE9 touristique en France" }),
-              " (haute saison l\u2019\xE9t\xE9, week-ends plus demand\xE9s, hiver plus calme). Ils deviendront propres \xE0 votre \xE9tablissement \xE0 mesure que vos r\xE9servations s\u2019accumulent."
+              " (haute saison l\u2019\xE9t\xE9, week-ends plus demand\xE9s, hiver plus calme) et les ",
+              /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("b", { children: "vacances scolaires des zones A, B et C" }),
+              " ; en basse saison, hors vacances, un week-end ne justifie presque pas de hausse. Ils deviendront propres \xE0 votre \xE9tablissement \xE0 mesure que vos r\xE9servations s\u2019accumulent."
             ] }) : /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("p", { className: "text-neutral-700", children: [
               "Calcul\xE9 sur ",
               h2.stays,
@@ -69641,63 +69785,69 @@ Sitemap: ${base}sitemap.xml
               ". Il faut au moins 3 s\xE9jours factur\xE9s sur 12 mois, ou des prix comparables saisis ci-dessus."
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "flex flex-wrap items-center gap-3 text-xs", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("select", { value: roomFilter, onChange: (e) => setRoomFilter(e.target.value), className: field3, "aria-label": "H\xE9bergement", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("option", { value: "all", children: "Tous les h\xE9bergements" }),
-              rooms.map((r) => /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("option", { value: r.id, children: r.name }, r.id))
-            ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-3 text-xs", children: [
             /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("label", { className: "flex items-center gap-1.5 cursor-pointer", children: [
               /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("input", { type: "checkbox", checked: showKeep, onChange: (e) => setShowKeep(e.target.checked), className: "accent-sy-325032" }),
               " Afficher aussi les p\xE9riodes o\xF9 le prix actuel est coh\xE9rent"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("button", { type: "button", disabled: toApply.length === 0, onClick: applyAll, className: "flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-sy-325032 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-default", "data-apply-all": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime146.jsx)(Check, { className: "w-3.5 h-3.5" }),
+              " Tout accepter",
+              toApply.length > 0 ? ` (${toApply.length} prix)` : ""
             ] })
           ] }),
-          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", "data-advice-empty": true, children: rows.length === 0 ? "Aucun conseil pour l\u2019instant : il n\u2019y a pas de nuit libre \xE0 \xE9tudier, ou pas de prix de r\xE9f\xE9rence (voir ci-dessus)." : "Aucune p\xE9riode \xE0 corriger : vos prix actuels sont coh\xE9rents avec ce qui se pratique." }) : /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("div", { className: "space-y-2", "data-advice-list": true, children: shown.map((r) => /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 flex flex-wrap items-start justify-between gap-3", "data-advice-row": `${r.roomId}|${r.from}`, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "min-w-0 flex-1 space-y-0.5", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "text-sm font-bold text-neutral-900", children: [
-                roomName(r.roomId),
-                " \xB7 ",
-                frDate15(r.from),
-                r.nights > 1 ? ` au ${frDate15(r.to)}` : "",
-                " ",
-                /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("span", { className: "text-[11px] font-normal text-neutral-500", children: [
-                  "(",
+          shown.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("div", { className: "p-8 text-center bg-white rounded-2xl border border-dashed border-neutral-300 text-xs text-neutral-500", "data-advice-empty": true, children: rows.length === 0 ? "Aucun conseil pour l\u2019instant : il n\u2019y a pas de nuit libre \xE0 \xE9tudier, ou pas de prix de r\xE9f\xE9rence (voir ci-dessus)." : "Aucune p\xE9riode \xE0 corriger : vos prix actuels sont coh\xE9rents avec ce qui se pratique." }) : /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("div", { className: "bg-white rounded-xl border border-neutral-200 overflow-x-auto", "data-advice-list": true, children: /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("table", { className: "w-full min-w-[640px] text-xs border-collapse", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("tr", { className: "bg-neutral-50 text-neutral-600 text-left", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("th", { className: "px-3 py-2 font-semibold", children: "P\xE9riode" }),
+              columns.map((c) => /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("th", { className: "px-3 py-2 font-semibold text-center", children: [
+                c.name,
+                /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("span", { className: "block text-[10px] font-normal text-neutral-400", children: "actuel \u2192 conseill\xE9" })
+              ] }, c.id)),
+              /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("th", { className: "px-3 py-2 font-semibold", children: "Pourquoi" }),
+              /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("th", { className: "px-3 py-2" })
+            ] }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("tbody", { children: shown.map((r) => /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("tr", { className: "border-t border-neutral-100 align-top", "data-advice-row": r.from, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("td", { className: "px-3 py-2.5 whitespace-nowrap", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "font-bold text-neutral-900", children: [
+                  frDate15(r.from),
+                  r.nights > 1 ? ` au ${frDate15(r.to)}` : ""
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "text-[10px] text-neutral-500", children: [
                   r.nights,
                   " nuit",
-                  r.nights > 1 ? "s" : "",
-                  ")"
+                  r.nights > 1 ? "s" : ""
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("div", { className: "text-[11px] text-neutral-600", children: r.reasons.length ? r.reasons.join(" \xB7 ") : "Prix proche de ce qui se pratique." })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "flex items-center gap-3 text-xs", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "text-right", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("div", { className: "text-[10px] text-neutral-500", children: "Prix actuel" }),
-                /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "font-mono", children: [
-                  r.current,
-                  " \u20AC"
-                ] })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "text-right", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("div", { className: "text-[10px] text-neutral-500", children: "Conseill\xE9" }),
-                /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: `font-mono font-bold flex items-center gap-0.5 ${r.level === "up" ? "text-emerald-800" : r.level === "down" ? "text-amber-800" : "text-neutral-800"}`, children: [
-                  r.level === "up" && /* @__PURE__ */ (0, import_jsx_runtime146.jsx)(ArrowUp, { className: "w-3 h-3" }),
-                  r.level === "down" && /* @__PURE__ */ (0, import_jsx_runtime146.jsx)(ArrowDown, { className: "w-3 h-3" }),
-                  r.suggested,
-                  " \u20AC ",
-                  /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("span", { className: "text-[10px] font-normal", children: [
-                    "(",
-                    r.gapPct > 0 ? "+" : "",
-                    r.gapPct,
-                    " %)"
+              columns.map((c) => {
+                const cell5 = r.cells[c.id];
+                if (!cell5) return /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("td", { className: "px-3 py-2.5 text-center text-neutral-300", children: "\u2014" }, c.id);
+                return /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("td", { className: "px-3 py-2.5 text-center", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "font-mono text-neutral-500", children: [
+                    cell5.current,
+                    " \u20AC"
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: `font-mono font-bold flex items-center justify-center gap-0.5 ${cell5.level === "up" ? "text-emerald-800" : cell5.level === "down" ? "text-amber-800" : "text-neutral-800"}`, children: [
+                    cell5.level === "up" && /* @__PURE__ */ (0, import_jsx_runtime146.jsx)(ArrowUp, { className: "w-3 h-3" }),
+                    cell5.level === "down" && /* @__PURE__ */ (0, import_jsx_runtime146.jsx)(ArrowDown, { className: "w-3 h-3" }),
+                    cell5.suggested,
+                    " \u20AC ",
+                    /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("span", { className: "text-[10px] font-normal", children: [
+                      "(",
+                      cell5.gapPct > 0 ? "+" : "",
+                      cell5.gapPct,
+                      " %)"
+                    ] })
+                  ] }),
+                  cell5.level !== "keep" ? /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("button", { type: "button", onClick: () => applyRow(r, c.id), className: "mt-1 px-2 py-0.5 text-[10px] font-semibold text-sy-325032 border border-sy-cad7cd rounded-md hover:bg-sy-f4f7f4 cursor-pointer", "data-apply-cell": `${r.from}|${c.id}`, children: "Accepter" }) : /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("span", { className: "mt-1 flex items-center justify-center gap-0.5 text-[10px] text-emerald-800", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime146.jsx)(Check, { className: "w-3 h-3" }),
+                    " Coh\xE9rent"
                   ] })
-                ] })
-              ] }),
-              r.level !== "keep" ? /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("button", { type: "button", onClick: () => apply(r), className: "px-3 py-1.5 text-xs font-bold text-white bg-sy-325032 rounded-lg cursor-pointer", "data-apply-advice": true, children: "Appliquer" }) : /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("span", { className: "flex items-center gap-1 text-[11px] text-emerald-800", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime146.jsx)(Check, { className: "w-3.5 h-3.5" }),
-                " Coh\xE9rent"
-              ] })
-            ] })
-          ] }, `${r.roomId}${r.from}`)) }),
+                ] }, c.id);
+              }),
+              /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("td", { className: "px-3 py-2.5 text-[11px] text-neutral-600 max-w-[16rem]", children: r.reasons.length ? r.reasons.join(" \xB7 ") : "Prix proche de ce qui se pratique." }),
+              /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("td", { className: "px-3 py-2.5 text-right whitespace-nowrap", children: r.level !== "keep" && /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("button", { type: "button", onClick: () => applyRow(r), className: "px-3 py-1.5 text-xs font-bold text-white bg-sy-325032 rounded-lg cursor-pointer", "data-apply-advice": true, children: "Accepter la ligne" }) })
+            ] }, r.from)) })
+          ] }) }),
           /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("p", { className: "text-[10px] text-neutral-500", children: "Conseils indicatifs, \xE9tablis d\u2019apr\xE8s vos r\xE9servations pass\xE9es et les prix que vous saisissez : ils ne connaissent ni les \xE9v\xE9nements locaux, ni la concurrence r\xE9elle, ni la qualit\xE9 de votre offre. Un prix appliqu\xE9 se retrouve dans le Calendrier (prix modifi\xE9 \xE0 la main) et s\u2019y annule." })
         ] });
       };
@@ -69785,9 +69935,9 @@ Sitemap: ${base}sitemap.xml
     const res2 = await connectorPost({ action: "uploadDocument", data: toBase642(bytes), name, docId: "sauvegarde-automatique" });
     const copy = { id: String(res2.fileId), name: String(res2.name || name), at: (/* @__PURE__ */ new Date()).toISOString(), size: Number(res2.size) || bytes.length };
     const cfg = readCloud();
-    const all = [copy, ...cfg.files];
-    const old = all.slice(KEEP_COPIES);
-    saveCloud({ ...cfg, files: all.slice(0, KEEP_COPIES), lastError: "" });
+    const all2 = [copy, ...cfg.files];
+    const old = all2.slice(KEEP_COPIES);
+    saveCloud({ ...cfg, files: all2.slice(0, KEEP_COPIES), lastError: "" });
     for (const f of old) {
       try {
         await connectorPost({ action: "deleteDocument", fileId: f.id });
@@ -70737,8 +70887,9 @@ Sitemap: ${base}sitemap.xml
                           "Voyageur fid\xE8le (",
                           c.staysCount,
                           " s\xE9jours)"
-                        ] })
-                      ] }) : /* @__PURE__ */ (0, import_jsx_runtime150.jsx)("span", { className: "px-2 py-0.5 rounded-full text-[10px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-200", children: "1 s\xE9jour r\xE9alis\xE9" }),
+                        ] }),
+                        " "
+                      ] }) : /* @__PURE__ */ (0, import_jsx_runtime150.jsx)("span", { className: "px-2 py-0.5 rounded-full text-[10px] font-semibold bg-neutral-100 text-neutral-600 border border-neutral-200", children: c.lastCheckIn > (/* @__PURE__ */ new Date()).toISOString().slice(0, 10) ? "1 s\xE9jour \xE0 venir" : "1 s\xE9jour" }),
                       c.guestResidence && /* @__PURE__ */ (0, import_jsx_runtime150.jsxs)("span", { className: "text-[10px] text-neutral-600 bg-neutral-100 px-1.5 py-0.5 rounded border border-neutral-200 font-medium", children: [
                         "\u{1F4CD} ",
                         c.guestResidence
