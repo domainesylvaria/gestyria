@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v280</title>
-  <meta name="application-name" content="Gestyria v280" />
+  <title>Gestyria v281</title>
+  <meta name="application-name" content="Gestyria v281" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8608,7 +8608,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "280";
+      APP_VERSION = "281";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -51142,7 +51142,7 @@ Cliquer pour modifier le tarif` : void 0,
     const accent = look("", { backgroundColor: p.accent });
     return { legend: accent, chunk: accent, label: look("", { color: p.text }), value: look("", { color: p.text }) };
   }
-  var import_react88, import_jsx_runtime82, LEGACY_DASHBOARD_LOOKS, DashboardTab;
+  var import_react88, import_jsx_runtime82, LEGACY_DASHBOARD_LOOKS, euro4, euroShort, ChartCard, StackedMonths, DashboardTab;
   var init_DashboardTab = __esm({
     "src/components/DashboardTab.tsx"() {
       "use strict";
@@ -51157,6 +51157,81 @@ Cliquer pour modifier le tarif` : void 0,
         magnolia: { legend: look("bg-emerald-700"), chunk: look("bg-emerald-700"), label: look("text-sy-325032"), value: look("text-sy-325032") },
         piscine: { legend: look("bg-sky-500"), chunk: look("bg-sky-500"), label: look("text-sky-800"), value: look("text-sky-900") },
         pension: { legend: look("bg-amber-600"), chunk: look("bg-amber-600"), label: look("text-[#8C5220]"), value: look("text-[#8C5220]") }
+      };
+      euro4 = (v) => formatCurrency(v);
+      euroShort = (v) => v >= 1e3 ? `${(v / 1e3).toFixed(1).replace(".", ",")} k\u20AC` : `${Math.round(v)} \u20AC`;
+      ChartCard = ({ icon, title, subtitle, children }) => /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200/90 p-5 shadow-xs flex flex-col gap-4", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center gap-2", children: [
+            icon,
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("h3", { className: "text-base font-bold text-neutral-900 font-serif", children: title })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { className: "text-xs text-neutral-500 mt-1", children: subtitle })
+        ] }),
+        children
+      ] });
+      StackedMonths = ({ months, parts, format, short: short2, onSelect }) => {
+        const [hover, setHover] = (0, import_react88.useState)(null);
+        const totalOf = (m) => parts.reduce((s, p) => s + (m.values[p.key] || 0), 0);
+        const max = Math.max(...months.map(totalOf), 1);
+        const shown = hover === null ? null : months[hover];
+        const yearTotal = (key) => months.reduce((s, m) => s + (m.values[key] || 0), 0);
+        const readout = (key) => shown ? shown.values[key] || 0 : yearTotal(key);
+        const readoutTotal = shown ? totalOf(shown) : months.reduce((s, m) => s + totalOf(m), 0);
+        return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "space-y-3", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex flex-wrap items-center gap-x-4 gap-y-1.5 min-h-[2.75rem]", "data-stack-legend": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "mr-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-[10px] font-semibold uppercase tracking-wide text-neutral-400", children: shown ? shown.label : "Ann\xE9e" }),
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-sm font-bold font-mono text-neutral-900 tabular-nums", children: format(readoutTotal) })
+            ] }),
+            parts.map((p) => /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center gap-1.5 min-w-0", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: `w-2.5 h-2.5 rounded-[3px] shrink-0 ${p.look.c}`, style: p.look.s }),
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "leading-tight", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-[10px] text-neutral-500 truncate", children: p.label }),
+                /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-xs font-semibold font-mono text-neutral-800 tabular-nums", children: format(readout(p.key)) })
+              ] })
+            ] }, p.key))
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "relative overflow-x-auto", onMouseLeave: () => setHover(null), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "relative h-56 min-w-[420px] pt-6", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "absolute inset-x-0 top-6 bottom-0 pointer-events-none", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "absolute inset-x-0 top-0 border-t border-dashed border-neutral-200" }),
+                /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "absolute inset-x-0 top-1/2 border-t border-dashed border-neutral-100" }),
+                /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "absolute inset-x-0 bottom-0 border-t border-neutral-200" }),
+                /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "absolute right-0 -top-4 text-[9px] text-neutral-400 font-mono", children: short2(max) })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "relative h-full flex items-end gap-1.5 sm:gap-2.5 px-1", children: months.map((m, i) => {
+                const total = totalOf(m);
+                const active2 = parts.filter((p) => (m.values[p.key] || 0) > 0);
+                const dim = hover !== null && hover !== i;
+                return /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => onSelect(i),
+                    onMouseEnter: () => setHover(i),
+                    onFocus: () => setHover(i),
+                    "aria-label": `${m.label} : ${format(total)}`,
+                    className: `flex-1 h-full flex items-end justify-center cursor-pointer transition-opacity duration-150 ${dim ? "opacity-40" : ""}`,
+                    children: total > 0 ? /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "relative w-full max-w-[34px] flex flex-col-reverse gap-[2px]", style: { height: `${Math.max(total / max * 100, 4)}%` }, children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] font-mono font-semibold text-neutral-600 whitespace-nowrap", children: short2(total) }),
+                      active2.map((p, k) => /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
+                        "div",
+                        {
+                          className: `w-full ${p.look.c} ${k === active2.length - 1 ? "rounded-t-[5px]" : "rounded-[2px]"}`,
+                          style: { flex: `${m.values[p.key]} 1 0`, minHeight: 3, ...p.look.s }
+                        },
+                        p.key
+                      ))
+                    ] }) : /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "w-full max-w-[34px] h-[2px] rounded-full bg-neutral-200" })
+                  },
+                  i
+                );
+              }) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "min-w-[420px] flex gap-1.5 sm:gap-2.5 px-1 pt-1.5", children: months.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: `flex-1 text-center text-[10px] truncate ${hover === i ? "font-bold text-neutral-900" : "font-medium text-neutral-500"}`, children: m.label.substring(0, 3) }, i)) })
+          ] })
+        ] });
       };
       DashboardTab = ({
         allReservations,
@@ -51437,196 +51512,54 @@ Cliquer pour modifier le tarif` : void 0,
                 );
               }) })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200/90 p-5 shadow-xs flex flex-col justify-between", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center justify-between mb-4", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center gap-2", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Layers, { className: "w-5 h-5 text-emerald-700" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("h3", { className: "text-base font-bold text-neutral-900 font-serif", children: [
-                      "CA empil\xE9 par h\xE9bergement (",
-                      selectedYear,
-                      ")"
-                    ] })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "flex items-center gap-2 text-[10px] text-neutral-600", children: rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "flex items-center gap-1", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: `w-2 h-2 rounded-full ${dashboardLook(row).legend.c}`, style: dashboardLook(row).legend.s }),
-                    shortName(row)
-                  ] }, row.id)) })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { className: "text-xs text-neutral-500 mb-6", children: "R\xE9partition mensuelle du CA par chambre et espace avec valeur totale affich\xE9e en haut." })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "h-64 flex items-end gap-1.5 pt-6 pb-2 px-2 bg-neutral-50/80 rounded-xl border border-neutral-200/60 overflow-x-auto", children: annual.months.map((m, index) => {
-                const totalMonth = m.totalRevenue || 0;
-                return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(
-                  "div",
-                  {
-                    onClick: () => setModalMonthIndex(index),
-                    className: "flex-1 flex flex-col items-center h-full justify-end group min-w-[32px] cursor-pointer",
-                    children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[9px] font-bold text-neutral-700 mb-1 opacity-90", children: totalMonth > 0 ? `${Math.round(totalMonth)}\u20AC` : "" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "w-full flex flex-col justify-end", style: { height: `${Math.max(totalMonth / maxMonthlyRevenue * 100, totalMonth > 0 ? 10 : 2)}%` }, children: stackRows.map((row, i) => {
-                        const rev = monthRoom(m, row.id).revenue || 0;
-                        const h2 = totalMonth > 0 ? rev / maxMonthlyRevenue * 100 : 0;
-                        if (!(h2 > 0)) return null;
-                        const L = dashboardLook(row);
-                        const rounded = i === 0 ? " rounded-t-xs" : i === stackRows.length - 1 ? " rounded-b-xs" : "";
-                        return /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { style: { height: `${rev / totalMonth * 100}%`, ...L.chunk.s }, className: `w-full ${L.chunk.c}${rounded}`, title: `${shortName(row)}: ${formatCurrency(rev)}` }, row.id);
-                      }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[10px] font-semibold text-neutral-600 mt-2 truncate w-full text-center group-hover:text-emerald-800 group-hover:font-bold", children: m.monthName.substring(0, 3) })
-                    ]
-                  },
-                  index
-                );
-              }) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200/90 p-5 shadow-xs flex flex-col justify-between", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center justify-between mb-4", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center gap-2", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartColumn, { className: "w-5 h-5 text-rose-700" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("h3", { className: "text-base font-bold text-neutral-900 font-serif", children: [
-                      "Co\xFBts directs par mois empil\xE9s (",
-                      selectedYear,
-                      ")"
-                    ] })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center gap-2 text-[10px] text-neutral-600", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "flex items-center gap-1", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "w-2 h-2 rounded-full bg-amber-500" }),
-                      "P. D\xE9jeuner"
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "flex items-center gap-1", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "w-2 h-2 rounded-full bg-rose-600" }),
-                      "Repas"
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "flex items-center gap-1", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "w-2 h-2 rounded-full bg-purple-500" }),
-                      "Autres"
-                    ] })
-                  ] })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { className: "text-xs text-neutral-500 mb-6", children: "Empilement des co\xFBts directs (petits d\xE9jeuners, repas, boissons/autres) avec total en haut." })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "h-64 flex items-end gap-1.5 pt-6 pb-2 px-2 bg-neutral-50/80 rounded-xl border border-neutral-200/60 overflow-x-auto", children: annual.months.map((m, index) => {
-                const bkCost = m.totalBreakfastCost || 0;
-                const mlCost = m.totalMealsCost || 0;
-                const otCost = (m.totalDrinksCost || 0) + (m.totalOtherCost || 0);
-                const totalDC = m.directCosts || 0;
-                const maxDC = maxMonthlyDirectCosts;
-                return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(
-                  "div",
-                  {
-                    onClick: () => setModalMonthIndex(index),
-                    className: "flex-1 flex flex-col items-center h-full justify-end group min-w-[32px] cursor-pointer",
-                    children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[9px] font-bold text-neutral-700 mb-1 opacity-90", children: totalDC > 0 ? `${Math.round(totalDC)}\u20AC` : "" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "w-full flex flex-col justify-end", style: { height: `${Math.max(totalDC / (maxDC || 1) * 100, totalDC > 0 ? 10 : 2)}%` }, children: [
-                        otCost > 0 && /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { style: { height: `${otCost / (totalDC || 1) * 100}%` }, className: "w-full bg-purple-500 rounded-t-xs", title: `Boissons/Autres: ${formatCurrency(otCost)}` }),
-                        mlCost > 0 && /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { style: { height: `${mlCost / (totalDC || 1) * 100}%` }, className: "w-full bg-rose-600", title: `Repas: ${formatCurrency(mlCost)}` }),
-                        bkCost > 0 && /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { style: { height: `${bkCost / (totalDC || 1) * 100}%` }, className: "w-full bg-amber-500 rounded-b-xs", title: `Petit-d\xE9jeuner: ${formatCurrency(bkCost)}` })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[10px] font-semibold text-neutral-600 mt-2 truncate w-full text-center group-hover:text-rose-700 group-hover:font-bold", children: m.monthName.substring(0, 3) })
-                    ]
-                  },
-                  index
-                );
-              }) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200/90 p-5 shadow-xs flex flex-col justify-between", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center justify-between mb-4", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center gap-2", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(BedDouble, { className: "w-5 h-5 text-sky-700" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("h3", { className: "text-base font-bold text-neutral-900 font-serif", children: [
-                      "Nombre de nuits par chambre (",
-                      selectedYear,
-                      ")"
-                    ] })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "flex items-center gap-2 text-[10px] text-neutral-600", children: rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "flex items-center gap-1", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: `w-2 h-2 rounded-full ${dashboardLook(row).legend.c}`, style: dashboardLook(row).legend.s }),
-                    shortName(row)
-                  ] }, row.id)) })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { className: "text-xs text-neutral-500 mb-6", children: "Nombre de nuit\xE9es vendues par chambre par mois, avec total des nuits affich\xE9 en haut." })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "h-64 flex items-end gap-1.5 pt-6 pb-2 px-2 bg-neutral-50/80 rounded-xl border border-neutral-200/60 overflow-x-auto", children: annual.months.map((m, index) => {
-                const totalN = m.nightsSold || 0;
-                const maxN = maxMonthlyNights;
-                return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(
-                  "div",
-                  {
-                    onClick: () => setModalMonthIndex(index),
-                    className: "flex-1 flex flex-col items-center h-full justify-end group min-w-[32px] cursor-pointer",
-                    children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[9px] font-bold text-neutral-700 mb-1 opacity-90", children: totalN > 0 ? `${totalN}n` : "" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "w-full flex flex-col justify-end", style: { height: `${Math.max(totalN / (maxN || 1) * 100, totalN > 0 ? 10 : 2)}%` }, children: stackRows.map((row, i) => {
-                        const n = monthRoom(m, row.id).nights || 0;
-                        if (!(n > 0)) return null;
-                        const L = dashboardLook(row);
-                        const rounded = i === 0 ? " rounded-t-xs" : i === stackRows.length - 1 ? " rounded-b-xs" : "";
-                        return /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { style: { height: `${n / (totalN || 1) * 100}%`, ...L.chunk.s }, className: `w-full ${L.chunk.c}${rounded}`, title: `${shortName(row)}: ${n} nuits` }, row.id);
-                      }) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[10px] font-semibold text-neutral-600 mt-2 truncate w-full text-center group-hover:text-sky-800 group-hover:font-bold", children: m.monthName.substring(0, 3) })
-                    ]
-                  },
-                  index
-                );
-              }) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200/90 p-5 shadow-xs flex flex-col justify-between", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center justify-between mb-4", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center gap-2", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Users, { className: "w-5 h-5 text-amber-700" }),
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("h3", { className: "text-base font-bold text-neutral-900 font-serif", children: [
-                      "Nombre de voyageurs par mois (",
-                      selectedYear,
-                      ")"
-                    ] })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center gap-2 text-[10px] text-neutral-600", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "flex items-center gap-1", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "w-2 h-2 rounded-full bg-amber-700" }),
-                      "Adultes"
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "flex items-center gap-1", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "w-2 h-2 rounded-full bg-amber-500" }),
-                      "Enfants"
-                    ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "flex items-center gap-1", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "w-2 h-2 rounded-full bg-amber-300" }),
-                      "B\xE9b\xE9s"
-                    ] })
-                  ] })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { className: "text-xs text-neutral-500 mb-6", children: "Nombre total de voyageurs par mois (adultes, enfants, b\xE9b\xE9s) empil\xE9s avec valeur totale en haut." })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "h-64 flex items-end gap-1.5 pt-6 pb-2 px-2 bg-neutral-50/80 rounded-xl border border-neutral-200/60 overflow-x-auto", children: annual.months.map((m, index) => {
-                const adults = m.totalAdults || 0;
-                const children = m.totalChildren || 0;
-                const babies = m.totalBabies || 0;
-                const totalG = m.totalGuests || adults + children + babies;
-                const maxG = maxMonthlyGuests;
-                return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(
-                  "div",
-                  {
-                    onClick: () => setModalMonthIndex(index),
-                    className: "flex-1 flex flex-col items-center h-full justify-end group min-w-[32px] cursor-pointer",
-                    children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[9px] font-bold text-neutral-700 mb-1 opacity-90", children: totalG > 0 ? `${totalG}` : "" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "w-full flex flex-col justify-end", style: { height: `${Math.max(totalG / (maxG || 1) * 100, totalG > 0 ? 10 : 2)}%` }, children: [
-                        babies > 0 && /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { style: { height: `${babies / (totalG || 1) * 100}%` }, className: "w-full bg-amber-300 rounded-t-xs", title: `B\xE9b\xE9s: ${babies}` }),
-                        children > 0 && /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { style: { height: `${children / (totalG || 1) * 100}%` }, className: "w-full bg-amber-500", title: `Enfants: ${children}` }),
-                        adults > 0 && /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { style: { height: `${adults / (totalG || 1) * 100}%` }, className: "w-full bg-amber-700 rounded-b-xs", title: `Adultes: ${adults}` })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[10px] font-semibold text-neutral-600 mt-2 truncate w-full text-center group-hover:text-amber-800 group-hover:font-bold", children: m.monthName.substring(0, 3) })
-                    ]
-                  },
-                  index
-                );
-              }) })
-            ] })
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartCard, { icon: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Layers, { className: "w-5 h-5 text-emerald-700" }), title: `CA par h\xE9bergement (${selectedYear})`, subtitle: "R\xE9partition mensuelle du chiffre d'affaires par chambre et espace. Survolez un mois pour le d\xE9tail, cliquez pour l'ouvrir.", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
+              StackedMonths,
+              {
+                months: annual.months.map((m) => ({ label: m.monthName, values: Object.fromEntries(rows.map((row) => [row.id, monthRoom(m, row.id).revenue || 0])) })),
+                parts: rows.map((row) => ({ key: row.id, label: shortName(row), look: dashboardLook(row).chunk })),
+                format: euro4,
+                short: euroShort,
+                onSelect: setModalMonthIndex
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartCard, { icon: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartColumn, { className: "w-5 h-5 text-rose-700" }), title: `Co\xFBts directs par mois (${selectedYear})`, subtitle: "Petits-d\xE9jeuners, repas et boissons ou autres co\xFBts directs, empil\xE9s. Survolez un mois pour le d\xE9tail.", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
+              StackedMonths,
+              {
+                months: annual.months.map((m) => ({ label: m.monthName, values: { breakfast: m.totalBreakfastCost || 0, meals: m.totalMealsCost || 0, other: (m.totalDrinksCost || 0) + (m.totalOtherCost || 0) } })),
+                parts: [
+                  { key: "breakfast", label: "Petits-d\xE9jeuners", look: look("", { backgroundColor: "#E9A93B" }) },
+                  { key: "meals", label: "Repas", look: look("", { backgroundColor: "#D9695F" }) },
+                  { key: "other", label: "Boissons et autres", look: look("", { backgroundColor: "#8B7CC8" }) }
+                ],
+                format: euro4,
+                short: euroShort,
+                onSelect: setModalMonthIndex
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartCard, { icon: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(BedDouble, { className: "w-5 h-5 text-sky-700" }), title: `Nuits par chambre (${selectedYear})`, subtitle: "Nuit\xE9es vendues par chambre et par mois. Survolez un mois pour le d\xE9tail.", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
+              StackedMonths,
+              {
+                months: annual.months.map((m) => ({ label: m.monthName, values: Object.fromEntries(rows.map((row) => [row.id, monthRoom(m, row.id).nights || 0])) })),
+                parts: rows.map((row) => ({ key: row.id, label: shortName(row), look: dashboardLook(row).chunk })),
+                format: (v) => `${v} nuit${v > 1 ? "s" : ""}`,
+                short: (v) => `${v}`,
+                onSelect: setModalMonthIndex
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartCard, { icon: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Users, { className: "w-5 h-5 text-amber-700" }), title: `Voyageurs par mois (${selectedYear})`, subtitle: "Adultes, enfants et b\xE9b\xE9s accueillis chaque mois. Survolez un mois pour le d\xE9tail.", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
+              StackedMonths,
+              {
+                months: annual.months.map((m) => ({ label: m.monthName, values: { adults: m.totalAdults || 0, children: m.totalChildren || 0, babies: m.totalBabies || 0 } })),
+                parts: [
+                  { key: "adults", label: "Adultes", look: look("", { backgroundColor: "#C2570C" }) },
+                  { key: "children", label: "Enfants", look: look("", { backgroundColor: "#F0A24B" }) },
+                  { key: "babies", label: "B\xE9b\xE9s", look: look("", { backgroundColor: "#F8D9A8" }) }
+                ],
+                format: (v) => `${v} pers.`,
+                short: (v) => `${v}`,
+                onSelect: setModalMonthIndex
+              }
+            ) })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "grid grid-cols-1 lg:grid-cols-3 gap-6", children: [
             /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "lg:col-span-2 bg-white rounded-2xl border border-neutral-200/90 p-5 shadow-xs", children: [
@@ -65816,13 +65749,13 @@ if(C.preview){
     if (s.billing === "inclus") return "Inclus";
     if (!(s.price > 0)) return "";
     const unit = s.unit === "unite" ? s.customUnitLabel : SERVICE_UNITS4[s.unit];
-    return unit ? `${euro4(s.price)} / ${unit}` : euro4(s.price);
+    return unit ? `${euro5(s.price)} / ${unit}` : euro5(s.price);
   }
   function resourcePrice2(r) {
     if (r.pricingMode === "free") return "Acc\xE8s libre";
     if (!(r.price > 0)) return "";
     const unit = { per_slot: "cr\xE9neau", per_person_slot: "personne et cr\xE9neau", per_day: "jour" }[r.pricingMode];
-    return `${euro4(r.price)} / ${unit}`;
+    return `${euro5(r.price)} / ${unit}`;
   }
   function photoIdsNeeded(site, book, menu) {
     const ids = /* @__PURE__ */ new Set();
@@ -66020,7 +65953,7 @@ ${who}<div class="row"><div><label for="r-nat">Nationalit\xE9</label><input id="
               const pic = img(extraOf(a.id).photos[0] || "", a.name);
               const price = fromPrice(a);
               const desc = roomText(a);
-              return `<article class="card">${pic ? `<div class="pic">${pic}</div>` : ""}<div class="body"><h3>${esc3(a.name)}</h3>${a.subtitle ? `<p class="muted small">${esc3(a.subtitle)}</p>` : ""}${desc ? `<p>${esc3(desc.length > 150 ? desc.slice(0, 147).replace(/\s+\S*$/, "") + "\u2026" : desc)}</p>` : ""}${price > 0 ? `<p class="price">\xC0 partir de ${euro4(price)} la nuit</p>` : ""}</div></article>`;
+              return `<article class="card">${pic ? `<div class="pic">${pic}</div>` : ""}<div class="body"><h3>${esc3(a.name)}</h3>${a.subtitle ? `<p class="muted small">${esc3(a.subtitle)}</p>` : ""}${desc ? `<p>${esc3(desc.length > 150 ? desc.slice(0, 147).replace(/\s+\S*$/, "") + "\u2026" : desc)}</p>` : ""}${price > 0 ? `<p class="price">\xC0 partir de ${euro5(price)} la nuit</p>` : ""}</div></article>`;
             }).join("")}</div><p style="margin-top:22px">${linkTo(pageByKind("rooms"), "D\xE9couvrir les h\xE9bergements", "btn ghost")}</p></div></section>`;
           }
           if (on("services") && (showcaseServices.length > 0 || resources.length > 0)) {
@@ -66043,7 +65976,7 @@ ${who}<div class="row"><div><label for="r-nat">Nationalit\xE9</label><input id="
             h2 += `<article class="room"><div>${pics ? `<div class="gallery main">${pics}</div>` : ""}</div><div><h2>${esc3(a.name)}</h2>${a.subtitle ? `<p class="muted">${esc3(a.subtitle)}</p>` : ""}${paras(roomText(a))}`;
             if (on("capacity") && capacity(a)) h2 += `<p><strong>${esc3(capacity(a))}</strong></p>`;
             if (on("equipments") && a.equipments.filter((x) => x.trim()).length > 0) h2 += `<ul class="tags">${a.equipments.filter((x) => x.trim()).map((x) => `<li>${esc3(x)}</li>`).join("")}</ul>`;
-            if (on("prices") && price > 0) h2 += `<p class="price">\xC0 partir de ${euro4(price)} la nuit</p>`;
+            if (on("prices") && price > 0) h2 += `<p class="price">\xC0 partir de ${euro5(price)} la nuit</p>`;
             h2 += `<p>${linkTo(pageByKind("booking") || pageByKind("contact"), "Demander ce s\xE9jour")}</p></div></article>`;
           });
           return h2 + "</div></section>";
@@ -66060,15 +65993,15 @@ ${who}<div class="row"><div><label for="r-nat">Nationalit\xE9</label><input id="
             h2 += `<thead><tr><th>P\xE9riode</th>${accommodations.map((a) => `<th>${esc3(a.name)}</th>`).join("")}</tr></thead><tbody>`;
             tiers.forEach((t, i) => {
               const periods = i === 0 ? "Le reste de l'ann\xE9e" : t.periods.map((pp) => periodText2(pp.start, pp.end, pp.everyYear)).filter(Boolean).join(" ; ");
-              h2 += `<tr><td><strong>${esc3(t.label || t.name)}</strong><br><span class="muted small">${esc3(periods)}</span></td>${accommodations.map((a) => `<td class="price">${euro4(tierNightPrice(t, a.id, a.basePrice))}</td>`).join("")}</tr>`;
+              h2 += `<tr><td><strong>${esc3(t.label || t.name)}</strong><br><span class="muted small">${esc3(periods)}</span></td>${accommodations.map((a) => `<td class="price">${euro5(tierNightPrice(t, a.id, a.basePrice))}</td>`).join("")}</tr>`;
             });
           } else {
-            h2 += `<thead><tr><th>H\xE9bergement</th><th>Prix de la nuit</th></tr></thead><tbody>${accommodations.map((a) => `<tr><td>${esc3(a.name)}</td><td class="price">${a.basePrice > 0 ? euro4(a.basePrice) : "Sur demande"}</td></tr>`).join("")}`;
+            h2 += `<thead><tr><th>H\xE9bergement</th><th>Prix de la nuit</th></tr></thead><tbody>${accommodations.map((a) => `<tr><td>${esc3(a.name)}</td><td class="price">${a.basePrice > 0 ? euro5(a.basePrice) : "Sur demande"}</td></tr>`).join("")}`;
           }
           h2 += "</tbody></table></div>";
           const extras = accommodations.filter((a) => a.extraGuestPrice > 0 && a.baseGuestsCount > 0);
           if (on("extraGuest") && extras.length > 0) {
-            h2 += `<p>${extras.map((a) => `${esc3(a.name)} : ${a.baseGuestsCount} personne${a.baseGuestsCount > 1 ? "s" : ""} incluse${a.baseGuestsCount > 1 ? "s" : ""}, ${euro4(a.extraGuestPrice)} par personne suppl\xE9mentaire et par nuit.`).join("<br>")}</p>`;
+            h2 += `<p>${extras.map((a) => `${esc3(a.name)} : ${a.baseGuestsCount} personne${a.baseGuestsCount > 1 ? "s" : ""} incluse${a.baseGuestsCount > 1 ? "s" : ""}, ${euro5(a.extraGuestPrice)} par personne suppl\xE9mentaire et par nuit.`).join("<br>")}</p>`;
           }
           if (on("longStay")) h2 += longStayHtml();
           if (on("services")) {
@@ -66300,7 +66233,7 @@ Sitemap: ${base}sitemap.xml
       ""
     ].join("\n");
   }
-  var esc3, inlineFormat, stripFormat, paras, euro4, MONTHS3, SERVICE_UNITS4, byOrder3, publicSection, extFor, safeId;
+  var esc3, inlineFormat, stripFormat, paras, euro5, MONTHS3, SERVICE_UNITS4, byOrder3, publicSection, extFor, safeId;
   var init_generate = __esm({
     "src/modules/siteweb/generate.ts"() {
       "use strict";
@@ -66321,7 +66254,7 @@ Sitemap: ${base}sitemap.xml
         if (lines2.every((l) => /^-\s+\S/.test(l.trim()))) return `<ul class="clean">${lines2.map((l) => `<li>${inlineFormat(esc3(l.trim().replace(/^-\s+/, "")))}</li>`).join("")}</ul>`;
         return `<p>${inlineFormat(esc3(p)).replace(/\n/g, "<br>")}</p>`;
       }).join("");
-      euro4 = (n) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })} \u20AC`;
+      euro5 = (n) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })} \u20AC`;
       MONTHS3 = ["janvier", "f\xE9vrier", "mars", "avril", "mai", "juin", "juillet", "ao\xFBt", "septembre", "octobre", "novembre", "d\xE9cembre"];
       SERVICE_UNITS4 = { nuit: "nuit", personne: "personne", animal: "animal", repas: "repas", creneau: "cr\xE9neau", sejour: "s\xE9jour" };
       byOrder3 = (a, b) => (a.order || 0) - (b.order || 0);
@@ -74307,7 +74240,7 @@ ${establishment}`;
       text: look("", { color: p.text })
     };
   }
-  var import_react161, import_jsx_runtime162, LEGACY_CARD_LOOKS, simmyActive, euro5, ReservationModal;
+  var import_react161, import_jsx_runtime162, LEGACY_CARD_LOOKS, simmyActive, euro6, ReservationModal;
   var init_ReservationModal = __esm({
     "src/components/ReservationModal.tsx"() {
       "use strict";
@@ -74338,7 +74271,7 @@ ${establishment}`;
         pension: { selected: look("border-[#C2884E] bg-[#FBF7F2] ring-2 ring-[#C2884E]/25 shadow-xs"), dot: look("bg-[#C2884E]"), text: look("text-[#8C5220]") }
       };
       simmyActive = () => getSettings().platforms.some((p) => p.id === "simmy" && p.active);
-      euro5 = (n, suffix = " \u20AC") => `${String(Math.round(n * 100) / 100).replace(".", ",")}${suffix}`;
+      euro6 = (n, suffix = " \u20AC") => `${String(Math.round(n * 100) / 100).replace(".", ",")}${suffix}`;
       ReservationModal = ({
         isOpen,
         onClose,
@@ -75174,7 +75107,7 @@ ${establishment}`;
                             selected && /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(Check, { className: `w-4 h-4 ${L.text.c}`, style: L.text.s })
                           ] }),
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("div", { className: `text-[11px] font-semibold ${L.text.c} mt-0.5`, style: L.text.s, children: row.kind === "accommodation" ? /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)(import_jsx_runtime162.Fragment, { children: [
-                            euro5(room.basePrice),
+                            euro6(room.basePrice),
                             " / nuit",
                             room.extraGuestPrice > 0 && /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)(import_jsx_runtime162.Fragment, { children: [
                               " ",
@@ -75182,16 +75115,16 @@ ${establishment}`;
                                 "(",
                                 room.baseGuestsCount,
                                 " pers. + ",
-                                euro5(room.extraGuestPrice, ""),
+                                euro6(room.extraGuestPrice, ""),
                                 "\u20AC/sup)"
                               ] })
                             ] })
                           ] }) : row.kind === "resource" ? /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)(import_jsx_runtime162.Fragment, { children: [
-                            euro5(room.basePrice),
+                            euro6(room.basePrice),
                             " / ",
                             priceUnit(row, settings)
                           ] }) : /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)(import_jsx_runtime162.Fragment, { children: [
-                            euro5(room.basePrice),
+                            euro6(room.basePrice),
                             " / ",
                             priceUnit(row, settings),
                             settings.services.find((x) => x.id === row.id)?.unit === "animal" && /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)(import_jsx_runtime162.Fragment, { children: [
@@ -75599,7 +75532,7 @@ ${establishment}`;
                                 n,
                                 " adulte",
                                 n > 1 ? "s" : "",
-                                n === ROOMS[roomId].maxAdults && n <= base ? " (max)" : n > base ? ` (+${euro5((n - base) * ROOMS[roomId].extraGuestPrice, "")}\u20AC)` : ""
+                                n === ROOMS[roomId].maxAdults && n <= base ? " (max)" : n > base ? ` (+${euro6((n - base) * ROOMS[roomId].extraGuestPrice, "")}\u20AC)` : ""
                               ] }, n);
                             }) })
                           ) : isResourceRow(roomId) ? /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(import_jsx_runtime162.Fragment, { children: Array.from({ length: 12 }).map((_, i) => /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: i + 1, children: [
@@ -75612,7 +75545,7 @@ ${establishment}`;
                             return /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: n, children: [
                               n,
                               " adultes ",
-                              i === 0 ? "(base)" : `(+${euro5(i * ROOMS[roomId].extraGuestPrice, "")}\u20AC)`
+                              i === 0 ? "(base)" : `(+${euro6(i * ROOMS[roomId].extraGuestPrice, "")}\u20AC)`
                             ] }, n);
                           }) })
                         }
@@ -75631,32 +75564,32 @@ ${establishment}`;
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("option", { value: 0, children: "0 enfant" }),
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: 1, children: [
                               "1 enfant ",
-                              childExtra > 0 ? `(+${euro5(1 * childExtra, "")}\u20AC/n)` : ""
+                              childExtra > 0 ? `(+${euro6(1 * childExtra, "")}\u20AC/n)` : ""
                             ] }),
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: 2, children: [
                               "2 enfants ",
-                              childExtra > 0 ? `(+${euro5(2 * childExtra, "")}\u20AC/n)` : ""
+                              childExtra > 0 ? `(+${euro6(2 * childExtra, "")}\u20AC/n)` : ""
                             ] }),
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: 3, children: [
                               "3 enfants ",
-                              childExtra > 0 ? `(+${euro5(3 * childExtra, "")}\u20AC/n)` : ""
+                              childExtra > 0 ? `(+${euro6(3 * childExtra, "")}\u20AC/n)` : ""
                             ] }),
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: 4, children: [
                               "4 enfants ",
-                              childExtra > 0 ? `(+${euro5(4 * childExtra, "")}\u20AC/n)` : ""
+                              childExtra > 0 ? `(+${euro6(4 * childExtra, "")}\u20AC/n)` : ""
                             ] }),
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: 5, children: [
                               "5 enfants ",
-                              childExtra > 0 ? `(+${euro5(5 * childExtra, "")}\u20AC/n)` : ""
+                              childExtra > 0 ? `(+${euro6(5 * childExtra, "")}\u20AC/n)` : ""
                             ] }),
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: 6, children: [
                               "6 enfants ",
-                              childExtra > 0 ? `(+${euro5(6 * childExtra, "")}\u20AC/n)` : ""
+                              childExtra > 0 ? `(+${euro6(6 * childExtra, "")}\u20AC/n)` : ""
                             ] })
                           ]
                         }
                       ),
-                      /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "text-[10px] text-emerald-800 font-medium mt-0.5 block", children: childExtra > 0 ? `+${euro5(childExtra, "")}\u20AC/nuit par enfant` : "Selon dispo" })
+                      /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "text-[10px] text-emerald-800 font-medium mt-0.5 block", children: childExtra > 0 ? `+${euro6(childExtra, "")}\u20AC/nuit par enfant` : "Selon dispo" })
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { children: [
                       /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("label", { className: "block text-[11px] font-semibold text-neutral-700 mb-1 flex items-center gap-1", children: [
@@ -75693,27 +75626,27 @@ ${establishment}`;
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("option", { value: 0, children: "0 chien" }),
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: 1, children: [
                               "1 chien (+",
-                              euro5(1 * dogPrice, ""),
+                              euro6(1 * dogPrice, ""),
                               "\u20AC s\xE9jour)"
                             ] }),
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: 2, children: [
                               "2 chiens (+",
-                              euro5(2 * dogPrice, ""),
+                              euro6(2 * dogPrice, ""),
                               "\u20AC s\xE9jour)"
                             ] }),
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: 3, children: [
                               "3 chiens (+",
-                              euro5(3 * dogPrice, ""),
+                              euro6(3 * dogPrice, ""),
                               "\u20AC s\xE9jour)"
                             ] }),
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: 4, children: [
                               "4 chiens (+",
-                              euro5(4 * dogPrice, ""),
+                              euro6(4 * dogPrice, ""),
                               "\u20AC s\xE9jour)"
                             ] }),
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("option", { value: 5, children: [
                               "5 chiens ou + (+",
-                              euro5(5 * dogPrice, ""),
+                              euro6(5 * dogPrice, ""),
                               "\u20AC s\xE9jour)"
                             ] })
                           ]
@@ -75721,7 +75654,7 @@ ${establishment}`;
                       ),
                       /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "text-[10px] text-emerald-800 font-medium mt-0.5 block leading-tight", children: [
                         "+",
-                        euro5(dogPrice, ""),
+                        euro6(dogPrice, ""),
                         "\u20AC / chien par s\xE9jour"
                       ] })
                     ] })
@@ -75765,7 +75698,7 @@ ${establishment}`;
                                 /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "flex items-center gap-1.5", children: [
                                   /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(Clock, { className: "w-3.5 h-3.5 text-cyan-600" }),
                                   "Tarif horaire (",
-                                  euro5(poolDefaults.hourly, ""),
+                                  euro6(poolDefaults.hourly, ""),
                                   "\u20AC/h par d\xE9faut)"
                                 ] }),
                                 /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "font-mono text-xs", children: [
@@ -75788,7 +75721,7 @@ ${establishment}`;
                                 /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "flex items-center gap-1.5", children: [
                                   /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(Waves, { className: "w-3.5 h-3.5 text-cyan-600" }),
                                   "Demi-journ\xE9e (",
-                                  euro5(poolDefaults.halfDay, ""),
+                                  euro6(poolDefaults.halfDay, ""),
                                   "\u20AC par pers)"
                                 ] }),
                                 /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "font-mono text-xs", children: [
@@ -75798,7 +75731,7 @@ ${establishment}`;
                               ] }),
                               /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "text-[10px] text-neutral-500 block mt-0.5", children: [
                                 "Co\xFBt forfaitaire demi-journ\xE9e \xE0 ",
-                                euro5(poolDefaults.halfDay),
+                                euro6(poolDefaults.halfDay),
                                 " / personne"
                               ] })
                             ]
@@ -75927,7 +75860,7 @@ ${establishment}`;
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 border border-neutral-200", children: [
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "flex items-center justify-between mb-1", children: [
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-semibold text-neutral-800 text-[11px]", children: "Journ\xE9e" }),
-                            /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-mono text-amber-800 font-bold", children: euro5(pension.journee) })
+                            /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-mono text-amber-800 font-bold", children: euro6(pension.journee) })
                           ] }),
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("label", { className: "text-[10px] text-neutral-500 block mb-0.5", children: "Nb de journ\xE9es :" }),
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(
@@ -75947,7 +75880,7 @@ ${establishment}`;
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 border border-neutral-200", children: [
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "flex items-center justify-between mb-1", children: [
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-semibold text-neutral-800 text-[11px]", children: "Petite journ\xE9e" }),
-                            /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-mono text-amber-800 font-bold", children: euro5(pension.petiteJournee) })
+                            /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-mono text-amber-800 font-bold", children: euro6(pension.petiteJournee) })
                           ] }),
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("label", { className: "text-[10px] text-neutral-500 block mb-0.5", children: "Nb petites journ\xE9es :" }),
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(
@@ -75963,7 +75896,7 @@ ${establishment}`;
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 border border-neutral-200", children: [
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "flex items-center justify-between mb-1", children: [
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-semibold text-neutral-800 text-[11px]", children: "Demi-journ\xE9e" }),
-                            /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-mono text-amber-800 font-bold", children: euro5(pension.demiJournee) })
+                            /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-mono text-amber-800 font-bold", children: euro6(pension.demiJournee) })
                           ] }),
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("label", { className: "text-[10px] text-neutral-500 block mb-0.5", children: "Nb demi-journ\xE9es :" }),
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(
@@ -75979,7 +75912,7 @@ ${establishment}`;
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 border border-neutral-200", children: [
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "flex items-center justify-between mb-1", children: [
                             /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-semibold text-neutral-800 text-[11px]", children: "Nuit" }),
-                            /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-mono text-amber-800 font-bold", children: euro5(pension.nuit) })
+                            /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-mono text-amber-800 font-bold", children: euro6(pension.nuit) })
                           ] }),
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("label", { className: "text-[10px] text-neutral-500 block mb-0.5", children: "Nb de nuits :" }),
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsx)(
@@ -76062,10 +75995,10 @@ ${establishment}`;
                           " ",
                           /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("strong", { children: [
                             "-",
-                            euro5(tariffSimulation.lastMinuteAmount)
+                            euro6(tariffSimulation.lastMinuteAmount)
                           ] }),
                           " (",
-                          euro5(tariffSimulation.lastMinutePercent, " %"),
+                          euro6(tariffSimulation.lastMinutePercent, " %"),
                           ").",
                           lastMinuteAccepted && !tariffSimulation.lastMinuteApplied && /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "block text-[11px] text-neutral-600 mt-0.5", children: "La r\xE9duction longue dur\xE9e est plus avantageuse : c'est elle qui est appliqu\xE9e (pas de cumul)." })
                         ] })
@@ -76105,7 +76038,7 @@ ${establishment}`;
                           ] })
                         ] }),
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "font-mono tabular-nums font-semibold shrink-0", children: [
-                          euro5(g.price),
+                          euro6(g.price),
                           " / nuit"
                         ] })
                       ] }, i)) : /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "flex justify-between text-neutral-600", children: [
@@ -76120,7 +76053,7 @@ ${establishment}`;
                           "Suppl\xE9ments personnes additionnelles (",
                           tariffSimulation.extraGuestsCount,
                           " pers. \xD7 ",
-                          euro5(tariffSimulation.extraGuestPrice),
+                          euro6(tariffSimulation.extraGuestPrice),
                           ") :"
                         ] }),
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "font-mono tabular-nums text-sy-325032", children: [
@@ -76135,7 +76068,7 @@ ${establishment}`;
                           tariffSimulation.nights,
                           " nuits) :"
                         ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-mono tabular-nums", children: tariffSimulation.variableRates ? euro5(tariffSimulation.subtotalBeforeDiscount) : /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)(import_jsx_runtime162.Fragment, { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime162.jsx)("span", { className: "font-mono tabular-nums", children: tariffSimulation.variableRates ? euro6(tariffSimulation.subtotalBeforeDiscount) : /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)(import_jsx_runtime162.Fragment, { children: [
                           tariffSimulation.nightRateWithExtras,
                           " \u20AC \xD7 ",
                           tariffSimulation.nights,
@@ -76147,12 +76080,12 @@ ${establishment}`;
                       tariffSimulation.lastMinuteApplied ? /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "flex justify-between text-emerald-800 font-medium bg-emerald-50 px-2 py-1 rounded", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { children: [
                           "Remise derni\xE8re minute (",
-                          euro5(tariffSimulation.discountPercent, " %"),
+                          euro6(tariffSimulation.discountPercent, " %"),
                           ") :"
                         ] }),
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "font-mono tabular-nums", children: [
                           "-",
-                          euro5(tariffSimulation.discountAmount)
+                          euro6(tariffSimulation.discountAmount)
                         ] })
                       ] }) : tariffSimulation.discountPercent > 0 ? /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "flex justify-between text-emerald-800 font-medium bg-emerald-50 px-2 py-1 rounded", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { children: [
@@ -76169,14 +76102,14 @@ ${establishment}`;
                         ] })
                       ] }) : /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "text-[10px] text-neutral-400 italic", children: [
                         "R\xE9duction automatique : ",
-                        longStayRules.map((d) => `-${euro5(d.percent, "")}% d\xE8s ${d.minNights} nuits`).join(" \xB7 ")
+                        longStayRules.map((d) => `-${euro6(d.percent, "")}% d\xE8s ${d.minNights} nuits`).join(" \xB7 ")
                       ] }),
                       dogsCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("div", { className: "flex justify-between text-emerald-800 font-medium bg-emerald-50/70 px-2 py-1 rounded", children: [
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { children: [
                           "Suppl\xE9ment chien (",
                           dogsCount,
                           " \xD7 ",
-                          euro5(dogPrice),
+                          euro6(dogPrice),
                           " par s\xE9jour) :"
                         ] }),
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "font-mono tabular-nums font-semibold", children: [
@@ -76209,7 +76142,7 @@ ${establishment}`;
                                 " ",
                                 /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "text-neutral-400", children: [
                                   "(",
-                                  euro5(unitPrice),
+                                  euro6(unitPrice),
                                   " ",
                                   supplementUnitLabel(s),
                                   ")"
@@ -76230,7 +76163,7 @@ ${establishment}`;
                             ),
                             line && /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "font-mono tabular-nums font-semibold text-sy-325032 shrink-0", children: [
                               "+",
-                              euro5(line.amount)
+                              euro6(line.amount)
                             ] })
                           ] }, s.id);
                         })
@@ -76845,7 +76778,7 @@ ${establishment}`;
                     const label2 = `${f.label} (\u20AC)`;
                     const plainInput = "w-full py-1 px-2 text-xs font-mono font-semibold bg-neutral-50 border border-neutral-200 rounded focus:bg-white focus:outline-hidden focus:ring-1";
                     const clean2 = (v) => v.replace(/[^0-9.,]/g, "");
-                    const perNightNote = f.perNight > 0 ? ` \u2022 ${euro5(f.perNight, "")}\u20AC/nuit par d\xE9faut` : "";
+                    const perNightNote = f.perNight > 0 ? ` \u2022 ${euro6(f.perNight, "")}\u20AC/nuit par d\xE9faut` : "";
                     const nature = f.nature === "direct" ? "Co\xFBt direct" : "Indirect";
                     if (f.builtin === "room" || f.builtin === "pool") {
                       const isRoom = f.builtin === "room";
@@ -76865,10 +76798,10 @@ ${establishment}`;
                               type: "button",
                               onClick: () => setValue2((Math.max(1, nights) * perNight).toString()),
                               className: "text-[9px] text-blue-700 hover:underline cursor-pointer",
-                              title: `R\xE9tablir ${euro5(perNight, "")}\u20AC/${unit} (${nights} nuits = ${nights * perNight}\u20AC)`,
+                              title: `R\xE9tablir ${euro6(perNight, "")}\u20AC/${unit} (${nights} nuits = ${nights * perNight}\u20AC)`,
                               children: [
                                 "D\xE9faut (",
-                                euro5(perNight, ""),
+                                euro6(perNight, ""),
                                 "\u20AC/",
                                 isRoom ? "n" : "j",
                                 ")"
@@ -76889,7 +76822,7 @@ ${establishment}`;
                         ),
                         /* @__PURE__ */ (0, import_jsx_runtime162.jsxs)("span", { className: "text-[9px] text-neutral-500 mt-0.5 block", children: [
                           "Indirect \u2022 ",
-                          euro5(perNight, ""),
+                          euro6(perNight, ""),
                           "\u20AC/",
                           unit,
                           " par d\xE9faut",
@@ -77244,15 +77177,15 @@ ${row("Occupants", esc4(people))}
 
 <h2>3. Prix et paiement</h2>
 <table>
-${row("Prix du s\xE9jour", a.total > 0 ? euro6(a.total) : blank())}
-${a.tax > 0 ? row("Taxe de s\xE9jour (en sus)", euro6(a.tax)) : row("Taxe de s\xE9jour", "selon le tarif de la commune, en sus du prix du s\xE9jour")}
-${row("Acompte", a.deposit > 0 ? `${euro6(a.deposit)}${r.depositDueDate ? ` \u2014 \xE0 verser avant le ${esc4(fr3(r.depositDueDate))}` : ""}` : blank())}
-${row("Solde", r.paymentStatus === "paid" ? "S\xE9jour r\xE9gl\xE9 int\xE9gralement" : `${a.total > 0 ? euro6(a.balance) : blank()} \u2014 \xE0 r\xE9gler ${blank("12em")}`)}
+${row("Prix du s\xE9jour", a.total > 0 ? euro7(a.total) : blank())}
+${a.tax > 0 ? row("Taxe de s\xE9jour (en sus)", euro7(a.tax)) : row("Taxe de s\xE9jour", "selon le tarif de la commune, en sus du prix du s\xE9jour")}
+${row("Acompte", a.deposit > 0 ? `${euro7(a.deposit)}${r.depositDueDate ? ` \u2014 \xE0 verser avant le ${esc4(fr3(r.depositDueDate))}` : ""}` : blank())}
+${row("Solde", r.paymentStatus === "paid" ? "S\xE9jour r\xE9gl\xE9 int\xE9gralement" : `${a.total > 0 ? euro7(a.balance) : blank()} \u2014 \xE0 r\xE9gler ${blank("12em")}`)}
 </table>
 ${est.vatMention ? `<p class="small">${esc4(est.vatMention)}</p>` : ""}
 
 <h2>4. Caution</h2>
-${a.caution > 0 ? `<p>Une caution de <b>${euro6(a.caution)}</b> est demand\xE9e au locataire (\xE9tat : ${esc4(CAUTION_LABEL[r.cautionStatus])}). Elle n\u2019est pas un paiement du s\xE9jour. Elle est restitu\xE9e \xE0 l\u2019issue du s\xE9jour, apr\xE8s v\xE9rification de l\u2019\xE9tat des lieux, sous d\xE9duction \xE9ventuelle des d\xE9gradations ou manquants constat\xE9s et justifi\xE9s.</p>` : `<p>Aucune caution n\u2019est demand\xE9e pour ce s\xE9jour.</p>`}
+${a.caution > 0 ? `<p>Une caution de <b>${euro7(a.caution)}</b> est demand\xE9e au locataire (\xE9tat : ${esc4(CAUTION_LABEL[r.cautionStatus])}). Elle n\u2019est pas un paiement du s\xE9jour. Elle est restitu\xE9e \xE0 l\u2019issue du s\xE9jour, apr\xE8s v\xE9rification de l\u2019\xE9tat des lieux, sous d\xE9duction \xE9ventuelle des d\xE9gradations ou manquants constat\xE9s et justifi\xE9s.</p>` : `<p>Aucune caution n\u2019est demand\xE9e pour ce s\xE9jour.</p>`}
 
 <h2>5. Annulation et conditions g\xE9n\xE9rales</h2>
 <p>Les conditions d\u2019annulation, de modification et de retard figurent dans les conditions g\xE9n\xE9rales de vente ci-annex\xE9es, que le locataire d\xE9clare avoir lues et accept\xE9es.</p>
@@ -77263,14 +77196,14 @@ ${a.caution > 0 ? `<p>Une caution de <b>${euro6(a.caution)}</b> est demand\xE9e 
 ${annex}
 </body></html>`;
   }
-  var esc4, fr3, euro6, blank;
+  var esc4, fr3, euro7, blank;
   var init_contract = __esm({
     "src/core/contract/contract.ts"() {
       "use strict";
       init_types4();
       esc4 = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
       fr3 = (iso) => iso ? iso.split("-").reverse().join("/") : "";
-      euro6 = (n) => `${(Math.round(n * 100) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \u20AC`;
+      euro7 = (n) => `${(Math.round(n * 100) / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \u20AC`;
       blank = (width = "10em") => `<span style="display:inline-block;min-width:${width};border-bottom:1px solid #555">&nbsp;</span>`;
     }
   });
