@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v283</title>
-  <meta name="application-name" content="Gestyria v283" />
+  <title>Gestyria v284</title>
+  <meta name="application-name" content="Gestyria v284" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -6756,7 +6756,8 @@ footer{background:#111}
   }
   function isCountedInCapacity(id) {
     const s = getSettings();
-    const fiche = s.accommodations.find((a) => a.id === id) || s.resources.find((r) => r.id === id) || s.services.find((x) => x.id === id);
+    if (s.resources.some((r) => r.id === id) || s.services.some((x) => x.id === id)) return false;
+    const fiche = s.accommodations.find((a) => a.id === id);
     return fiche ? fiche.active : true;
   }
   function getStoredVisitReasons() {
@@ -7779,8 +7780,8 @@ footer{background:#111}
       const list3 = unifiedReviews2.filter((r) => r.source === plat);
       const count = list3.length;
       const avg = count > 0 ? Math.round(list3.reduce((acc, x) => acc + x.guestRating, 0) / count * 10) / 10 : 0;
-      const pct2 = totalCount > 0 ? Math.round(count / totalCount * 100) : 0;
-      byPlatform[plat] = { count, averageRating: avg, percentage: pct2 };
+      const pct3 = totalCount > 0 ? Math.round(count / totalCount * 100) : 0;
+      byPlatform[plat] = { count, averageRating: avg, percentage: pct3 };
     });
     return {
       stats: {
@@ -8613,7 +8614,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "283";
+      APP_VERSION = "284";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -15375,8 +15376,8 @@ footer{background:#111}
       }
     }
     if (!ref || ref <= 0) return null;
-    const pct2 = Math.round((latest.qty - ref) / ref * 100);
-    return pct2 >= thresholdPct ? { month: latest.month, qty: latest.qty, ref: round3(ref), pct: pct2, basis } : null;
+    const pct3 = Math.round((latest.qty - ref) / ref * 100);
+    return pct3 >= thresholdPct ? { month: latest.month, qty: latest.qty, ref: round3(ref), pct: pct3, basis } : null;
   }
   function nightsInMonth(reservations, month) {
     const [y, m] = month.split("-").map(Number);
@@ -16622,9 +16623,9 @@ footer{background:#111}
       }
       case "payment": {
         if (f.depositKind === "arrhes" || f.depositKind === "acompte") {
-          const pct2 = f.depositPercent === null ? (missing.push("Pourcentage vers\xE9 \xE0 la r\xE9servation"), TODO) : `${f.depositPercent} %`;
+          const pct3 = f.depositPercent === null ? (missing.push("Pourcentage vers\xE9 \xE0 la r\xE9servation"), TODO) : `${f.depositPercent} %`;
           p.push(
-            f.depositKind === "arrhes" ? `\xC0 la r\xE9servation, le client verse ${pct2} du prix du s\xE9jour \xE0 titre d'arrhes. Conform\xE9ment \xE0 l'article L214-1 du Code de la consommation, chacune des parties peut revenir sur son engagement : le client en abandonnant les arrhes, l'\xE9tablissement en les restituant au double.` : `\xC0 la r\xE9servation, le client verse un acompte de ${pct2} du prix du s\xE9jour. Le versement d'un acompte engage d\xE9finitivement les deux parties.`
+            f.depositKind === "arrhes" ? `\xC0 la r\xE9servation, le client verse ${pct3} du prix du s\xE9jour \xE0 titre d'arrhes. Conform\xE9ment \xE0 l'article L214-1 du Code de la consommation, chacune des parties peut revenir sur son engagement : le client en abandonnant les arrhes, l'\xE9tablissement en les restituant au double.` : `\xC0 la r\xE9servation, le client verse un acompte de ${pct3} du prix du s\xE9jour. Le versement d'un acompte engage d\xE9finitivement les deux parties.`
           );
         } else if (f.depositKind === "none") {
           p.push("Aucun versement n'est demand\xE9 \xE0 la r\xE9servation.");
@@ -24119,6 +24120,38 @@ function beds24Bookings_() {
       inHouse: real3.filter((r) => r.checkIn <= today6 && r.checkOut > today6).map(toStay)
     };
   }
+  function upcomingStays(reservations, today6, days2, roomName) {
+    const dayNum = (iso) => Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5);
+    const t = dayNum(today6);
+    const within = (iso) => !!iso && dayNum(iso) > t && dayNum(iso) <= t + days2;
+    const real3 = reservations.filter((r) => !r.isBlocked && r.reservationStatus !== "cancelled" && !/ferm|bloq/i.test(r.guestName || ""));
+    const toStay = (r, date, kind) => ({ id: `${r.id}-${kind}`, guest: r.guestName || "Sans nom", room: roomName(String(r.roomId)), people: r.guestsCount || 0, nights: r.nights || 0, date, kind });
+    const out = [];
+    real3.forEach((r) => {
+      if (within(r.checkIn)) out.push(toStay(r, r.checkIn, "arrival"));
+      if (within(r.checkOut)) out.push(toStay(r, r.checkOut, "departure"));
+    });
+    return out.sort((a, b) => a.date.localeCompare(b.date) || (a.kind === b.kind ? 0 : a.kind === "arrival" ? -1 : 1));
+  }
+  function balancesDue(reservations, today6, days2, roomName) {
+    const dayNum = (iso) => Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5);
+    const t = dayNum(today6);
+    const items = [];
+    reservations.forEach((r) => {
+      if (r.isBlocked || r.reservationStatus === "cancelled" || /ferm|bloq/i.test(r.guestName || "") || !r.checkIn) return;
+      if (r.reservationStatus && r.reservationStatus !== "confirmed") return;
+      const total = r.totalAmount || 0;
+      if (!(total > 0) || r.paymentStatus === "paid") return;
+      const paid = r.paymentStatus === "deposit" ? Math.min(total, Math.max(0, r.depositAmount || 0)) : 0;
+      const due = Math.round((total - paid) * 100) / 100;
+      if (!(due > 0)) return;
+      const start = dayNum(r.checkIn);
+      if (start > t + days2) return;
+      items.push({ id: r.id, guest: r.guestName || "Sans nom", room: roomName(String(r.roomId)), checkIn: r.checkIn, due, late: start <= t });
+    });
+    items.sort((a, b) => a.checkIn.localeCompare(b.checkIn));
+    return { total: Math.round(items.reduce((s, i) => s + i.due, 0) * 100) / 100, items };
+  }
   function depositAlerts(reservations, today6, daysBefore) {
     const dayNum = (iso) => Math.round(Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10)) / 864e5);
     const out = [];
@@ -25942,8 +25975,8 @@ function beds24Bookings_() {
       input = "w-full py-2 px-2.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg focus:bg-white focus:outline-hidden focus:ring-1 focus:ring-sy-325032";
       countUsers = () => 1 + readAccess().roles.length;
       UsageBar = ({ used, max }) => {
-        const pct2 = max ? Math.min(100, Math.round(used / max * 100)) : 0;
-        return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "mt-1 h-1.5 rounded-full bg-neutral-200 overflow-hidden", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: `h-full ${max && used >= max ? "bg-amber-600" : "bg-sy-325032"}`, style: { width: max ? `${pct2}%` : "0%" } }) });
+        const pct3 = max ? Math.min(100, Math.round(used / max * 100)) : 0;
+        return /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: "mt-1 h-1.5 rounded-full bg-neutral-200 overflow-hidden", "aria-hidden": "true", children: /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("div", { className: `h-full ${max && used >= max ? "bg-amber-600" : "bg-sy-325032"}`, style: { width: max ? `${pct3}%` : "0%" } }) });
       };
       EstablishmentsSection = ({ settings, onToast }) => {
         const [reg] = (0, import_react24.useState)(() => readRegistry());
@@ -28188,8 +28221,8 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
       const amount = parseAmount(cell5(r, "amount"));
       let commission = parseAmount(cell5(r, "commission"));
       if (!commission && amount > 0 && map.commissionPct !== void 0) {
-        const pct2 = parseAmount(cell5(r, "commissionPct"));
-        if (pct2 > 0 && pct2 < 100) commission = Math.round(amount * pct2) / 100;
+        const pct3 = parseAmount(cell5(r, "commissionPct"));
+        if (pct3 > 0 && pct3 < 100) commission = Math.round(amount * pct3) / 100;
       }
       const children = parseCount(cell5(r, "children"));
       const babies = parseCount(cell5(r, "babies"));
@@ -46026,10 +46059,11 @@ ${line("Date d'arriv\xE9e", fr(r.checkIn))}${line("Date de d\xE9part pr\xE9vue",
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("span", { className: "text-neutral-400", children: [
                   recap.totalStaysCount,
-                  " s\xE9jours"
+                  " ",
+                  recap.totalStaysCount > 1 ? "s\xE9jours" : "s\xE9jour"
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("div", { className: "text-[9px] sm:text-[10px] text-neutral-400 mt-2 truncate", children: rows.map((row) => `${shortName(row)} ${formatCurrency(row.room.basePrice)}`).join(" \xB7 ") })
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("div", { className: "text-[9px] sm:text-[10px] text-neutral-400 mt-2 leading-snug break-words", title: "Prix de base de la nuit de chaque h\xE9bergement", children: rows.map((row) => `${shortName(row)} ${formatCurrency(row.room.basePrice)}`).join(" \xB7 ") })
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "mt-4 pt-3 border-t border-neutral-100 flex flex-wrap items-center justify-between gap-2 text-xs", children: [
@@ -46700,6 +46734,7 @@ Cliquer pour modifier le tarif` : void 0,
                                   },
                                   onMouseEnter: () => setHoveredResId(res2.id),
                                   onMouseLeave: () => setHoveredResId(null),
+                                  title: blocked ? `${res2.guestName || "Date bloqu\xE9e"} \xB7 du ${res2.checkIn.split("-").reverse().join("/")} au ${res2.checkOut.split("-").reverse().join("/")}` : `${res2.guestName || "R\xE9servation"} \xB7 du ${res2.checkIn.split("-").reverse().join("/")} au ${res2.checkOut.split("-").reverse().join("/")} (${res2.nights} nuit${res2.nights > 1 ? "s" : ""}) \xB7 ${formatCurrency(res2.totalAmount)} \xB7 ${res2.paymentStatus === "paid" ? "pay\xE9" : res2.paymentStatus === "deposit" ? "acompte vers\xE9" : "paiement en attente"}`,
                                   style: {
                                     left: `${pos.leftPercent}%`,
                                     width: `${pos.widthPercent}%`,
@@ -46721,7 +46756,10 @@ Cliquer pour modifier le tarif` : void 0,
                                     /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)("div", { className: "flex items-center justify-between gap-1 text-[11px] leading-none pt-0.5 overflow-hidden min-w-0", children: [
                                       blocked ? /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("span", { className: "font-bold tabular-nums text-white bg-neutral-700 border border-neutral-500 px-1 py-0.5 rounded text-[10px] shadow-2xs shrink-0", children: "\u{1F512} Date bloqu\xE9e" }) : icalTag(res2) ? icalTag(res2) : /* @__PURE__ */ (0, import_jsx_runtime76.jsxs)(import_jsx_runtime76.Fragment, { children: [
                                         /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("span", { className: `font-mono font-bold tabular-nums ${L.amount.c} px-1 py-0.5 rounded text-[10px] sm:text-[11px] shrink-0`, children: formatCurrency(res2.totalAmount) }),
-                                        /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("div", { className: "hidden md:block shrink-0", children: renderStatusTag(res2.paymentStatus) })
+                                        pos.widthPercent >= 16 ? /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("div", { className: "hidden md:block shrink-0", children: renderStatusTag(res2.paymentStatus) }) : (
+                                          // Barre étroite : un point de couleur à la place du libellé qui serait coupé
+                                          /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("span", { className: `w-2 h-2 rounded-full shrink-0 ${res2.paymentStatus === "paid" ? "bg-emerald-500" : res2.paymentStatus === "deposit" ? "bg-amber-400" : "bg-rose-500"}`, "aria-hidden": true })
+                                        )
                                       ] }),
                                       pos.endsAfterMonth && /* @__PURE__ */ (0, import_jsx_runtime76.jsx)("span", { className: `text-[10px] ${L.arrow.c} shrink-0`, children: "\u2192" })
                                     ] })
@@ -47182,7 +47220,9 @@ Cliquer pour modifier le tarif` : void 0,
             if (roomFilter !== "all" && r.roomId !== roomFilter) {
               return false;
             }
-            if (statusFilter !== "all" && r.paymentStatus !== statusFilter) {
+            if (statusFilter === "unpaid") {
+              if (r.paymentStatus === "paid" || r.reservationStatus === "cancelled") return false;
+            } else if (statusFilter !== "all" && r.paymentStatus !== statusFilter) {
               return false;
             }
             if (sourceFilter !== "all" && r.bookingSource !== sourceFilter) {
@@ -47248,6 +47288,17 @@ Cliquer pour modifier le tarif` : void 0,
         const totalFilteredRevenue = (0, import_react85.useMemo)(() => {
           return filteredReservations.reduce((acc, curr) => acc + curr.totalAmount, 0);
         }, [filteredReservations]);
+        const outstanding = (0, import_react85.useMemo)(() => filteredReservations.reduce((acc, r) => {
+          if (r.reservationStatus === "cancelled" || r.paymentStatus === "paid") return acc;
+          const paid = r.paymentStatus === "deposit" ? Math.min(r.totalAmount, Math.max(0, r.depositAmount || 0)) : 0;
+          return acc + Math.max(0, r.totalAmount - paid);
+        }, 0), [filteredReservations]);
+        const arrivingUnpaid = (0, import_react85.useMemo)(() => {
+          const limit = /* @__PURE__ */ new Date(`${todayStr}T00:00:00`);
+          limit.setDate(limit.getDate() + 7);
+          const limitStr = `${limit.getFullYear()}-${String(limit.getMonth() + 1).padStart(2, "0")}-${String(limit.getDate()).padStart(2, "0")}`;
+          return reservations.filter((r) => !isReservationBlocked(r) && r.reservationStatus !== "cancelled" && r.paymentStatus === "pending" && (r.totalAmount || 0) > 0 && r.checkIn >= todayStr && r.checkIn <= limitStr).length;
+        }, [reservations, todayStr]);
         return /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200/90 shadow-xs overflow-hidden", children: [
           /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "p-5 border-b border-neutral-200/80 space-y-4", children: [
             /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("div", { className: "flex flex-wrap items-center justify-between gap-3", children: [
@@ -47258,7 +47309,18 @@ Cliquer pour modifier le tarif` : void 0,
                   " r\xE9servation",
                   filteredReservations.length > 1 ? "s" : "",
                   " \xB7 Total : ",
-                  /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "font-mono font-bold text-neutral-900 tabular-nums", children: formatCurrency(totalFilteredRevenue) })
+                  /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "font-mono font-bold text-neutral-900 tabular-nums", children: formatCurrency(totalFilteredRevenue) }),
+                  outstanding > 0 && /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)(import_jsx_runtime79.Fragment, { children: [
+                    " \xB7 Reste \xE0 encaisser : ",
+                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("span", { className: "font-mono font-bold text-rose-700 tabular-nums", "data-outstanding": true, children: formatCurrency(outstanding) })
+                  ] })
+                ] }),
+                arrivingUnpaid > 0 && /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)("button", { type: "button", onClick: () => setStatusFilter("unpaid"), className: "mt-1.5 text-[11px] font-semibold text-rose-800 bg-rose-50 border border-rose-200 rounded-md px-2 py-0.5 cursor-pointer", "data-arriving-unpaid": true, children: [
+                  "\u26A0 ",
+                  arrivingUnpaid,
+                  " arriv\xE9e",
+                  arrivingUnpaid > 1 ? "s" : "",
+                  " dans les 7 jours sans aucun paiement : voir les impay\xE9s"
                 ] })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime79.jsxs)(
@@ -47337,6 +47399,7 @@ Cliquer pour modifier le tarif` : void 0,
                   className: "text-xs bg-neutral-50 border border-neutral-200 rounded-lg px-2.5 py-1.5 text-neutral-700 cursor-pointer focus:outline-hidden focus:ring-1 focus:ring-sy-325032",
                   children: [
                     /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("option", { value: "all", children: "Tous les statuts" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("option", { value: "unpaid", children: "\xC0 encaisser (acompte ou en attente)" }),
                     /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("option", { value: "paid", children: "Pay\xE9" }),
                     /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("option", { value: "deposit", children: "Acompte" }),
                     /* @__PURE__ */ (0, import_jsx_runtime79.jsx)("option", { value: "pending", children: "En attente" })
@@ -50518,12 +50581,12 @@ Cliquer pour modifier le tarif` : void 0,
                             style: { height: `${Math.max(4, barHeight * 140 / 100)}px` },
                             children: BOOKING_SOURCES.map((src) => {
                               const srcRev = m.bySource && m.bySource[src.id] ? m.bySource[src.id].revenue : 0;
-                              const pct2 = srcRev / totRev * 100;
-                              if (pct2 <= 0) return null;
+                              const pct3 = srcRev / totRev * 100;
+                              if (pct3 <= 0) return null;
                               return /* @__PURE__ */ (0, import_jsx_runtime81.jsx)(
                                 "div",
                                 {
-                                  style: { height: `${pct2}%`, backgroundColor: src.hex },
+                                  style: { height: `${pct3}%`, backgroundColor: src.hex },
                                   className: "w-full",
                                   title: `${src.label} : ${formatCurrency(srcRev)}`
                                 },
@@ -51147,7 +51210,7 @@ Cliquer pour modifier le tarif` : void 0,
     const accent = look("", { backgroundColor: p.accent });
     return { legend: accent, chunk: accent, label: look("", { color: p.text }), value: look("", { color: p.text }) };
   }
-  var import_react88, import_jsx_runtime82, LEGACY_DASHBOARD_LOOKS, euro4, monthShort, MODAL_SUBTITLE, Stat, euroShort, ChartCard, StackedMonths, DashboardTab;
+  var import_react88, import_jsx_runtime82, LEGACY_DASHBOARD_LOOKS, OccupancyHeatmap, YearCompare, ChannelBars, euro4, monthShort, pct2, plural2, Delta3, MODAL_SUBTITLE, Stat, euroShort, ChartCard, StackedMonths, DashboardTab;
   var init_DashboardTab = __esm({
     "src/components/DashboardTab.tsx"() {
       "use strict";
@@ -51155,6 +51218,7 @@ Cliquer pour modifier le tarif` : void 0,
       init_bookingUtils();
       init_lucide_react();
       init_settingsStore();
+      init_store4();
       init_rows();
       import_jsx_runtime82 = __require("react/jsx-runtime");
       LEGACY_DASHBOARD_LOOKS = {
@@ -51163,8 +51227,110 @@ Cliquer pour modifier le tarif` : void 0,
         piscine: { legend: look("bg-sky-500"), chunk: look("bg-sky-500"), label: look("text-sky-800"), value: look("text-sky-900") },
         pension: { legend: look("bg-amber-600"), chunk: look("bg-amber-600"), label: look("text-[#8C5220]"), value: look("text-[#8C5220]") }
       };
+      OccupancyHeatmap = ({ months, rows }) => /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "overflow-x-auto", "data-occupancy-heatmap": true, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("table", { className: "w-full min-w-[520px] border-separate border-spacing-[3px] text-[10px]", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("tr", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("th", { className: "w-28" }),
+            months.map((m) => /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("th", { className: "font-medium text-neutral-500 pb-0.5", children: monthShort(m.label) }, m.label))
+          ] }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("tbody", { children: rows.map((row) => /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("tr", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("th", { className: "text-left font-semibold text-neutral-700 pr-2 truncate max-w-[7rem]", children: row.name }),
+            months.map((m) => {
+              const nights = m.byRoom[row.id] || 0;
+              const rate = m.days > 0 ? Math.min(1, nights / m.days) : 0;
+              return /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
+                "td",
+                {
+                  title: `${row.name}, ${m.label} : ${nights} nuit${nights > 1 ? "s" : ""} sur ${m.days} (${Math.round(rate * 100)} %)`,
+                  className: "h-8 text-center rounded-md font-mono tabular-nums",
+                  style: { backgroundColor: rate > 0 ? `rgba(50, 80, 50, ${0.12 + rate * 0.78})` : "#F3F4F2", color: rate > 0.55 ? "#fff" : "#525252" },
+                  children: rate > 0 ? `${Math.round(rate * 100)}` : ""
+                },
+                m.label
+              );
+            })
+          ] }, row.id)) })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center gap-2 mt-2 text-[10px] text-neutral-500", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { children: "Libre" }),
+          [0.1, 0.3, 0.5, 0.75, 1].map((r) => /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "w-5 h-3 rounded-sm", style: { backgroundColor: `rgba(50, 80, 50, ${0.12 + r * 0.78})` } }, r)),
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { children: "Complet \xB7 en % des nuits du mois" })
+        ] })
+      ] });
+      YearCompare = ({ year, now, before, months }) => {
+        const W2 = 600, H2 = 170, P = { l: 8, r: 8, t: 14, b: 22 };
+        const max = Math.max(...now, ...before, 1);
+        const x = (i) => P.l + i * (W2 - P.l - P.r) / 11;
+        const y = (v) => P.t + (1 - v / max) * (H2 - P.t - P.b);
+        const line = (vs) => vs.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+        return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "space-y-2", "data-year-compare": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center gap-4 text-[11px] text-neutral-600", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "flex items-center gap-1.5", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "w-4 h-0.5 rounded bg-emerald-600" }),
+              year
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "flex items-center gap-1.5", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "w-4 h-0.5 rounded bg-neutral-400", style: { borderTop: "2px dashed #A3A3A3", height: 0 } }),
+              year - 1
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("svg", { viewBox: `0 0 ${W2} ${H2}`, className: "w-full h-auto", role: "img", "aria-label": `Chiffre d'affaires mensuel ${year} compar\xE9 \xE0 ${year - 1}`, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("line", { x1: P.l, x2: W2 - P.r, y1: y(0), y2: y(0), stroke: "#E5E5E5" }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("line", { x1: P.l, x2: W2 - P.r, y1: y(max / 2), y2: y(max / 2), stroke: "#F0F0F0", strokeDasharray: "3 4" }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("path", { d: line(before), fill: "none", stroke: "#A3A3A3", strokeWidth: "2", strokeDasharray: "5 4", strokeLinecap: "round", strokeLinejoin: "round" }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("path", { d: line(now), fill: "none", stroke: "#059669", strokeWidth: "2.5", strokeLinecap: "round", strokeLinejoin: "round" }),
+            now.map((v, i) => /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("circle", { cx: x(i), cy: y(v), r: "3.5", fill: "#059669", stroke: "#fff", strokeWidth: "2", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("title", { children: `${months[i]} ${year} : ${Math.round(v)} \u20AC (${year - 1} : ${Math.round(before[i])} \u20AC)` }) }, i)),
+            months.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("text", { x: x(i), y: H2 - 6, textAnchor: "middle", fontSize: "10", fill: "#737373", children: monthShort(m) }, i)),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("text", { x: W2 - P.r, y: P.t - 4, textAnchor: "end", fontSize: "9", fill: "#A3A3A3", children: [
+              Math.round(max),
+              " \u20AC"
+            ] })
+          ] })
+        ] });
+      };
+      ChannelBars = ({ items, total }) => {
+        const used = items.filter((i) => i.count > 0 || i.revenue > 0).sort((a, b) => b.revenue - a.revenue);
+        const unused = items.filter((i) => !(i.count > 0 || i.revenue > 0));
+        if (used.length === 0) return /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucun s\xE9jour sur cette ann\xE9e." });
+        return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "space-y-4", "data-channel-bars": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "flex h-3 rounded-full overflow-hidden gap-[2px] bg-neutral-100", children: used.map((i) => /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { title: `${i.label} : ${pct2(total > 0 ? i.revenue / total * 100 : 0)}`, style: { flex: `${Math.max(i.revenue, 1)} 1 0`, backgroundColor: i.hex } }, i.id)) }),
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("ul", { className: "space-y-2.5", children: used.map((i) => /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("li", { className: "flex items-center gap-3 text-xs", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "w-2.5 h-2.5 rounded-[3px] shrink-0", style: { backgroundColor: i.hex } }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-semibold text-neutral-800 w-24 truncate", children: i.label }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-neutral-500 w-20", children: plural2(i.count, "s\xE9jour", "s\xE9jours") }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-mono font-bold text-neutral-900 ml-auto", children: formatCurrency(i.revenue) }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-semibold text-emerald-700 w-14 text-right", children: pct2(total > 0 ? i.revenue / total * 100 : 0) })
+          ] }, i.id)) }),
+          unused.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("p", { className: "text-[11px] text-neutral-400", children: [
+            "Aucun s\xE9jour : ",
+            unused.map((i) => i.label).join(", "),
+            "."
+          ] })
+        ] });
+      };
       euro4 = (v) => formatCurrency(v);
       monthShort = (name) => /^juin/i.test(name) ? "Juin" : /^juil/i.test(name) ? "Juil" : name.substring(0, 3);
+      pct2 = (n, decimals = 1) => `${n.toFixed(decimals).replace(".", ",").replace(/,0$/, "")} %`;
+      plural2 = (n, one, many) => `${n} ${n > 1 ? many : one}`;
+      Delta3 = ({ now, before, year, points, tone: tone3 = "text-neutral-600" }) => {
+        if (!(before > 0)) return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: `text-[11px] mt-1 opacity-70 ${tone3}`, children: [
+          "Pas de donn\xE9es ",
+          year - 1,
+          " \xE0 comparer"
+        ] });
+        const diff = points ? now - before : (now - before) / before * 100;
+        const sign = diff > 0.05 ? "\u25B2 +" : diff < -0.05 ? "\u25BC " : "= ";
+        return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: `text-[11px] mt-1 font-semibold ${tone3}`, children: [
+          sign,
+          Math.abs(diff).toFixed(1).replace(".", ","),
+          points ? " pts" : " %",
+          " ",
+          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "font-normal opacity-80", children: [
+            "vs ",
+            year - 1
+          ] })
+        ] });
+      };
       MODAL_SUBTITLE = {
         revenue: "Chiffre d'affaires du mois et sa r\xE9partition",
         margin: "Marge directe apr\xE8s charges sociales et imp\xF4t",
@@ -51187,10 +51353,13 @@ Cliquer pour modifier le tarif` : void 0,
         ] }),
         children
       ] });
-      StackedMonths = ({ months, parts, format, short: short2, onSelect }) => {
+      StackedMonths = ({ months, parts, format, short: short2, onSelect, emptyText }) => {
         const [hover, setHover] = (0, import_react88.useState)(null);
         const totalOf = (m) => parts.reduce((s, p) => s + (m.values[p.key] || 0), 0);
         const max = Math.max(...months.map(totalOf), 1);
+        if (emptyText && months.every((m) => totalOf(m) === 0)) {
+          return /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "h-48 flex items-center justify-center text-center text-xs text-neutral-500 border border-dashed border-neutral-200 rounded-xl px-6", "data-stack-empty": true, children: emptyText });
+        }
         const shown = hover === null ? null : months[hover];
         const yearTotal = (key) => months.reduce((s, m) => s + (m.values[key] || 0), 0);
         const readout = (key) => shown ? shown.values[key] || 0 : yearTotal(key);
@@ -51272,6 +51441,18 @@ Cliquer pour modifier le tarif` : void 0,
         const annual = (0, import_react88.useMemo)(() => {
           return calculateAnnualRecap(filteredReservations, selectedYear);
         }, [filteredReservations, selectedYear, settings]);
+        const prev = (0, import_react88.useMemo)(() => calculateAnnualRecap(filteredReservations, selectedYear - 1), [filteredReservations, selectedYear, settings]);
+        const yearObjective = isModuleEnabled("profitability", settings) ? getProfitability(settings).objectives.yearRevenue || 0 : 0;
+        const leadTime = (0, import_react88.useMemo)(() => {
+          const days2 = [];
+          filteredReservations.forEach((r) => {
+            if (isReservationBlocked(r) || !r.checkIn || !r.checkIn.startsWith(String(selectedYear)) || r.reservationStatus === "cancelled") return;
+            const d = (Date.parse(r.checkIn) - Date.parse(r.createdAt || "")) / 864e5;
+            if (isFinite(d) && d >= 0 && d <= 730) days2.push(d);
+          });
+          return days2.length ? Math.round(days2.reduce((s, d) => s + d, 0) / days2.length) : null;
+        }, [filteredReservations, selectedYear]);
+        const avgStay = annual.totalAnnualStaysCount > 0 ? annual.totalAnnualNightsSold / annual.totalAnnualStaysCount : 0;
         const rows = statsRows(settings, (id) => !!annual.byRoom[id] && (annual.byRoom[id].nights > 0 || annual.byRoom[id].revenue !== 0)).filter((row) => annual.byRoom[row.id]);
         const stackRows = [...rows].reverse();
         const monthRoom = (m, id) => m.byRoom?.[id] || { revenue: 0, nights: 0 };
@@ -51391,6 +51572,17 @@ Cliquer pour modifier le tarif` : void 0,
                       "Total exercice ",
                       selectedYear
                     ] })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Delta3, { now: annual.totalAnnualRevenue, before: prev.totalAnnualRevenue, year: selectedYear, tone: "text-emerald-800" }),
+                  yearObjective > 0 && /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "mt-2", "data-objective-gauge": true, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex justify-between text-[10px] text-emerald-800 mb-0.5", children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { children: [
+                        "Objectif ",
+                        formatCurrency(yearObjective)
+                      ] }),
+                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-bold", children: pct2(Math.min(999, annual.totalAnnualRevenue / yearObjective * 100), 0) })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "h-1.5 rounded-full bg-emerald-200/70 overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "h-full rounded-full bg-emerald-600", style: { width: `${Math.min(100, annual.totalAnnualRevenue / yearObjective * 100)}%` } }) })
                   ] })
                 ] })
               ] }),
@@ -51400,19 +51592,17 @@ Cliquer pour modifier le tarif` : void 0,
                   /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "p-2 bg-amber-200/60 rounded-xl text-amber-950", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Activity, { className: "w-4 h-4" }) })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "mt-3", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "text-2xl sm:text-3xl font-extrabold font-serif text-amber-950", children: [
-                    annual.annualOccupancyRate.toFixed(1),
-                    "%"
-                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-2xl sm:text-3xl font-extrabold font-serif text-amber-950", children: pct2(annual.annualOccupancyRate) }),
                   /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "text-[11px] text-amber-800 font-medium mt-1", children: [
-                    "Moyenne annuelle ",
-                    annual.blockedAnnualCapacityNights ? `(hors ${annual.blockedAnnualCapacityNights} j. bloqu\xE9s)` : ""
+                    "H\xE9bergements, moyenne de l'ann\xE9e ",
+                    annual.blockedAnnualCapacityNights ? `(hors ${annual.blockedAnnualCapacityNights} j. ferm\xE9s ou bloqu\xE9s)` : ""
                   ] }),
                   annual.annualWeekendOccupancyRate !== void 0 && /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "text-[11px] font-bold text-amber-900 mt-1 font-mono", children: [
                     "Week-ends : ",
-                    annual.annualWeekendOccupancyRate.toFixed(1),
-                    "% (ven./sam.)"
-                  ] })
+                    pct2(annual.annualWeekendOccupancyRate),
+                    " (ven./sam.)"
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Delta3, { now: annual.annualOccupancyRate, before: prev.annualOccupancyRate, year: selectedYear, points: true, tone: "text-amber-900" })
                 ] })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "bg-gradient-to-br from-sky-50/80 to-sky-100/40 border border-sky-200/80 rounded-2xl p-4 shadow-xs", children: [
@@ -51425,23 +51615,32 @@ Cliquer pour modifier le tarif` : void 0,
                     annual.totalAnnualNightsSold,
                     " nuits"
                   ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "text-[11px] text-sky-800 font-medium mt-1", children: [
-                    annual.totalAnnualStaysCount,
-                    " s\xE9jours enregistr\xE9s"
-                  ] })
+                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-[11px] text-sky-800 font-medium mt-1", children: plural2(annual.totalAnnualStaysCount, "s\xE9jour enregistr\xE9", "s\xE9jours enregistr\xE9s") }),
+                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Delta3, { now: annual.totalAnnualNightsSold, before: prev.totalAnnualNightsSold, year: selectedYear, tone: "text-sky-900" })
                 ] })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "bg-gradient-to-br from-indigo-50/80 to-indigo-100/40 border border-indigo-200/80 rounded-2xl p-4 shadow-xs", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center justify-between text-indigo-900", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-xs font-semibold uppercase tracking-wider", children: "B\xE9n\xE9fice Net" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-xs font-semibold uppercase tracking-wider", children: "Marge globale estim\xE9e" }),
                   /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "p-2 bg-indigo-200/60 rounded-xl text-indigo-950", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Award, { className: "w-4 h-4" }) })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "mt-3", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-2xl sm:text-3xl font-extrabold font-serif text-indigo-950", children: formatCurrency(annual.totalAnnualGlobalMargin) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-[11px] text-indigo-800 font-medium mt-1", children: "Apr\xE8s d\xE9duction des charges" })
+                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-[11px] text-indigo-800 font-medium mt-1", children: "Chiffre d'affaires \u2212 co\xFBts estim\xE9s des s\xE9jours \u2212 URSSAF et imp\xF4t. Vos d\xE9penses r\xE9elles sont dans Rentabilit\xE9." }),
+                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Delta3, { now: annual.totalAnnualGlobalMargin, before: prev.totalAnnualGlobalMargin, year: selectedYear, tone: "text-indigo-900" })
                 ] })
               ] })
-            ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4", "data-dashboard-extra": true, children: [
+              ["Prix moyen par nuit", annual.averageAnnualRevenuePerNight > 0 ? formatCurrency(annual.averageAnnualRevenuePerNight) : "\u2013", "Chiffre d'affaires \xF7 nuit\xE9es vendues"],
+              ["Dur\xE9e moyenne d'un s\xE9jour", avgStay > 0 ? `${avgStay.toFixed(1).replace(".", ",")} nuits` : "\u2013", "Nuit\xE9es \xF7 s\xE9jours"],
+              ["Panier moyen par s\xE9jour", annual.averageAnnualRevenuePerStay > 0 ? formatCurrency(annual.averageAnnualRevenuePerStay) : "\u2013", "Chiffre d'affaires \xF7 s\xE9jours"],
+              ["D\xE9lai moyen de r\xE9servation", leadTime !== null ? plural2(leadTime, "jour", "jours") : "\u2013", "Entre la r\xE9servation et l'arriv\xE9e"]
+            ].map(([label2, value, hint]) => /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "rounded-xl border border-neutral-200 bg-neutral-50/70 px-3.5 py-3", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-[11px] font-semibold text-neutral-500", children: label2 }),
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-lg font-bold font-serif text-neutral-900 mt-0.5", children: value }),
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-[10px] text-neutral-400", children: hint })
+            ] }, label2)) })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "grid grid-cols-1 lg:grid-cols-2 gap-6", children: [
             /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200/90 p-5 shadow-xs flex flex-col justify-between", children: [
@@ -51553,6 +51752,7 @@ Cliquer pour modifier le tarif` : void 0,
                   { key: "meals", label: "Repas", look: look("", { backgroundColor: "#D9695F" }) },
                   { key: "other", label: "Boissons et autres", look: look("", { backgroundColor: "#8B7CC8" }) }
                 ],
+                emptyText: "Aucun co\xFBt direct cette ann\xE9e. Ils apparaissent d\xE8s qu'une r\xE9servation comporte des petits-d\xE9jeuners, des repas ou des boissons.",
                 format: euro4,
                 short: euroShort,
                 onSelect: openMonth("costs")
@@ -51581,7 +51781,23 @@ Cliquer pour modifier le tarif` : void 0,
                 short: (v) => `${v}`,
                 onSelect: openMonth("guests")
               }
-            ) })
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartCard, { icon: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Activity, { className: "w-5 h-5 text-emerald-800" }), title: `Occupation par mois (${selectedYear})`, subtitle: "Pour chaque h\xE9bergement, la part des nuits vendues dans le mois. Les creux (cases claires) sont les p\xE9riodes \xE0 remplir.", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
+              OccupancyHeatmap,
+              {
+                rows: rows.filter((r) => r.kind === "accommodation").map((r) => ({ id: r.id, name: shortName(r) })),
+                months: annual.months.map((m) => ({
+                  label: m.monthName,
+                  days: new Date(selectedYear, m.monthIndex + 1, 0).getDate(),
+                  byRoom: Object.fromEntries(rows.map((r) => [r.id, monthRoom(m, r.id).nights || 0]))
+                }))
+              }
+            ) }),
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartCard, { icon: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(TrendingUp, { className: "w-5 h-5 text-emerald-700" }), title: `Chiffre d'affaires : ${selectedYear} et ${selectedYear - 1}`, subtitle: "Mois par mois, l'ann\xE9e affich\xE9e (trait plein) face \xE0 l'ann\xE9e pr\xE9c\xE9dente (pointill\xE9s).", children: prev.totalAnnualRevenue > 0 ? /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(YearCompare, { year: selectedYear, months: annual.months.map((m) => m.monthName), now: annual.months.map((m) => m.totalRevenue), before: prev.months.map((m) => m.totalRevenue) }) : /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "h-40 flex items-center justify-center text-center text-xs text-neutral-500 border border-dashed border-neutral-200 rounded-xl px-6", children: [
+              "Pas encore de donn\xE9es en ",
+              selectedYear - 1,
+              " : la comparaison appara\xEEtra d\xE8s que vous aurez deux ann\xE9es d'historique."
+            ] }) })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "grid grid-cols-1 lg:grid-cols-3 gap-6", children: [
             /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "lg:col-span-2 bg-white rounded-2xl border border-neutral-200/90 p-5 shadow-xs", children: [
@@ -51592,26 +51808,13 @@ Cliquer pour modifier le tarif` : void 0,
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-xs text-neutral-500 font-medium", children: "Canaux principaux" })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4", children: BOOKING_SOURCES.map((src) => {
-                const data = sourceRevenues[src.id] || { count: 0, revenue: 0 };
-                const share = annual.totalAnnualRevenue > 0 ? data.revenue / annual.totalAnnualRevenue * 100 : 0;
-                return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "bg-neutral-50/80 border border-neutral-200/80 rounded-xl p-4 flex flex-col justify-between", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "flex items-center justify-between", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-xs font-bold text-neutral-800 uppercase tracking-wide", children: src.label }),
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "text-xs bg-white border border-neutral-200 px-2 py-0.5 rounded-md font-semibold text-neutral-700", children: [
-                      data.count,
-                      " s\xE9jours"
-                    ] })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "mt-3 flex items-baseline justify-between", children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "text-lg font-bold font-serif text-neutral-900", children: formatCurrency(data.revenue) }),
-                    /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "text-xs font-semibold text-emerald-700", children: [
-                      share.toFixed(1),
-                      "% du CA"
-                    ] })
-                  ] })
-                ] }, src.id);
-              }) })
+              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "mt-4", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
+                ChannelBars,
+                {
+                  total: annual.totalAnnualRevenue,
+                  items: BOOKING_SOURCES.map((src) => ({ id: src.id, label: src.label, hex: src.hex, count: sourceRevenues[src.id]?.count || 0, revenue: sourceRevenues[src.id]?.revenue || 0 }))
+                }
+              ) })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "bg-gradient-to-br from-emerald-900 to-neutral-900 text-white rounded-2xl p-5 shadow-xs flex flex-col justify-between", children: [
               /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { children: [
@@ -51743,7 +51946,7 @@ Cliquer pour modifier le tarif` : void 0,
                       ] }),
                       (() => {
                         const m = annual.months[modalMonthIndex];
-                        const pct2 = (v) => m.totalRevenue > 0 ? `${Math.round(v / m.totalRevenue * 100)} % du chiffre d'affaires` : "";
+                        const pct3 = (v) => m.totalRevenue > 0 ? `${Math.round(v / m.totalRevenue * 100)} % du chiffre d'affaires` : "";
                         if (modalChart === "margin") {
                           const net = (m.totalRevenue || 0) - (m.directCosts || 0) - (m.urssafCost || 0) - (m.taxCost || 0);
                           return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(import_jsx_runtime82.Fragment, { children: [
@@ -51773,9 +51976,9 @@ Cliquer pour modifier le tarif` : void 0,
                               /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Boissons et autres", value: formatCurrency(other), tone: "bg-violet-50/70 border-violet-200 text-violet-950" }),
                               /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Chiffre d'affaires du mois", value: formatCurrency(m.totalRevenue || 0) })
                             ] }),
-                            pct2(m.directCosts || 0) && /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("p", { className: "text-[11px] text-neutral-500", children: [
+                            pct3(m.directCosts || 0) && /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("p", { className: "text-[11px] text-neutral-500", children: [
                               "Les co\xFBts directs repr\xE9sentent ",
-                              pct2(m.directCosts || 0),
+                              pct3(m.directCosts || 0),
                               "."
                             ] })
                           ] });
@@ -52717,7 +52920,7 @@ Cliquer pour modifier le tarif` : void 0,
               /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("span", { className: "text-xs font-semibold uppercase tracking-wider text-neutral-500 font-sans block mb-2", children: "R\xE9partition des \xE9toiles" }),
               /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("div", { className: "space-y-1 text-xs", children: [5, 4, 3, 2, 1].map((stars) => {
                 const count = stats.distribution[stars];
-                const pct2 = stats.totalCount > 0 ? Math.round(count / stats.totalCount * 100) : 0;
+                const pct3 = stats.totalCount > 0 ? Math.round(count / stats.totalCount * 100) : 0;
                 return /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "flex items-center gap-2", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("span", { className: "w-5 font-mono text-neutral-600 font-semibold", children: [
                     stars,
@@ -52727,7 +52930,7 @@ Cliquer pour modifier le tarif` : void 0,
                     "div",
                     {
                       className: "h-full bg-amber-400 rounded-full transition-all",
-                      style: { width: `${pct2}%` }
+                      style: { width: `${pct3}%` }
                     }
                   ) }),
                   /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("span", { className: "w-8 text-right font-mono text-neutral-500 text-[11px]", children: count })
@@ -52735,7 +52938,11 @@ Cliquer pour modifier le tarif` : void 0,
               }) })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "bg-white p-6 rounded-2xl border border-neutral-200/80 shadow-xs space-y-4", children: [
+          stats.totalCount === 0 && /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "bg-white p-6 rounded-2xl border border-dashed border-neutral-300 text-center space-y-1", "data-reviews-empty": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("p", { className: "text-sm font-semibold text-neutral-800", children: "Aucun avis pour le moment." }),
+            /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("p", { className: "text-xs text-neutral-500 max-w-xl mx-auto", children: "Les notes par chambre et par plateforme appara\xEEtront ici d\xE8s le premier avis. Ajoutez un avis re\xE7u sur Google ou TripAdvisor avec le bouton ci-dessus, ou envoyez une demande d'avis \xE0 un voyageur depuis l'onglet \xAB Demandes de retour \xBB." })
+          ] }),
+          stats.totalCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "bg-white p-6 rounded-2xl border border-neutral-200/80 shadow-xs space-y-4", children: [
             /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "flex items-center justify-between border-b border-neutral-100 pb-3", children: [
               /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "flex items-center gap-2", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(Building, { className: "w-4 h-4 text-sy-325032" }),
@@ -52811,7 +53018,7 @@ Cliquer pour modifier le tarif` : void 0,
               ] })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "bg-white p-6 rounded-2xl border border-neutral-200/80 shadow-xs space-y-4", children: [
+          stats.totalCount > 0 && /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "bg-white p-6 rounded-2xl border border-neutral-200/80 shadow-xs space-y-4", children: [
             /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "flex items-center justify-between border-b border-neutral-100 pb-3", children: [
               /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "flex items-center gap-2", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(Globe, { className: "w-4 h-4 text-indigo-600" }),
@@ -52848,7 +53055,7 @@ Cliquer pour modifier le tarif` : void 0,
                       /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("span", { children: "Part du total :" }),
                       /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("span", { className: "font-mono font-semibold text-neutral-800", children: [
                         data.percentage,
-                        "%"
+                        " %"
                       ] })
                     ] })
                   ]
@@ -55695,120 +55902,122 @@ Cliquer pour modifier le tarif` : void 0,
               /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("button", { type: "button", onClick: onNewIncident, className: "px-3.5 py-2.5 text-xs font-semibold bg-white border border-neutral-200 hover:bg-neutral-50 rounded-xl cursor-pointer", children: "Signaler un incident" })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200 p-3 flex flex-wrap items-center gap-2", "data-dash-filters": true, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "text-[11px] font-semibold text-neutral-600", children: "\xC0 venir :" }),
-            [7, 30, 90].map((p) => /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("button", { type: "button", onClick: () => setPeriod(p), className: `px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer ${period === p ? "bg-sy-325032 text-white font-bold" : "bg-neutral-50 border border-neutral-200 text-neutral-700"}`, children: [
-              p,
-              " jours"
-            ] }, p)),
-            /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("select", { value: priority, onChange: (e) => setPriority(e.target.value), "aria-label": "Priorit\xE9", className: "py-2 px-2 text-xs bg-neutral-50 border border-neutral-200 rounded-lg cursor-pointer", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: "all", children: "Toutes priorit\xE9s" }),
-              PRIORITY_ORDER.map((p) => /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: p, children: PRIORITY_LABEL[p] }, p))
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("select", { value: category, onChange: (e) => setCategory(e.target.value), "aria-label": "Cat\xE9gorie d'\xE9quipement", className: "py-2 px-2 text-xs bg-neutral-50 border border-neutral-200 rounded-lg cursor-pointer max-w-[12rem]", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: "all", children: "Toutes cat\xE9gories" }),
-              categories.map((c) => /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: c, children: c }, c))
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("select", { value: equipFilter, onChange: (e) => setEquipFilter(e.target.value), "aria-label": "\xC9quipement", className: "py-2 px-2 text-xs bg-neutral-50 border border-neutral-200 rounded-lg cursor-pointer max-w-[12rem]", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: "all", children: "Tous les \xE9quipements" }),
-              equipments.filter((q) => !q.archived).map((q) => /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: q.id, children: q.name }, q.id))
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("div", { className: "grid lg:grid-cols-2 gap-3", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "En retard", icon: TriangleAlert, tone: "text-red-700", count: late.length, empty: "Aucune intervention en retard.", children: late.map(taskRow) }),
-            /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Aujourd'hui", icon: CalendarClock, count: todayTasks.length, empty: "Rien de pr\xE9vu aujourd'hui.", children: todayTasks.map(taskRow) }),
-            /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: `\xC0 venir (${period} jours)`, icon: CalendarClock, count: upcoming.length, empty: "Aucune intervention pr\xE9vue sur cette p\xE9riode.", children: upcoming.map(taskRow) }),
-            /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Incidents ouverts", icon: ShieldAlert, tone: "text-amber-800", count: incidents.length, empty: "Aucun incident ouvert.", children: incidents.map((i) => {
-              const st = shownIncidentStatus(i, today6);
-              const d = incidentDays(i, today6);
-              const arrival = i.checkBeforeArrival && i.areaId ? nextArrival(reservations, i.areaId, today6) : void 0;
-              return /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: () => onOpenIncident(i.id), children: [
-                /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "min-w-0 text-xs text-neutral-900", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "font-mono font-bold text-neutral-500", children: i.ref }),
-                  " ",
-                  /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "font-semibold", children: i.description.split("\n")[0].slice(0, 70) }),
-                  i.checkBeforeArrival && i.areaId && /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "block text-[11px] text-amber-800 font-semibold", children: [
-                    "\xC0 v\xE9rifier avant la prochaine arriv\xE9e",
-                    arrival ? ` (${frDate(arrival.checkIn)}, ${accommodations.find((a) => a.id === i.areaId)?.name || ""})` : ""
-                  ] })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "flex items-center gap-1.5 shrink-0", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(PriorityChip, { priority: i.priority }),
-                  /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Chip, { tone: incidentTone(st), children: INCIDENT_STATUS_LABEL[st] }),
-                  d !== null && d < 0 && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "text-[11px] text-red-700 font-semibold", children: daysText(d) })
-                ] })
-              ] }, i.id);
-            }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "\xC9quipements en panne ou \xE0 contr\xF4ler", icon: Wrench, tone: "text-amber-800", count: brokenEquip.length, empty: "Aucun \xE9quipement signal\xE9.", children: brokenEquip.map((q) => /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: () => onOpenEquipment(q.id), children: [
-              /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "text-xs font-semibold text-neutral-900", children: [
-                q.name,
-                " ",
-                /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "font-normal text-neutral-500", children: q.location && `\xB7 ${q.location}` })
+          /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("div", { className: empty ? "hidden" : "space-y-3", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200 p-3 flex flex-wrap items-center gap-2", "data-dash-filters": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "text-[11px] font-semibold text-neutral-600", children: "\xC0 venir :" }),
+              [7, 30, 90].map((p) => /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("button", { type: "button", onClick: () => setPeriod(p), className: `px-3 py-2 text-xs font-semibold rounded-lg cursor-pointer ${period === p ? "bg-sy-325032 text-white font-bold" : "bg-neutral-50 border border-neutral-200 text-neutral-700"}`, children: [
+                p,
+                " jours"
+              ] }, p)),
+              /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("select", { value: priority, onChange: (e) => setPriority(e.target.value), "aria-label": "Priorit\xE9", className: "py-2 px-2 text-xs bg-neutral-50 border border-neutral-200 rounded-lg cursor-pointer", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: "all", children: "Toutes priorit\xE9s" }),
+                PRIORITY_ORDER.map((p) => /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: p, children: PRIORITY_LABEL[p] }, p))
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Chip, { tone: equipTone(q.status), children: EQUIP_STATUS_LABEL[q.status] })
-            ] }, q.id)) }),
-            safetyList(records5).length > 0 && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "S\xE9curit\xE9 des \xE9quipements", icon: ShieldCheck, tone: "text-red-700", count: safety.length, empty: "Aucune v\xE9rification en retard ni anomalie non r\xE9solue.", children: safety.map((s) => {
-              const d = safetyDays(s, today6);
-              const last = lastCheck(s);
-              return /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: () => onOpenSafety(s.id), children: [
-                /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "text-xs font-semibold text-neutral-900", children: [
-                  s.name,
-                  " ",
-                  /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "font-normal text-neutral-500", children: s.location && `\xB7 ${s.location}` })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "flex items-center gap-1.5 shrink-0", children: [
-                  safetyAnomaly(s) && /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Chip, { tone: "red", children: [
-                    "Anomalie non r\xE9solue",
-                    last ? `  (${CHECK_STATUS_LABEL[last.result].toLowerCase()})` : ""
+              /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("select", { value: category, onChange: (e) => setCategory(e.target.value), "aria-label": "Cat\xE9gorie d'\xE9quipement", className: "py-2 px-2 text-xs bg-neutral-50 border border-neutral-200 rounded-lg cursor-pointer max-w-[12rem]", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: "all", children: "Toutes cat\xE9gories" }),
+                categories.map((c) => /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: c, children: c }, c))
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("select", { value: equipFilter, onChange: (e) => setEquipFilter(e.target.value), "aria-label": "\xC9quipement", className: "py-2 px-2 text-xs bg-neutral-50 border border-neutral-200 rounded-lg cursor-pointer max-w-[12rem]", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: "all", children: "Tous les \xE9quipements" }),
+                equipments.filter((q) => !q.archived).map((q) => /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("option", { value: q.id, children: q.name }, q.id))
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("div", { className: "grid lg:grid-cols-2 gap-3", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "En retard", icon: TriangleAlert, tone: "text-red-700", count: late.length, empty: "Aucune intervention en retard.", children: late.map(taskRow) }),
+              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Aujourd'hui", icon: CalendarClock, count: todayTasks.length, empty: "Rien de pr\xE9vu aujourd'hui.", children: todayTasks.map(taskRow) }),
+              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: `\xC0 venir (${period} jours)`, icon: CalendarClock, count: upcoming.length, empty: "Aucune intervention pr\xE9vue sur cette p\xE9riode.", children: upcoming.map(taskRow) }),
+              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Incidents ouverts", icon: ShieldAlert, tone: "text-amber-800", count: incidents.length, empty: "Aucun incident ouvert.", children: incidents.map((i) => {
+                const st = shownIncidentStatus(i, today6);
+                const d = incidentDays(i, today6);
+                const arrival = i.checkBeforeArrival && i.areaId ? nextArrival(reservations, i.areaId, today6) : void 0;
+                return /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: () => onOpenIncident(i.id), children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "min-w-0 text-xs text-neutral-900", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "font-mono font-bold text-neutral-500", children: i.ref }),
+                    " ",
+                    /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "font-semibold", children: i.description.split("\n")[0].slice(0, 70) }),
+                    i.checkBeforeArrival && i.areaId && /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "block text-[11px] text-amber-800 font-semibold", children: [
+                      "\xC0 v\xE9rifier avant la prochaine arriv\xE9e",
+                      arrival ? ` (${frDate(arrival.checkIn)}, ${accommodations.find((a) => a.id === i.areaId)?.name || ""})` : ""
+                    ] })
                   ] }),
-                  safetyLate(s, today6) && d !== null && /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "text-[11px] text-red-700 font-semibold", children: [
-                    "V\xE9rification ",
-                    daysText(d)
+                  /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "flex items-center gap-1.5 shrink-0", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(PriorityChip, { priority: i.priority }),
+                    /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Chip, { tone: incidentTone(st), children: INCIDENT_STATUS_LABEL[st] }),
+                    d !== null && d < 0 && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "text-[11px] text-red-700 font-semibold", children: daysText(d) })
                   ] })
-                ] })
-              ] }, s.id);
-            }) }),
-            pools.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Piscine et spa : mesures hors seuil", icon: Waves, tone: "text-red-700", count: poolAnomalies.length, empty: "Aucune mesure hors seuil \xE0 traiter.", children: poolAnomalies.slice(0, 8).map((e) => {
-              const p = pools.find((x) => x.id === e.poolId);
-              return /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: onOpenPool, children: [
+                ] }, i.id);
+              }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "\xC9quipements en panne ou \xE0 contr\xF4ler", icon: Wrench, tone: "text-amber-800", count: brokenEquip.length, empty: "Aucun \xE9quipement signal\xE9.", children: brokenEquip.map((q) => /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: () => onOpenEquipment(q.id), children: [
                 /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "text-xs font-semibold text-neutral-900", children: [
-                  p.name,
+                  q.name,
                   " ",
-                  /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "font-normal text-neutral-500", children: [
-                    "\xB7 ",
-                    frDate(e.date)
-                  ] })
+                  /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "font-normal text-neutral-500", children: q.location && `\xB7 ${q.location}` })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "text-[11px] text-red-700 font-semibold", children: outOfRange(e, p).map((b) => `${b.param.label} ${String(b.value).replace(".", ",")}`).join(", ") })
-              ] }, e.id);
-            }) }),
-            stockItemList(records5).length > 0 && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Stocks \xE0 r\xE9approvisionner", icon: Boxes, tone: "text-amber-800", count: lowStock.length, empty: "Aucun article sous son minimum.", children: lowStock.map(({ i, q }) => /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: onOpenStock, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "text-xs font-semibold text-neutral-900", children: i.name }),
-              /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "text-[11px] text-amber-800 font-semibold", children: [
-                q,
-                " ",
-                i.unit,
-                " (minimum ",
-                i.min,
-                ")"
-              ] })
-            ] }, i.id)) }),
-            docs3 !== null && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Documents \xE0 renouveler ou expir\xE9s", icon: FileWarning, tone: "text-amber-800", count: expiring.length, empty: "Aucun document n'arrive \xE0 \xE9ch\xE9ance.", children: expiring.map(({ d, due }) => /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: onOpenDocs, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "text-xs font-semibold text-neutral-900", children: d.title || "Sans intitul\xE9" }),
-              /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: `text-[11px] ${due.days < 0 ? "text-red-700 font-semibold" : "text-neutral-600"}`, children: [
-                due.kind === "expiry" ? "Expire" : "\xC0 renouveler",
-                " le ",
-                frDate(due.date),
-                " (",
-                daysText(due.days),
-                ")"
-              ] })
-            ] }, d.id)) })
-          ] }),
-          undated.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Sans date pr\xE9vue", icon: CalendarClock, count: undated.length, empty: "", children: undated.map(taskRow) }),
-          /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("p", { className: "text-[10px] text-neutral-400", children: [
-            "Ces rep\xE8res aident \xE0 ne rien oublier, ils ne garantissent pas la conformit\xE9 de l'\xE9tablissement. Rien n'est marqu\xE9 \xAB termin\xE9 \xBB ou \xAB conforme \xBB automatiquement.",
-            docs3 !== null && " Les \xE9ch\xE9ances de documents suivent les rappels r\xE9gl\xE9s dans l'Assistant administratif."
+                /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Chip, { tone: equipTone(q.status), children: EQUIP_STATUS_LABEL[q.status] })
+              ] }, q.id)) }),
+              safetyList(records5).length > 0 && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "S\xE9curit\xE9 des \xE9quipements", icon: ShieldCheck, tone: "text-red-700", count: safety.length, empty: "Aucune v\xE9rification en retard ni anomalie non r\xE9solue.", children: safety.map((s) => {
+                const d = safetyDays(s, today6);
+                const last = lastCheck(s);
+                return /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: () => onOpenSafety(s.id), children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "text-xs font-semibold text-neutral-900", children: [
+                    s.name,
+                    " ",
+                    /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "font-normal text-neutral-500", children: s.location && `\xB7 ${s.location}` })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "flex items-center gap-1.5 shrink-0", children: [
+                    safetyAnomaly(s) && /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Chip, { tone: "red", children: [
+                      "Anomalie non r\xE9solue",
+                      last ? `  (${CHECK_STATUS_LABEL[last.result].toLowerCase()})` : ""
+                    ] }),
+                    safetyLate(s, today6) && d !== null && /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "text-[11px] text-red-700 font-semibold", children: [
+                      "V\xE9rification ",
+                      daysText(d)
+                    ] })
+                  ] })
+                ] }, s.id);
+              }) }),
+              pools.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Piscine et spa : mesures hors seuil", icon: Waves, tone: "text-red-700", count: poolAnomalies.length, empty: "Aucune mesure hors seuil \xE0 traiter.", children: poolAnomalies.slice(0, 8).map((e) => {
+                const p = pools.find((x) => x.id === e.poolId);
+                return /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: onOpenPool, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "text-xs font-semibold text-neutral-900", children: [
+                    p.name,
+                    " ",
+                    /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "font-normal text-neutral-500", children: [
+                      "\xB7 ",
+                      frDate(e.date)
+                    ] })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "text-[11px] text-red-700 font-semibold", children: outOfRange(e, p).map((b) => `${b.param.label} ${String(b.value).replace(".", ",")}`).join(", ") })
+                ] }, e.id);
+              }) }),
+              stockItemList(records5).length > 0 && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Stocks \xE0 r\xE9approvisionner", icon: Boxes, tone: "text-amber-800", count: lowStock.length, empty: "Aucun article sous son minimum.", children: lowStock.map(({ i, q }) => /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: onOpenStock, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "text-xs font-semibold text-neutral-900", children: i.name }),
+                /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: "text-[11px] text-amber-800 font-semibold", children: [
+                  q,
+                  " ",
+                  i.unit,
+                  " (minimum ",
+                  i.min,
+                  ")"
+                ] })
+              ] }, i.id)) }),
+              docs3 !== null && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Documents \xE0 renouveler ou expir\xE9s", icon: FileWarning, tone: "text-amber-800", count: expiring.length, empty: "Aucun document n'arrive \xE0 \xE9ch\xE9ance.", children: expiring.map(({ d, due }) => /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)(Row4, { onClick: onOpenDocs, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime95.jsx)("span", { className: "text-xs font-semibold text-neutral-900", children: d.title || "Sans intitul\xE9" }),
+                /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("span", { className: `text-[11px] ${due.days < 0 ? "text-red-700 font-semibold" : "text-neutral-600"}`, children: [
+                  due.kind === "expiry" ? "Expire" : "\xC0 renouveler",
+                  " le ",
+                  frDate(due.date),
+                  " (",
+                  daysText(due.days),
+                  ")"
+                ] })
+              ] }, d.id)) })
+            ] }),
+            undated.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime95.jsx)(Section, { title: "Sans date pr\xE9vue", icon: CalendarClock, count: undated.length, empty: "", children: undated.map(taskRow) }),
+            /* @__PURE__ */ (0, import_jsx_runtime95.jsxs)("p", { className: "text-[10px] text-neutral-400", children: [
+              "Ces rep\xE8res aident \xE0 ne rien oublier, ils ne garantissent pas la conformit\xE9 de l'\xE9tablissement. Rien n'est marqu\xE9 \xAB termin\xE9 \xBB ou \xAB conforme \xBB automatiquement.",
+              docs3 !== null && " Les \xE9ch\xE9ances de documents suivent les rappels r\xE9gl\xE9s dans l'Assistant administratif."
+            ] })
           ] })
         ] });
       };
@@ -61637,166 +61846,168 @@ Cliquer pour modifier le tarif` : void 0,
             ] })
           ] }),
           d.empty && /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("div", { className: "p-4 rounded-2xl bg-sy-f4f7f4 border border-sy-cad7cd text-xs text-neutral-700", "data-hy-empty": true, children: "Aucun enregistrement pour le moment. Commencez par cr\xE9er vos \xE9quipements (r\xE9frig\xE9rateur, cong\xE9lateur\u2026) dans \xAB Temp\xE9ratures \xBB et d\xE9finissez vos seuils dans \xAB Param\xE8tres du module \xBB. Rien n'est affich\xE9 comme conforme tant que vous n'avez pas enregistr\xE9 de contr\xF4le." }),
-          /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("div", { className: "grid grid-cols-2 lg:grid-cols-4 gap-2", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Tile, { label: "Contr\xF4les r\xE9alis\xE9s", value: d.total, hint: "relev\xE9s, nettoyages, r\xE9ceptions" }),
-            /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Tile, { label: "Non conformes", value: d.nonconform, tone: "red" }),
-            /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Tile, { label: "\xC0 v\xE9rifier", value: d.tocheck, tone: "amber", hint: "r\xE9sultat pas encore tranch\xE9" }),
-            /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Tile, { label: "En retard", value: late, tone: "red" })
-          ] }),
-          extra.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-amber-200 p-3 space-y-2", "data-block": "extra", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("h3", { className: "font-serif font-bold text-sm text-neutral-900 flex items-center gap-1.5", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(TriangleAlert, { className: "w-4 h-4 text-amber-600" }),
-              " \xC0 traiter dans les autres registres du guide (",
-              extra.length,
-              ")"
+          /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("div", { className: d.empty ? "hidden" : "space-y-3", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("div", { className: "grid grid-cols-2 lg:grid-cols-4 gap-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Tile, { label: "Contr\xF4les r\xE9alis\xE9s", value: d.total, hint: "relev\xE9s, nettoyages, r\xE9ceptions" }),
+              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Tile, { label: "Non conformes", value: d.nonconform, tone: "red" }),
+              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Tile, { label: "\xC0 v\xE9rifier", value: d.tocheck, tone: "amber", hint: "r\xE9sultat pas encore tranch\xE9" }),
+              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Tile, { label: "En retard", value: late, tone: "red" })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("ul", { className: "space-y-1.5", children: extra.slice(0, 8).map((a) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("registers", `:`), children: [
-              /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
-                TYPE_BY_ID[a.entry.type].tab,
-                " : ",
-                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: a.entry.title || "\u2014" })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Chip, { tone: a.state.tone === "grey" ? "grey" : a.state.tone, children: a.state.label })
-            ] }) }, ``)) })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("div", { className: "grid lg:grid-cols-2 gap-3", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-block": "todo", children: [
+            extra.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-amber-200 p-3 space-y-2", "data-block": "extra", children: [
               /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("h3", { className: "font-serif font-bold text-sm text-neutral-900 flex items-center gap-1.5", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(ClipboardCheck, { className: "w-4 h-4 text-sy-325032" }),
-                " Restant \xE0 effectuer"
-              ] }),
-              d.toRead.length === 0 && d.dueOps.length === 0 && d.stockToCheck.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("p", { className: "text-xs text-neutral-500", children: "Rien de pr\xE9vu ou tout est enregistr\xE9. Les contr\xF4les ne sont \xAB pr\xE9vus \xBB que si un relev\xE9 quotidien ou une op\xE9ration r\xE9currente a \xE9t\xE9 configur\xE9." }) : /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("ul", { className: "space-y-1.5", children: [
-                d.toRead.map((q) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("temperatures", "new"), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
-                    "Relev\xE9 de temp\xE9rature : ",
-                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: q.name })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Chip, { tone: "amber", children: "\xC0 relever" })
-                ] }) }, q.id)),
-                d.stockToCheck.map((p) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("stock", `place:${p.id}`), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
-                    "V\xE9rification du stock : ",
-                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: p.name })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Chip, { tone: "amber", children: "\xC0 v\xE9rifier" })
-                ] }) }, p.id)),
-                d.dueOps.map((o) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("cleaning", `done:${o.id}`), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
-                    o.operation,
-                    " : ",
-                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: o.zone })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Chip, { tone: "amber", children: "Aujourd'hui" })
-                ] }) }, o.id))
-              ] })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-block": "late", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("h3", { className: "font-serif font-bold text-sm text-neutral-900 flex items-center gap-1.5", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(TriangleAlert, { className: "w-4 h-4 text-red-600" }),
-                " En retard"
-              ] }),
-              late === 0 ? /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucun retard signal\xE9 (calcul\xE9 d'apr\xE8s vos relev\xE9s quotidiens, vos op\xE9rations r\xE9currentes et les dates limites des incidents)." }) : /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("ul", { className: "space-y-1.5", children: [
-                d.lateOps.map((o) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-red-200 bg-red-50 text-xs cursor-pointer", onClick: () => onGo("cleaning", `done:${o.id}`), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
-                    o.operation,
-                    " : ",
-                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: o.zone })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(Chip, { tone: "red", children: [
-                    "Depuis le ",
-                    frDate(o.nextDue)
-                  ] })
-                ] }) }, o.id)),
-                d.missed.map(({ q, days: days2 }) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-red-200 bg-red-50 text-xs cursor-pointer", onClick: () => onGo("temperatures", "new"), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
-                    "Aucun relev\xE9 : ",
-                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: q.name })
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(Chip, { tone: "red", children: [
-                    days2.length,
-                    " jour",
-                    days2.length > 1 ? "s" : ""
-                  ] })
-                ] }) }, q.id)),
-                d.lateInc.map((i) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-red-200 bg-red-50 text-xs cursor-pointer", onClick: () => onGo("incidents", i.id), children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
-                    i.ref,
-                    " \xB7 ",
-                    i.type
-                  ] }),
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(Chip, { tone: "red", children: [
-                    "Limite ",
-                    frDate(i.dueDate)
-                  ] })
-                ] }) }, i.id))
-              ] })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-block": "open", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: [
-                "Anomalies en cours de traitement (",
-                d.open.length,
+                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(TriangleAlert, { className: "w-4 h-4 text-amber-600" }),
+                " \xC0 traiter dans les autres registres du guide (",
+                extra.length,
                 ")"
               ] }),
-              d.open.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucune anomalie ouverte." }) : /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("ul", { className: "space-y-1.5", children: d.open.map((i) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("incidents", i.id), children: [
-                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("span", { className: "font-mono text-neutral-500 mr-1", children: i.ref }),
-                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: i.type }),
-                i.subject && ` \xB7 ${i.subject}`,
-                /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { className: "block text-[11px] text-neutral-500", children: [
-                  frDate(i.date),
-                  i.responsible && ` \xB7 ${i.responsible}`
-                ] })
-              ] }) }, i.id)) })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-block": "actions", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "Derni\xE8res actions correctives" }),
-              d.actions.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucune action corrective enregistr\xE9e." }) : /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("ul", { className: "space-y-1.5", children: d.actions.map((a) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo(a.section, a.section === "cleaning" ? `log:${a.id}` : a.id), children: [
-                /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { className: "flex items-center justify-between gap-2", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: a.from }),
-                  a.from.startsWith("HYG") ? null : /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(ResultChip, { result: a.result })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("span", { className: "block", children: a.text }),
-                /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { className: "block text-[11px] text-neutral-500", children: [
-                  frDate(a.date),
-                  " ",
-                  a.time
-                ] })
-              ] }) }, a.id)) })
-            ] }),
-            (al.sheets > 0 || al.missing > 0) && /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2 lg:col-span-2", "data-block": "allergens", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "Allerg\xE8nes et plats" }),
-              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("div", { className: "grid grid-cols-3 gap-2", children: [
-                ["\xC0 v\xE9rifier", al.tocheck, "tocheck"],
-                ["Fiches incompl\xE8tes", al.incomplete, "incomplete"],
-                ["Plats sans fiche", al.missing, "nosheet"]
-              ].map(([label2, n, f]) => /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(
-                "button",
-                {
-                  type: "button",
-                  onClick: () => onGo("allergens", `filter:${f}`),
-                  "data-allergen-tile": f,
-                  className: `text-left rounded-xl border p-3 cursor-pointer ${n ? "bg-amber-50 border-amber-200" : "bg-white border-neutral-200"}`,
-                  children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("div", { className: "text-xl font-serif font-bold text-neutral-900", children: n }),
-                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("div", { className: "text-[11px] font-semibold text-neutral-700", children: label2 })
-                  ]
-                },
-                f
-              )) })
-            ] }),
-            (d.lotsLate.length > 0 || d.lotsSoon.length > 0) && /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2 lg:col-span-2", "data-block": "lots", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "Dates limites saisies \xE0 surveiller" }),
-              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("ul", { className: "space-y-1.5", children: [...d.lotsLate, ...d.lotsSoon].map((l) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("traceability", l.id), children: [
+              /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("ul", { className: "space-y-1.5", children: extra.slice(0, 8).map((a) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("registers", `:`), children: [
                 /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: l.product }),
-                  l.lotRef && ` \xB7 lot ${l.lotRef}`,
-                  l.storage && ` \xB7 ${l.storage}`
+                  TYPE_BY_ID[a.entry.type].tab,
+                  " : ",
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: a.entry.title || "\u2014" })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(Chip, { tone: l.dlc < day2 ? "red" : "amber", children: [
-                  l.dlc < day2 ? "D\xE9pass\xE9e" : "Proche",
-                  " \xB7 ",
-                  frDate(l.dlc)
+                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Chip, { tone: a.state.tone === "grey" ? "grey" : a.state.tone, children: a.state.label })
+              ] }) }, ``)) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("div", { className: "grid lg:grid-cols-2 gap-3", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-block": "todo", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("h3", { className: "font-serif font-bold text-sm text-neutral-900 flex items-center gap-1.5", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(ClipboardCheck, { className: "w-4 h-4 text-sy-325032" }),
+                  " Restant \xE0 effectuer"
+                ] }),
+                d.toRead.length === 0 && d.dueOps.length === 0 && d.stockToCheck.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("p", { className: "text-xs text-neutral-500", children: "Rien de pr\xE9vu ou tout est enregistr\xE9. Les contr\xF4les ne sont \xAB pr\xE9vus \xBB que si un relev\xE9 quotidien ou une op\xE9ration r\xE9currente a \xE9t\xE9 configur\xE9." }) : /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("ul", { className: "space-y-1.5", children: [
+                  d.toRead.map((q) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("temperatures", "new"), children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
+                      "Relev\xE9 de temp\xE9rature : ",
+                      /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: q.name })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Chip, { tone: "amber", children: "\xC0 relever" })
+                  ] }) }, q.id)),
+                  d.stockToCheck.map((p) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("stock", `place:${p.id}`), children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
+                      "V\xE9rification du stock : ",
+                      /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: p.name })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Chip, { tone: "amber", children: "\xC0 v\xE9rifier" })
+                  ] }) }, p.id)),
+                  d.dueOps.map((o) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("cleaning", `done:${o.id}`), children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
+                      o.operation,
+                      " : ",
+                      /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: o.zone })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(Chip, { tone: "amber", children: "Aujourd'hui" })
+                  ] }) }, o.id))
                 ] })
-              ] }) }, l.id)) })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-block": "late", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("h3", { className: "font-serif font-bold text-sm text-neutral-900 flex items-center gap-1.5", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(TriangleAlert, { className: "w-4 h-4 text-red-600" }),
+                  " En retard"
+                ] }),
+                late === 0 ? /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucun retard signal\xE9 (calcul\xE9 d'apr\xE8s vos relev\xE9s quotidiens, vos op\xE9rations r\xE9currentes et les dates limites des incidents)." }) : /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("ul", { className: "space-y-1.5", children: [
+                  d.lateOps.map((o) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-red-200 bg-red-50 text-xs cursor-pointer", onClick: () => onGo("cleaning", `done:${o.id}`), children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
+                      o.operation,
+                      " : ",
+                      /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: o.zone })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(Chip, { tone: "red", children: [
+                      "Depuis le ",
+                      frDate(o.nextDue)
+                    ] })
+                  ] }) }, o.id)),
+                  d.missed.map(({ q, days: days2 }) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-red-200 bg-red-50 text-xs cursor-pointer", onClick: () => onGo("temperatures", "new"), children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
+                      "Aucun relev\xE9 : ",
+                      /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: q.name })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(Chip, { tone: "red", children: [
+                      days2.length,
+                      " jour",
+                      days2.length > 1 ? "s" : ""
+                    ] })
+                  ] }) }, q.id)),
+                  d.lateInc.map((i) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-red-200 bg-red-50 text-xs cursor-pointer", onClick: () => onGo("incidents", i.id), children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
+                      i.ref,
+                      " \xB7 ",
+                      i.type
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(Chip, { tone: "red", children: [
+                      "Limite ",
+                      frDate(i.dueDate)
+                    ] })
+                  ] }) }, i.id))
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-block": "open", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: [
+                  "Anomalies en cours de traitement (",
+                  d.open.length,
+                  ")"
+                ] }),
+                d.open.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucune anomalie ouverte." }) : /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("ul", { className: "space-y-1.5", children: d.open.map((i) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("incidents", i.id), children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("span", { className: "font-mono text-neutral-500 mr-1", children: i.ref }),
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: i.type }),
+                  i.subject && ` \xB7 ${i.subject}`,
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { className: "block text-[11px] text-neutral-500", children: [
+                    frDate(i.date),
+                    i.responsible && ` \xB7 ${i.responsible}`
+                  ] })
+                ] }) }, i.id)) })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-block": "actions", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "Derni\xE8res actions correctives" }),
+                d.actions.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucune action corrective enregistr\xE9e." }) : /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("ul", { className: "space-y-1.5", children: d.actions.map((a) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo(a.section, a.section === "cleaning" ? `log:${a.id}` : a.id), children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { className: "flex items-center justify-between gap-2", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: a.from }),
+                    a.from.startsWith("HYG") ? null : /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(ResultChip, { result: a.result })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("span", { className: "block", children: a.text }),
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { className: "block text-[11px] text-neutral-500", children: [
+                    frDate(a.date),
+                    " ",
+                    a.time
+                  ] })
+                ] }) }, a.id)) })
+              ] }),
+              (al.sheets > 0 || al.missing > 0) && /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2 lg:col-span-2", "data-block": "allergens", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "Allerg\xE8nes et plats" }),
+                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("div", { className: "grid grid-cols-3 gap-2", children: [
+                  ["\xC0 v\xE9rifier", al.tocheck, "tocheck"],
+                  ["Fiches incompl\xE8tes", al.incomplete, "incomplete"],
+                  ["Plats sans fiche", al.missing, "nosheet"]
+                ].map(([label2, n, f]) => /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(
+                  "button",
+                  {
+                    type: "button",
+                    onClick: () => onGo("allergens", `filter:${f}`),
+                    "data-allergen-tile": f,
+                    className: `text-left rounded-xl border p-3 cursor-pointer ${n ? "bg-amber-50 border-amber-200" : "bg-white border-neutral-200"}`,
+                    children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("div", { className: "text-xl font-serif font-bold text-neutral-900", children: n }),
+                      /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("div", { className: "text-[11px] font-semibold text-neutral-700", children: label2 })
+                    ]
+                  },
+                  f
+                )) })
+              ] }),
+              (d.lotsLate.length > 0 || d.lotsSoon.length > 0) && /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2 lg:col-span-2", "data-block": "lots", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "Dates limites saisies \xE0 surveiller" }),
+                /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("ul", { className: "space-y-1.5", children: [...d.lotsLate, ...d.lotsSoon].map((l) => /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("button", { type: "button", className: "w-full text-left flex items-center justify-between gap-2 p-2 rounded-lg border border-neutral-200 hover:border-neutral-300 text-xs cursor-pointer", onClick: () => onGo("traceability", l.id), children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("span", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("b", { children: l.product }),
+                    l.lotRef && ` \xB7 lot ${l.lotRef}`,
+                    l.storage && ` \xB7 ${l.storage}`
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(Chip, { tone: l.dlc < day2 ? "red" : "amber", children: [
+                    l.dlc < day2 ? "D\xE9pass\xE9e" : "Proche",
+                    " \xB7 ",
+                    frDate(l.dlc)
+                  ] })
+                ] }) }, l.id)) })
+              ] })
             ] })
           ] })
         ] });
@@ -68541,9 +68752,9 @@ Sitemap: ${base}sitemap.xml
         ] });
       };
       Bar = ({ value, max }) => {
-        const pct2 = max > 0 ? Math.min(100, Math.round(value / max * 100)) : 0;
-        const tone3 = pct2 >= 100 ? "bg-red-600" : pct2 >= 80 ? "bg-amber-500" : "bg-emerald-600";
-        return /* @__PURE__ */ (0, import_jsx_runtime144.jsx)("div", { className: "h-2 rounded-full bg-neutral-200 overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime144.jsx)("div", { className: `h-full ${tone3}`, style: { width: `${pct2}%` } }) });
+        const pct3 = max > 0 ? Math.min(100, Math.round(value / max * 100)) : 0;
+        const tone3 = pct3 >= 100 ? "bg-red-600" : pct3 >= 80 ? "bg-amber-500" : "bg-emerald-600";
+        return /* @__PURE__ */ (0, import_jsx_runtime144.jsx)("div", { className: "h-2 rounded-full bg-neutral-200 overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime144.jsx)("div", { className: `h-full ${tone3}`, style: { width: `${pct3}%` } }) });
       };
       ComplianceView = ({ reservations, onToast, onOpen }) => {
         const settings = useSettings();
@@ -69926,6 +70137,8 @@ Sitemap: ${base}sitemap.xml
         }, [orders, today6]);
         const roomName = (id) => settings.accommodations.find((a) => a.id === id)?.name || id;
         const stays = (0, import_react150.useMemo)(() => staysOfDay(reservations, today6, roomName), [reservations, today6, settings.accommodations]);
+        const upcoming = (0, import_react150.useMemo)(() => upcomingStays(reservations, today6, 7, roomName), [reservations, today6, settings.accommodations]);
+        const due = (0, import_react150.useMemo)(() => balancesDue(reservations, today6, 30, roomName), [reservations, today6, settings.accommodations]);
         const [openConnector, setOpenConnector] = (0, import_react150.useState)(false);
         (0, import_react150.useEffect)(() => {
           if (!getStoredAppsScriptUrl() || !canOpenSettings()) return;
@@ -70122,6 +70335,39 @@ Sitemap: ${base}sitemap.xml
                 ] })
               ] })
             ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { className: "grid lg:grid-cols-2 gap-3", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-today-upcoming": true, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "7 prochains jours" }),
+                upcoming.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucune arriv\xE9e ni d\xE9part dans les 7 prochains jours." }) : /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("ul", { className: "space-y-1", children: upcoming.map((s) => /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("button", { type: "button", onClick: () => onOpen("list"), className: "w-full text-left flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-neutral-50 cursor-pointer", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "w-16 shrink-0 font-mono text-neutral-500", children: frDate3(s.date) }),
+                  /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: `px-1.5 py-0.5 rounded-md text-[10px] font-bold shrink-0 ${s.kind === "arrival" ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`, children: s.kind === "arrival" ? "Arriv\xE9e" : "D\xE9part" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "font-semibold text-neutral-900 truncate", children: s.guest }),
+                  /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("span", { className: "text-neutral-500 ml-auto whitespace-nowrap", children: [
+                    s.room,
+                    s.people ? ` \xB7 ${s.people} pers.` : ""
+                  ] })
+                ] }) }, s.id)) })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-today-due": true, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { className: "flex items-baseline justify-between gap-2", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "\xC0 encaisser" }),
+                  due.items.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "font-mono font-bold text-sm text-neutral-900", children: due.total.toLocaleString("fr-FR", { style: "currency", currency: "EUR" }) })
+                ] }),
+                due.items.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("p", { className: "text-xs text-neutral-500", children: "Aucun solde en attente pour les s\xE9jours en cours ou des 30 prochains jours." }) : /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("ul", { className: "space-y-1", children: [
+                  due.items.slice(0, 8).map((i) => /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("button", { type: "button", onClick: () => onOpen("list"), className: "w-full text-left flex items-center gap-2 text-xs p-1.5 rounded-lg hover:bg-neutral-50 cursor-pointer", children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "w-16 shrink-0 font-mono text-neutral-500", children: frDate3(i.checkIn) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "font-semibold text-neutral-900 truncate", children: i.guest }),
+                    i.late && /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-red-100 text-red-900 shrink-0", children: "S\xE9jour commenc\xE9" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("span", { className: "font-mono font-semibold text-neutral-900 ml-auto whitespace-nowrap", children: i.due.toLocaleString("fr-FR", { style: "currency", currency: "EUR" }) })
+                  ] }) }, i.id)),
+                  due.items.length > 8 && /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("li", { className: "text-[11px] text-neutral-500", children: [
+                    "\u2026 et ",
+                    due.items.length - 8,
+                    " autre(s) dans R\xE9servations."
+                  ] })
+                ] })
+              ] })
+            ] }),
             mealsOn && /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("section", { className: "bg-white rounded-2xl border border-neutral-200 p-3 space-y-2", "data-today-meals": true, children: [
               /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "Repas command\xE9s" }),
               mealOrders.today.length + mealOrders.tomorrow.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("p", { className: "text-xs text-neutral-500", children: [
@@ -70145,11 +70391,13 @@ Sitemap: ${base}sitemap.xml
                 ] }) }, o.id)) })
               ] }, label2))
             ] }),
-            canOpenSettings() && /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("section", { className: `rounded-2xl border p-3 space-y-2 ${age === null || age > 7 ? "bg-amber-50 border-amber-200" : "bg-white border-neutral-200"}`, "data-backup": true, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "Sauvegarde des donn\xE9es" }),
-              /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("p", { className: "text-xs text-neutral-700", "data-backup-status": true, children: [
-                age === null ? "Aucune sauvegarde faite depuis cet appareil." : age === 0 ? "Derni\xE8re sauvegarde : aujourd'hui." : `Derni\xE8re sauvegarde : il y a ${age} jour${age > 1 ? "s" : ""}.`,
-                (age === null || age > 7) && " Pensez \xE0 en faire une r\xE9guli\xE8rement et \xE0 la ranger hors de cet appareil (Drive, cl\xE9 USB)."
+            canOpenSettings() && /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("details", { open: age === null || age > 7 || !!restore, className: `rounded-2xl border p-3 space-y-2 ${age === null || age > 7 ? "bg-amber-50 border-amber-200" : "bg-white border-neutral-200"}`, "data-backup": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("summary", { className: "cursor-pointer list-none space-y-0.5", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime149.jsx)("h3", { className: "font-serif font-bold text-sm text-neutral-900", children: "Sauvegarde des donn\xE9es" }),
+                /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("p", { className: "text-xs text-neutral-700", "data-backup-status": true, children: [
+                  age === null ? "Aucune sauvegarde faite depuis cet appareil." : age === 0 ? "Derni\xE8re sauvegarde : aujourd'hui." : `Derni\xE8re sauvegarde : il y a ${age} jour${age > 1 ? "s" : ""}.`,
+                  age === null || age > 7 ? " Pensez \xE0 en faire une r\xE9guli\xE8rement et \xE0 la ranger hors de cet appareil (Drive, cl\xE9 USB)." : " Cliquez pour sauvegarder ou restaurer."
+                ] })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("div", { className: "flex flex-wrap gap-2", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime149.jsxs)("button", { type: "button", className: btn9, onClick: doBackup, "data-backup-download": true, children: [
