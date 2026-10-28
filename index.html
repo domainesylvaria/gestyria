@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v278</title>
-  <meta name="application-name" content="Gestyria v278" />
+  <title>Gestyria v279</title>
+  <meta name="application-name" content="Gestyria v279" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8608,7 +8608,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "278";
+      APP_VERSION = "279";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -15085,15 +15085,23 @@ footer{background:#111}
         {
           id: "musique",
           category: CATEGORIES[5],
-          title: "D\xE9claration \xE0 la SACEM (musique diffus\xE9e \xE0 vos clients)",
-          level: "selon",
-          summary: "Diffuser de la musique dans un lieu ouvert \xE0 la client\xE8le (salle de petit-d\xE9jeuner, restaurant, bar, piscine, soir\xE9es, t\xE9l\xE9vision dans les parties communes) demande une autorisation et le paiement de droits d\u2019auteur \xE0 la SACEM. Pour la musique enregistr\xE9e, la r\xE9mun\xE9ration \xE9quitable (SPRE) est une d\xE9marche distincte.",
-          steps: ["V\xE9rifier si vous diffusez de la musique ou organisez des soir\xE9es avec musique pour vos clients.", "Si oui, d\xE9clarer votre \xE9tablissement sur sacem.fr (espace client, d\xE9claration d\u2019un lieu de diffusion) et demander l\u2019autorisation.", "Payer la facture de droits ; renouveler la d\xE9claration quand la diffusion change (nouveaux \xE9v\xE9nements, nouvel espace).", "Joindre ci-dessous l\u2019autorisation ou le contrat et la derni\xE8re facture."],
-          source: { label: "SACEM \u2014 Diffuser de la musique dans un lieu public", url: "https://clients.sacem.fr" },
-          confirm: "Tarifs et cas dispens\xE9s (musique seulement dans les chambres, par exemple) : confirmer aupr\xE8s de la SACEM ; la r\xE9mun\xE9ration \xE9quitable (SPRE) se r\xE8gle s\xE9par\xE9ment.",
+          title: "D\xE9claration \xE0 la SACEM (musique et t\xE9l\xE9vision diffus\xE9es \xE0 vos clients)",
+          level: "obligatoire",
+          summary: "D\xE8s qu\u2019un appareil capable de diffuser de la musique ou des programmes est mis \xE0 la disposition des clients, une autorisation de la SACEM est demand\xE9e : t\xE9l\xE9viseur, cha\xEEne hi-fi, ordinateur (CD, MP3, streaming), poste de radio, dans les chambres comme dans les parties communes (salle de petit-d\xE9jeuner, bar, piscine, soir\xE9es). Il ne s\u2019agit pas que de la musique : la t\xE9l\xE9vision compte, car les programmes contiennent des \u0153uvres prot\xE9g\xE9es. Seule diffusion exempt\xE9e : priv\xE9e, gratuite et dans le cercle de famille.",
+          steps: ["Compter les appareils qui peuvent diffuser pour vos clients (t\xE9l\xE9viseurs, hi-fi, ordinateurs, radios) et noter les lieux et la p\xE9riode d\u2019ouverture.", "Remplir le formulaire \xAB Autorisation simplifi\xE9e \xBB de la SACEM pour les meubl\xE9s de tourisme, chambres d\u2019h\xF4tes et assimil\xE9s (ou la d\xE9claration dans votre espace client sur sacem.fr), le signer, et le renvoyer \xE0 votre bureau r\xE9gional par e-mail ou courrier, avec les mandats de pr\xE9l\xE8vement SEPA si vous choisissez le pr\xE9l\xE8vement.", "Le forfait annuel couvre toute la musique quelle que soit la source ; il inclut la r\xE9mun\xE9ration \xE9quitable (SPRE) pour les h\xE9bergements ruraux concern\xE9s. Le courrier re\xE7u cite un forfait \xE0 partir de 168,70 \u20AC TTC par an (commune rurale, revenu de l\u2019activit\xE9 inf\xE9rieur \xE0 72 600 \u20AC HT par an, avec une r\xE9duction de 20 % accord\xE9e chaque ann\xE9e si la d\xE9claration est renvoy\xE9e avant la date indiqu\xE9e sur le courrier).", "R\xE9gler les notes de d\xE9bit dans les 25 jours suivant leur \xE9mission (une p\xE9nalit\xE9 s\u2019applique apr\xE8s), et noter l\u2019\xE9ch\xE9ance annuelle : l\u2019autorisation dure un an et se renouvelle seule ; pour y mettre fin, il faut \xE9crire par lettre recommand\xE9e au moins 30 jours avant l\u2019\xE9ch\xE9ance.", "Pr\xE9venir la SACEM si la diffusion change (nouveaux appareils, nouveaux espaces, soir\xE9es avec musique).", "Joindre ci-dessous le formulaire sign\xE9, la confirmation ou le contrat re\xE7u et la derni\xE8re facture."],
+          form: { label: "Autorisation simplifi\xE9e SACEM \xAB Meubl\xE9s de tourisme, chambres d\u2019h\xF4tes et assimil\xE9s \xBB (r\xE9f. 29-form, juin 2024)" },
+          risk: "Diffuser sans autorisation est assimil\xE9 \xE0 de la contrefa\xE7on : jusqu\u2019\xE0 300 000 \u20AC d\u2019amende et 3 ans d\u2019emprisonnement (articles L. 335-2 et suivants du Code de la propri\xE9t\xE9 intellectuelle), selon le courrier de la SACEM.",
+          source: { label: "SACEM \u2014 Autorisations > G\xEEte, meubl\xE9, chambre d\u2019h\xF4tes", url: "https://clients.sacem.fr/docs/autorisations/Tarifs-gite-meuble-de-tourisme-chambre-d-hotes.pdf" },
+          confirm: "Tarif exact, r\xE9duction et seuil de 72 600 \u20AC HT : indiqu\xE9s dans un courrier SACEM de septembre 2026 et variables selon votre commune et votre bureau r\xE9gional ; confirmer aupr\xE8s de votre conseiller SACEM. Une activit\xE9 de restaurant ou de bar rel\xE8ve d\u2019autres tarifs.",
           checked: D,
-          docs: ["Autorisation ou contrat SACEM", "Facture ou attestation de paiement", "Autre document"],
-          fields: [{ id: "date", label: "Date de la d\xE9claration", type: "date" }, { id: "ref", label: "Num\xE9ro de client ou de contrat SACEM", type: "text" }]
+          docs: ["Autorisation simplifi\xE9e SACEM (formulaire sign\xE9)", "Confirmation ou contrat SACEM", "Facture ou attestation de paiement", "Autre document"],
+          fields: [
+            { id: "date", label: "Date de d\xE9but des diffusions d\xE9clar\xE9e", type: "date" },
+            { id: "devices", label: "Appareils d\xE9clar\xE9s (nombre et type : TV, radio, hi-fi\u2026)", type: "text", placeholder: "Ex. 3 t\xE9l\xE9viseurs, 1 hi-fi" },
+            { id: "amount", label: "Forfait annuel TTC (\u20AC)", type: "number" },
+            { id: "expires", label: "\xC9ch\xE9ance annuelle de l\u2019autorisation", type: "date" },
+            { id: "ref", label: "Num\xE9ro de client SACEM", type: "text" }
+          ]
         },
         // ---------------------------------------------------------------- Personnel
         {
@@ -15221,6 +15229,7 @@ footer{background:#111}
       DEADLINES = [
         { item: "assurance", field: "expires", label: "Assurance de l\u2019activit\xE9" },
         { item: "cfe", field: "date", label: "Paiement de la CFE" },
+        { item: "musique", field: "expires", label: "Autorisation SACEM" },
         { item: "permis-exploitation", field: "expires", label: "Permis d\u2019exploitation (boissons)" }
       ];
       STATUS_LABEL = { todo: "\xC0 faire", done: "Fait", na: "Non concern\xE9" };
@@ -24215,7 +24224,7 @@ function beds24Bookings_() {
         { title: "M\xE9nage entre deux s\xE9jours", where: "M\xE9nage et pr\xE9paration", tab: "housekeeping", text: "menage nettoyage checklist preparation chambre linge tache arrivee depart photos cle" },
         { title: "Avis clients et r\xE9ponses", where: "Avis clients", tab: "reviews", text: "avis note etoiles commentaire reponse livre d or demande d avis google" },
         { title: "Statistiques de r\xE9servation par plateforme", where: "Analyse annuelle / Tableau de bord", tab: "annual", text: "statistique plateforme canal provenance occupation nuitees revenu chiffre d affaires annee" },
-        { title: "D\xE9claration SACEM, licences, permis d'exploitation", where: "R\xE9glementation", tab: "compliance", text: "sacem musique licence alcool permis exploitation debit de boissons cerfa 11542 11543 declaration mairie obligation" },
+        { title: "D\xE9claration SACEM, licences, permis d'exploitation", where: "R\xE9glementation", tab: "compliance", text: "sacem musique television tv telephone radio hifi droits d auteur spre licence alcool permis exploitation debit de boissons cerfa 11542 11543 declaration mairie obligation" },
         { title: "Site web : pages, photos, r\xE9servation en ligne", where: "Site web", tab: "website", text: "site web page photo mise en ligne domaine reservation en ligne paiement demande reservation" },
         { title: "Documents : contrats, assurances, \xE9ch\xE9ances", where: "Assistant administratif", tab: "adminDocs", text: "document contrat assurance echeance rappel piece administrative attestation recepisse" },
         { title: "Mod\xE8les de documents (PDF, Word)", where: "G\xE9n\xE9rateur de documents", tab: "docgen", text: "document modele pdf word bandeau logo courrier affiche generer" },
