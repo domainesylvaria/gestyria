@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v281</title>
-  <meta name="application-name" content="Gestyria v281" />
+  <title>Gestyria v282</title>
+  <meta name="application-name" content="Gestyria v282" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8608,7 +8608,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "281";
+      APP_VERSION = "282";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -51142,7 +51142,7 @@ Cliquer pour modifier le tarif` : void 0,
     const accent = look("", { backgroundColor: p.accent });
     return { legend: accent, chunk: accent, label: look("", { color: p.text }), value: look("", { color: p.text }) };
   }
-  var import_react88, import_jsx_runtime82, LEGACY_DASHBOARD_LOOKS, euro4, euroShort, ChartCard, StackedMonths, DashboardTab;
+  var import_react88, import_jsx_runtime82, LEGACY_DASHBOARD_LOOKS, euro4, monthShort, MODAL_SUBTITLE, Stat, euroShort, ChartCard, StackedMonths, DashboardTab;
   var init_DashboardTab = __esm({
     "src/components/DashboardTab.tsx"() {
       "use strict";
@@ -51159,6 +51159,18 @@ Cliquer pour modifier le tarif` : void 0,
         pension: { legend: look("bg-amber-600"), chunk: look("bg-amber-600"), label: look("text-[#8C5220]"), value: look("text-[#8C5220]") }
       };
       euro4 = (v) => formatCurrency(v);
+      monthShort = (name) => /^juin/i.test(name) ? "Juin" : /^juil/i.test(name) ? "Juil" : name.substring(0, 3);
+      MODAL_SUBTITLE = {
+        revenue: "Chiffre d'affaires du mois et sa r\xE9partition",
+        margin: "Marge directe apr\xE8s charges sociales et imp\xF4t",
+        costs: "Co\xFBts directs du mois par poste",
+        nights: "Nuit\xE9es vendues et occupation du mois",
+        guests: "Voyageurs accueillis dans le mois"
+      };
+      Stat = ({ label: label2, value, tone: tone3 = "bg-neutral-50 border-neutral-200 text-neutral-900" }) => /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: `p-2 rounded-lg border ${tone3}`, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "block text-[10px] font-semibold opacity-80", children: label2 }),
+        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-bold font-mono", children: value })
+      ] });
       euroShort = (v) => v >= 1e3 ? `${(v / 1e3).toFixed(1).replace(".", ",")} k\u20AC` : `${Math.round(v)} \u20AC`;
       ChartCard = ({ icon, title, subtitle, children }) => /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "bg-white rounded-2xl border border-neutral-200/90 p-5 shadow-xs flex flex-col gap-4", children: [
         /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { children: [
@@ -51229,7 +51241,7 @@ Cliquer pour modifier le tarif` : void 0,
                 );
               }) })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "min-w-[420px] flex gap-1.5 sm:gap-2.5 px-1 pt-1.5", children: months.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: `flex-1 text-center text-[10px] truncate ${hover === i ? "font-bold text-neutral-900" : "font-medium text-neutral-500"}`, children: m.label.substring(0, 3) }, i)) })
+            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "min-w-[420px] flex gap-1.5 sm:gap-2.5 px-1 pt-1.5", children: months.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: `flex-1 text-center text-[10px] truncate ${hover === i ? "font-bold text-neutral-900" : "font-medium text-neutral-500"}`, children: monthShort(m.label) }, i)) })
           ] })
         ] });
       };
@@ -51242,6 +51254,11 @@ Cliquer pour modifier le tarif` : void 0,
       }) => {
         const [selectedPlatform, setSelectedPlatform] = (0, import_react88.useState)("all");
         const [modalMonthIndex, setModalMonthIndex] = (0, import_react88.useState)(null);
+        const [modalChart, setModalChart] = (0, import_react88.useState)("revenue");
+        const openMonth = (chart) => (monthIndex2) => {
+          setModalChart(chart);
+          setModalMonthIndex(monthIndex2);
+        };
         const filteredReservations = (0, import_react88.useMemo)(() => {
           if (selectedPlatform === "all") return allReservations;
           return allReservations.filter((r) => (r.bookingSource || "direct") === selectedPlatform);
@@ -51453,7 +51470,7 @@ Cliquer pour modifier le tarif` : void 0,
                 return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(
                   "div",
                   {
-                    onClick: () => setModalMonthIndex(index),
+                    onClick: () => openMonth("revenue")(index),
                     className: "flex-1 flex flex-col items-center h-full justify-end group min-w-[32px] cursor-pointer",
                     children: [
                       /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[9px] font-bold text-neutral-700 mb-1 opacity-90 group-hover:scale-110 transition-transform", children: m.totalRevenue > 0 ? `${Math.round(m.totalRevenue)}\u20AC` : "" }),
@@ -51465,7 +51482,7 @@ Cliquer pour modifier le tarif` : void 0,
                           title: `${m.monthName}: ${formatCurrency(m.totalRevenue)}`
                         }
                       ),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[10px] font-semibold text-neutral-600 mt-2 truncate w-full text-center group-hover:text-emerald-800 group-hover:font-bold", children: m.monthName.substring(0, 3) })
+                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[10px] font-semibold text-neutral-600 mt-2 truncate w-full text-center group-hover:text-emerald-800 group-hover:font-bold", children: monthShort(m.monthName) })
                     ]
                   },
                   index
@@ -51493,7 +51510,7 @@ Cliquer pour modifier le tarif` : void 0,
                 return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(
                   "div",
                   {
-                    onClick: () => setModalMonthIndex(index),
+                    onClick: () => openMonth("margin")(index),
                     className: "flex-1 flex flex-col items-center h-full justify-end group min-w-[32px] cursor-pointer",
                     children: [
                       /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[9px] font-bold text-neutral-700 mb-1 opacity-90", children: marginAfter !== 0 ? `${Math.round(marginAfter)}\u20AC` : "" }),
@@ -51505,7 +51522,7 @@ Cliquer pour modifier le tarif` : void 0,
                           title: `${m.monthName}: ${formatCurrency(marginAfter)}`
                         }
                       ),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[10px] font-semibold text-neutral-600 mt-2 truncate w-full text-center group-hover:text-indigo-800 group-hover:font-bold", children: m.monthName.substring(0, 3) })
+                      /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-[10px] font-semibold text-neutral-600 mt-2 truncate w-full text-center group-hover:text-indigo-800 group-hover:font-bold", children: monthShort(m.monthName) })
                     ]
                   },
                   index
@@ -51519,7 +51536,7 @@ Cliquer pour modifier le tarif` : void 0,
                 parts: rows.map((row) => ({ key: row.id, label: shortName(row), look: dashboardLook(row).chunk })),
                 format: euro4,
                 short: euroShort,
-                onSelect: setModalMonthIndex
+                onSelect: openMonth("revenue")
               }
             ) }),
             /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartCard, { icon: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartColumn, { className: "w-5 h-5 text-rose-700" }), title: `Co\xFBts directs par mois (${selectedYear})`, subtitle: "Petits-d\xE9jeuners, repas et boissons ou autres co\xFBts directs, empil\xE9s. Survolez un mois pour le d\xE9tail.", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
@@ -51533,7 +51550,7 @@ Cliquer pour modifier le tarif` : void 0,
                 ],
                 format: euro4,
                 short: euroShort,
-                onSelect: setModalMonthIndex
+                onSelect: openMonth("costs")
               }
             ) }),
             /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartCard, { icon: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(BedDouble, { className: "w-5 h-5 text-sky-700" }), title: `Nuits par chambre (${selectedYear})`, subtitle: "Nuit\xE9es vendues par chambre et par mois. Survolez un mois pour le d\xE9tail.", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
@@ -51543,7 +51560,7 @@ Cliquer pour modifier le tarif` : void 0,
                 parts: rows.map((row) => ({ key: row.id, label: shortName(row), look: dashboardLook(row).chunk })),
                 format: (v) => `${v} nuit${v > 1 ? "s" : ""}`,
                 short: (v) => `${v}`,
-                onSelect: setModalMonthIndex
+                onSelect: openMonth("nights")
               }
             ) }),
             /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ChartCard, { icon: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Users, { className: "w-5 h-5 text-amber-700" }), title: `Voyageurs par mois (${selectedYear})`, subtitle: "Adultes, enfants et b\xE9b\xE9s accueillis chaque mois. Survolez un mois pour le d\xE9tail.", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
@@ -51557,7 +51574,7 @@ Cliquer pour modifier le tarif` : void 0,
                 ],
                 format: (v) => `${v} pers.`,
                 short: (v) => `${v}`,
-                onSelect: setModalMonthIndex
+                onSelect: openMonth("guests")
               }
             ) })
           ] }),
@@ -51660,7 +51677,7 @@ Cliquer pour modifier le tarif` : void 0,
                             " ",
                             annual.year
                           ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { className: "text-xs text-neutral-500", children: "D\xE9tail des montants et indicateurs du mois" })
+                          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { className: "text-xs text-neutral-500", children: MODAL_SUBTITLE[modalChart] })
                         ] })
                       ] }),
                       /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
@@ -51674,49 +51691,139 @@ Cliquer pour modifier le tarif` : void 0,
                       )
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "overflow-y-auto flex-1 space-y-3 pr-1 text-xs", children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center justify-between", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-semibold text-emerald-950", children: "Chiffre d'affaires mensuel total :" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-mono font-bold text-sm text-emerald-950", children: formatCurrency(annual.months[modalMonthIndex].totalRevenue) })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "space-y-1.5", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-bold text-neutral-700 uppercase tracking-wider text-[10px]", children: "Par h\xE9bergement / Espace" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "grid grid-cols-2 gap-2", children: rows.map((row) => {
-                          const L = dashboardLook(row);
-                          return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 border border-neutral-200", children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: `${L.label.c} block text-[10px] font-semibold`, style: L.label.s, children: shortName(row) }),
-                            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: `font-bold font-mono ${L.value.c}`, style: L.value.s, children: formatCurrency(monthRoom(annual.months[modalMonthIndex], row.id).revenue || 0) })
-                          ] }, row.id);
-                        }) })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "space-y-1.5", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-bold text-neutral-700 uppercase tracking-wider text-[10px]", children: "Charges & Marges" }),
-                        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "grid grid-cols-2 gap-2", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-2 rounded-lg bg-rose-50/60 border border-rose-200", children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-rose-900 block text-[10px] font-semibold", children: "Co\xFBts directs" }),
-                            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-bold font-mono text-rose-950", children: formatCurrency(annual.months[modalMonthIndex].directCosts || 0) })
-                          ] }),
-                          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-2 rounded-lg bg-indigo-50/60 border border-indigo-200", children: [
-                            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-indigo-900 block text-[10px] font-semibold", children: "Marge directe nette" }),
-                            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-bold font-mono text-indigo-950", children: formatCurrency((annual.months[modalMonthIndex].totalRevenue || 0) - (annual.months[modalMonthIndex].directCosts || 0) - (annual.months[modalMonthIndex].urssafCost || 0) - (annual.months[modalMonthIndex].taxCost || 0)) })
-                          ] })
-                        ] })
-                      ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "grid grid-cols-2 gap-2 pt-1", children: [
-                        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 border border-neutral-200 text-center", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-neutral-500 block text-[10px]", children: "Nuit\xE9es vendues" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "font-bold font-mono text-neutral-900 text-sm", children: [
-                            annual.months[modalMonthIndex].nightsSold || 0,
-                            " nuits"
+                      modalChart === "revenue" && /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(import_jsx_runtime82.Fragment, { children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center justify-between", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-semibold text-emerald-950", children: "Chiffre d'affaires mensuel total :" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-mono font-bold text-sm text-emerald-950", children: formatCurrency(annual.months[modalMonthIndex].totalRevenue) })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "space-y-1.5", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-bold text-neutral-700 uppercase tracking-wider text-[10px]", children: "Par h\xE9bergement / Espace" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "grid grid-cols-2 gap-2", children: rows.map((row) => {
+                            const L = dashboardLook(row);
+                            return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 border border-neutral-200", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: `${L.label.c} block text-[10px] font-semibold`, style: L.label.s, children: shortName(row) }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: `font-bold font-mono ${L.value.c}`, style: L.value.s, children: formatCurrency(monthRoom(annual.months[modalMonthIndex], row.id).revenue || 0) })
+                            ] }, row.id);
+                          }) })
+                        ] }),
+                        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "space-y-1.5", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-bold text-neutral-700 uppercase tracking-wider text-[10px]", children: "Charges & Marges" }),
+                          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "grid grid-cols-2 gap-2", children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-2 rounded-lg bg-rose-50/60 border border-rose-200", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-rose-900 block text-[10px] font-semibold", children: "Co\xFBts directs" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-bold font-mono text-rose-950", children: formatCurrency(annual.months[modalMonthIndex].directCosts || 0) })
+                            ] }),
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-2 rounded-lg bg-indigo-50/60 border border-indigo-200", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-indigo-900 block text-[10px] font-semibold", children: "Marge directe nette" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-bold font-mono text-indigo-950", children: formatCurrency((annual.months[modalMonthIndex].totalRevenue || 0) - (annual.months[modalMonthIndex].directCosts || 0) - (annual.months[modalMonthIndex].urssafCost || 0) - (annual.months[modalMonthIndex].taxCost || 0)) })
+                            ] })
                           ] })
                         ] }),
-                        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 border border-neutral-200 text-center", children: [
-                          /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-neutral-500 block text-[10px]", children: "Voyageurs" }),
-                          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "font-bold font-mono text-neutral-900 text-sm", children: [
-                            annual.months[modalMonthIndex].totalGuests || 0,
-                            " pers."
+                        /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "grid grid-cols-2 gap-2 pt-1", children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 border border-neutral-200 text-center", children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-neutral-500 block text-[10px]", children: "Nuit\xE9es vendues" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "font-bold font-mono text-neutral-900 text-sm", children: [
+                              annual.months[modalMonthIndex].nightsSold || 0,
+                              " nuits"
+                            ] })
+                          ] }),
+                          /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 border border-neutral-200 text-center", children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "text-neutral-500 block text-[10px]", children: "Voyageurs" }),
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "font-bold font-mono text-neutral-900 text-sm", children: [
+                              annual.months[modalMonthIndex].totalGuests || 0,
+                              " pers."
+                            ] })
                           ] })
                         ] })
-                      ] })
+                      ] }),
+                      (() => {
+                        const m = annual.months[modalMonthIndex];
+                        const pct2 = (v) => m.totalRevenue > 0 ? `${Math.round(v / m.totalRevenue * 100)} % du chiffre d'affaires` : "";
+                        if (modalChart === "margin") {
+                          const net = (m.totalRevenue || 0) - (m.directCosts || 0) - (m.urssafCost || 0) - (m.taxCost || 0);
+                          return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(import_jsx_runtime82.Fragment, { children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-3 bg-indigo-50/80 border border-indigo-200 rounded-xl flex items-center justify-between", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-semibold text-indigo-950", children: "Marge directe apr\xE8s URSSAF et imp\xF4t :" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-mono font-bold text-sm text-indigo-950", children: formatCurrency(net) })
+                            ] }),
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "grid grid-cols-2 gap-2", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Chiffre d'affaires", value: formatCurrency(m.totalRevenue || 0), tone: "bg-emerald-50/70 border-emerald-200 text-emerald-950" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Co\xFBts directs", value: `\u2212 ${formatCurrency(m.directCosts || 0)}`, tone: "bg-rose-50/60 border-rose-200 text-rose-950" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Cotisation URSSAF", value: `\u2212 ${formatCurrency(m.urssafCost || 0)}`, tone: "bg-neutral-50 border-neutral-200 text-neutral-900" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Pr\xE9l\xE8vement imp\xF4t", value: `\u2212 ${formatCurrency(m.taxCost || 0)}`, tone: "bg-neutral-50 border-neutral-200 text-neutral-900" })
+                            ] }),
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { className: "text-[11px] text-neutral-500", children: m.totalRevenue > 0 ? `Marge : ${Math.round(net / m.totalRevenue * 100)} % du chiffre d'affaires du mois.` : "Aucun chiffre d'affaires ce mois-ci." })
+                          ] });
+                        }
+                        if (modalChart === "costs") {
+                          const other = (m.totalDrinksCost || 0) + (m.totalOtherCost || 0);
+                          return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(import_jsx_runtime82.Fragment, { children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-3 bg-rose-50/80 border border-rose-200 rounded-xl flex items-center justify-between", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-semibold text-rose-950", children: "Co\xFBts directs du mois :" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-mono font-bold text-sm text-rose-950", children: formatCurrency(m.directCosts || 0) })
+                            ] }),
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "grid grid-cols-2 gap-2", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Petits-d\xE9jeuners", value: formatCurrency(m.totalBreakfastCost || 0), tone: "bg-amber-50/70 border-amber-200 text-amber-950" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Repas", value: formatCurrency(m.totalMealsCost || 0), tone: "bg-rose-50/60 border-rose-200 text-rose-950" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Boissons et autres", value: formatCurrency(other), tone: "bg-violet-50/70 border-violet-200 text-violet-950" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Chiffre d'affaires du mois", value: formatCurrency(m.totalRevenue || 0) })
+                            ] }),
+                            pct2(m.directCosts || 0) && /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("p", { className: "text-[11px] text-neutral-500", children: [
+                              "Les co\xFBts directs repr\xE9sentent ",
+                              pct2(m.directCosts || 0),
+                              "."
+                            ] })
+                          ] });
+                        }
+                        if (modalChart === "nights") {
+                          return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(import_jsx_runtime82.Fragment, { children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-3 bg-sky-50/80 border border-sky-200 rounded-xl flex items-center justify-between", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-semibold text-sky-950", children: "Nuit\xE9es vendues :" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "font-mono font-bold text-sm text-sky-950", children: [
+                                m.nightsSold || 0,
+                                " nuits"
+                              ] })
+                            ] }),
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "space-y-1.5", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-bold text-neutral-700 uppercase tracking-wider text-[10px]", children: "Par h\xE9bergement / espace" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "grid grid-cols-2 gap-2", children: rows.map((row) => {
+                                const L = dashboardLook(row);
+                                return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-2 rounded-lg bg-neutral-50 border border-neutral-200", children: [
+                                  /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: `${L.label.c} block text-[10px] font-semibold`, style: L.label.s, children: shortName(row) }),
+                                  /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: `font-bold font-mono ${L.value.c}`, style: L.value.s, children: [
+                                    monthRoom(m, row.id).nights || 0,
+                                    " ",
+                                    row.kind === "resource" ? "cr\xE9neaux" : "nuits"
+                                  ] })
+                                ] }, row.id);
+                              }) })
+                            ] }),
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Taux d'occupation du mois", value: `${m.occupancyRate ?? 0} %` })
+                          ] });
+                        }
+                        if (modalChart === "guests") {
+                          const nights = m.nightsSold || 0;
+                          return /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)(import_jsx_runtime82.Fragment, { children: [
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "p-3 bg-amber-50/80 border border-amber-200 rounded-xl flex items-center justify-between", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("span", { className: "font-semibold text-amber-950", children: "Voyageurs accueillis :" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("span", { className: "font-mono font-bold text-sm text-amber-950", children: [
+                                m.totalGuests || 0,
+                                " pers."
+                              ] })
+                            ] }),
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "grid grid-cols-3 gap-2", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Adultes", value: `${m.totalAdults || 0}`, tone: "bg-orange-50 border-orange-200 text-orange-950" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Enfants", value: `${m.totalChildren || 0}`, tone: "bg-amber-50 border-amber-200 text-amber-950" }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "B\xE9b\xE9s", value: `${m.totalBabies || 0}`, tone: "bg-yellow-50 border-yellow-200 text-yellow-950" })
+                            ] }),
+                            /* @__PURE__ */ (0, import_jsx_runtime82.jsxs)("div", { className: "grid grid-cols-2 gap-2", children: [
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "Nuit\xE9es vendues", value: `${nights} nuits` }),
+                              /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(Stat, { label: "S\xE9jours", value: `${m.staysCount ?? m.recap?.totalStaysCount ?? 0}` })
+                            ] })
+                          ] });
+                        }
+                        return null;
+                      })()
                     ] }),
                     /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("div", { className: "pt-3 border-t border-neutral-100 flex justify-end", children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(
                       "button",
