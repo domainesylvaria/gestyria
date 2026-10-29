@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v292</title>
-  <meta name="application-name" content="Gestyria v292" />
+  <title>Gestyria v293</title>
+  <meta name="application-name" content="Gestyria v293" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8905,7 +8905,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "292";
+      APP_VERSION = "293";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -24905,6 +24905,8 @@ function beds24Bookings_() {
         onOpenGoogleSheetsSync,
         onOpenSettings,
         onNavigate,
+        onBack,
+        backLabel,
         onExportExcel,
         onManualSyncNow,
         onImportFromGoogleSheets,
@@ -25042,6 +25044,19 @@ function beds24Bookings_() {
           ] }) }),
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "bg-neutral-50/90 border-t border-neutral-200/80 py-2", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "max-w-7xl mx-auto px-2 sm:px-6 lg:px-8", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center justify-between gap-1 sm:gap-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center gap-1.5 sm:gap-2 overflow-x-auto hide-scrollbar", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+                "button",
+                {
+                  type: "button",
+                  onClick: onBack,
+                  disabled: !onBack,
+                  "aria-label": backLabel ? `Retour \xE0 l'onglet pr\xE9c\xE9dent : ${backLabel}` : "Retour \xE0 l'onglet pr\xE9c\xE9dent",
+                  title: backLabel ? `Retour : ${backLabel}` : "Aucun onglet pr\xE9c\xE9dent",
+                  "data-tab-back": true,
+                  className: "p-2 bg-white rounded-xl text-neutral-800 border border-neutral-300 shadow-2xs flex items-center justify-center shrink-0 enabled:hover:bg-neutral-100 enabled:hover:text-sy-325032 enabled:cursor-pointer enabled:active:scale-95 disabled:opacity-35 disabled:cursor-default transition-colors",
+                  children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ArrowLeft, { className: "w-4 h-4 stroke-[2.2]" })
+                }
+              ),
               /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
                 "button",
                 {
@@ -79483,10 +79498,23 @@ ${annex}
       return (TABS.find((t) => isTabEnabled(t.id)) || TABS[0]).id;
     };
     const [activeTab, setActiveTabState] = (0, import_react165.useState)(firstVisibleTab);
+    const activeTabRef = (0, import_react165.useRef)(activeTab);
+    activeTabRef.current = activeTab;
+    const tabHistoryRef = (0, import_react165.useRef)([]);
+    const [tabHistoryLength, setTabHistoryLength] = (0, import_react165.useState)(0);
+    const rememberTab = (next) => {
+      const current2 = activeTabRef.current;
+      if (next === current2) return;
+      const h2 = tabHistoryRef.current;
+      if (h2[h2.length - 1] !== current2) h2.push(current2);
+      if (h2.length > 20) h2.shift();
+      setTabHistoryLength(h2.length);
+    };
     const setActiveTab = (0, import_react165.useCallback)((tab2) => {
       const host = hostTabFor(tab2);
       if (host) {
         openHostedView(tab2, host);
+        rememberTab(host);
         setActiveTabState(host);
         return;
       }
@@ -79495,8 +79523,17 @@ ${annex}
         showToast(`Le module \xAB ${mod?.name || tab2} \xBB est d\xE9sactiv\xE9 (Param\xE9trage).`);
         return;
       }
+      rememberTab(tab2);
       setActiveTabState(tab2);
     }, []);
+    const goBackTab = () => {
+      const h2 = tabHistoryRef.current;
+      let prev = h2.pop();
+      while (prev && !isTabEnabled(prev)) prev = h2.pop();
+      setTabHistoryLength(h2.length);
+      if (prev) setActiveTabState(prev);
+    };
+    const previousTab = tabHistoryLength > 0 ? tabHistoryRef.current[tabHistoryRef.current.length - 1] : void 0;
     (0, import_react165.useEffect)(() => {
       if (!isTabEnabled(activeTab, settings)) {
         const host = hostTabFor(activeTab, settings);
@@ -80219,6 +80256,8 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
           currentUser,
           onOpenGoogleSheetsSync: () => setIsGoogleSheetsModalOpen(true),
           onOpenSettings: () => setIsSettingsOpen(true),
+          onBack: previousTab ? goBackTab : void 0,
+          backLabel: previousTab ? TABS.find((t) => t.id === previousTab)?.label : void 0,
           onNavigate: (tab2, section2) => {
             if (tab2 === "settings") {
               setSettingsSection(section2);
