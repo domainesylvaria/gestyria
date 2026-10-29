@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v289</title>
-  <meta name="application-name" content="Gestyria v289" />
+  <title>Gestyria v290</title>
+  <meta name="application-name" content="Gestyria v290" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -2242,10 +2242,16 @@ var DomaineAppBundle = (() => {
       Object.entries(r.posts).forEach(([id, c]) => {
         if (!known.has(id) || !c || typeof c !== "object") return;
         const cfg = c;
+        const pos = (v) => typeof v === "number" && isFinite(v) && v >= 0 ? v : void 0;
         posts[id] = {
-          ...typeof cfg.amount === "number" && isFinite(cfg.amount) && cfg.amount >= 0 ? { amount: cfg.amount } : {},
+          ...pos(cfg.amount) !== void 0 ? { amount: pos(cfg.amount) } : {},
           ...cfg.known ? { known: true } : {},
-          ...cfg.off ? { off: true } : {}
+          ...cfg.off ? { off: true } : {},
+          ...cfg.shareMode === "percent" || cfg.shareMode === "surface" ? { shareMode: cfg.shareMode } : {},
+          ...pos(cfg.sharePct) !== void 0 ? { sharePct: Math.min(100, pos(cfg.sharePct)) } : {},
+          ...cfg.valueMode === "volume" ? { valueMode: "volume" } : {},
+          ...pos(cfg.volume) !== void 0 ? { volume: pos(cfg.volume) } : {},
+          ...pos(cfg.unitPrice) !== void 0 ? { unitPrice: pos(cfg.unitPrice) } : {}
         };
       });
     }
@@ -2256,6 +2262,14 @@ var DomaineAppBundle = (() => {
       basis: r.basis === "cash" ? "cash" : "full",
       useAsFloor: r.useAsFloor === false ? false : true
     };
+  }
+  function shareOf(c, surface) {
+    if (c.shareMode === "percent") return { mode: "percent", pct: Math.min(100, Math.max(0, c.sharePct ?? 100)), incomplete: false };
+    if (c.shareMode === "surface") {
+      if (surface?.total && surface.rented) return { mode: "surface", pct: Math.min(100, Math.round(surface.rented / surface.total * 1e3) / 10), incomplete: false };
+      return { mode: "surface", pct: 100, incomplete: true };
+    }
+    return { mode: "full", pct: 100, incomplete: false };
   }
   function computeBreakeven(input7) {
     const { stats, prof, accommodations } = input7;
@@ -2269,9 +2283,28 @@ var DomaineAppBundle = (() => {
     const revenue = nightsReal && stats.revenue > 0 ? stats.revenue : nights * (stats.adr || meanTariff || 0);
     const grossRevenue = revenue + (nightsReal ? stats.commissions : 0);
     const annualize = 12 / Math.min(12, Math.max(3, input7.monthsOfExpenses || 12));
+    const energyReal = (stats.byCategory.find((l) => l.id === "energy")?.amount || 0) > 0;
     const rows = POSTS.map((post) => {
       const c = cfg.posts[post.id] || {};
-      const empty = (source2, value2 = 0) => ({ post, source: source2, value: value2, yearTotal: 0, perNight: 0 });
+      const sh = post.shareable ? shareOf(c, prof.surface) : { mode: "full", pct: 100, incomplete: false };
+      const waterMode = post.volume && c.valueMode === "volume" ? "volume" : "amount";
+      const volume = c.volume ?? 0;
+      const unitPrice = c.unitPrice ?? WATER_PRICE_ESTIMATE;
+      const empty = (source, value = 0, note) => ({
+        post,
+        source,
+        value,
+        yearTotal: 0,
+        perNight: 0,
+        note,
+        config: c,
+        shareMode: sh.mode,
+        sharePct: sh.pct,
+        shareIncomplete: sh.incomplete,
+        waterMode,
+        volume,
+        unitPrice
+      });
       if (c.off) return empty("off");
       let real3 = null;
       if (post.categoryId) {
@@ -2281,38 +2314,53 @@ var DomaineAppBundle = (() => {
       if (post.auto === "depreciation" && stats.depreciation > 0) real3 = { total: stats.depreciation, note: "dotation des biens saisis dans Amortissements" };
       if (post.auto === "commissions" && nightsReal && grossRevenue > 0 && stats.commissions > 0) real3 = { total: stats.commissions / grossRevenue * 100, note: "d\u2019apr\xE8s les commissions saisies dans vos r\xE9servations" };
       if (post.auto === "social" && nightsReal && revenue > 0 && stats.socialCharges > 0) real3 = { total: stats.socialCharges / revenue * 100, note: "calcul\xE9es d\u2019apr\xE8s le bar\xE8me de chaque s\xE9jour" };
-      const typed = typeof c.amount === "number";
-      let source;
-      let value;
-      let total;
+      const typed = typeof c.amount === "number" || waterMode === "volume" && c.volume !== void 0;
+      const known = !!c.known && typed;
+      if (post.id === "water" && energyReal && !known) return empty("real", 0, "comprise dans vos d\xE9penses \xAB \xC9nergie et eau \xBB");
       const compute = (v) => post.unit === "year" ? v : post.unit === "night" ? v * nights : post.unit === "stay" ? v * stays : v / 100 * grossRevenue;
-      if (typed && c.known) {
-        source = "known";
-        value = c.amount;
-        total = compute(value);
-      } else if (real3) {
-        source = "real";
-        if (post.unit === "pct") {
-          value = real3.total;
-          total = compute(value);
-        } else {
-          total = real3.total;
-          value = post.unit === "year" ? total : post.unit === "night" ? total / nights : total / stays;
+      const shareNote = sh.incomplete ? "renseignez les surfaces (Rentabilit\xE9 > Seuil de rentabilit\xE9) : tout est retenu en attendant" : void 0;
+      const done = (source, value, total, note) => ({
+        post,
+        source,
+        value: round22(value),
+        yearTotal: round22(total),
+        perNight: round22(total / nights),
+        note: note ?? shareNote,
+        config: c,
+        shareMode: sh.mode,
+        sharePct: sh.pct,
+        shareIncomplete: sh.incomplete,
+        waterMode,
+        volume,
+        unitPrice
+      });
+      const typedTotal = () => {
+        if (waterMode === "volume") {
+          const v2 = (c.volume ?? 0) * unitPrice;
+          return { value: v2, total: v2 * sh.pct / 100 };
         }
-      } else if (typed) {
-        source = "estimate";
-        value = c.amount;
-        total = compute(value);
-      } else if (post.estimate > 0) {
-        source = "estimate";
-        value = post.estimate;
-        total = compute(value);
-      } else {
-        source = "none";
-        value = 0;
-        total = 0;
+        const v = c.amount;
+        return { value: v, total: compute(v) * sh.pct / 100 };
+      };
+      if (known) {
+        const t = typedTotal();
+        return done("known", t.value, t.total);
       }
-      return { post, source, value: round22(value), yearTotal: round22(total), perNight: round22(total / nights), note: real3?.note };
+      if (real3) {
+        if (post.unit === "pct") return done("real", real3.total, compute(real3.total), real3.note);
+        const total = real3.total;
+        return done("real", post.unit === "year" ? total : post.unit === "night" ? total / nights : total / stays, total, real3.note);
+      }
+      if (typed) {
+        const t = typedTotal();
+        return done("estimate", t.value, t.total);
+      }
+      if (post.id === "water") {
+        const v = nights * WATER_M3_PER_NIGHT * WATER_PRICE_ESTIMATE;
+        return done("estimate", v, v * sh.pct / 100, `environ ${String(WATER_M3_PER_NIGHT).replace(".", ",")} m\xB3 par nuit\xE9e \xE0 ${String(WATER_PRICE_ESTIMATE).replace(".", ",")} \u20AC le m\xB3`);
+      }
+      if (post.estimate > 0) return done("estimate", post.estimate, compute(post.estimate) * sh.pct / 100);
+      return done("none", 0, 0);
     });
     const active2 = rows.filter((r) => r.source !== "off");
     const pctRows = active2.filter((r) => r.post.unit === "pct");
@@ -2361,10 +2409,12 @@ var DomaineAppBundle = (() => {
     const months = (parseInt(today6.slice(0, 4), 10) - parseInt(first.slice(0, 4), 10)) * 12 + parseInt(today6.slice(5, 7), 10) - parseInt(first.slice(5, 7), 10) + 1;
     return Math.min(12, Math.max(1, months));
   }
-  var POST_GROUPS, G, POSTS, UNIT_LABEL, DEFAULT_BREAKEVEN, num, round22;
+  var WATER_PRICE_ESTIMATE, WATER_M3_PER_NIGHT, POST_GROUPS, G, POSTS, UNIT_LABEL, DEFAULT_BREAKEVEN, num, round22;
   var init_breakeven = __esm({
     "src/modules/rentabilite/breakeven.ts"() {
       "use strict";
+      WATER_PRICE_ESTIMATE = 4.5;
+      WATER_M3_PER_NIGHT = 0.3;
       POST_GROUPS = [
         "Logement et b\xE2timent",
         "\xC9nergie, eau et abonnements",
@@ -2378,18 +2428,19 @@ var DomaineAppBundle = (() => {
       G = POST_GROUPS;
       POSTS = [
         // Logement et bâtiment
-        { id: "propertyTax", group: G[0], label: "Taxe fonci\xE8re (part des h\xE9bergements)", unit: "year", estimate: 900, hint: "Montant de l\u2019avis de taxe fonci\xE8re, au prorata de la surface lou\xE9e.", question: "La taxe fonci\xE8re de la partie lou\xE9e est-elle compt\xE9e ?" },
-        { id: "insurance", group: G[0], label: "Assurance (multirisque, responsabilit\xE9 civile professionnelle)", unit: "year", estimate: 700, hint: "Contrat qui couvre l\u2019activit\xE9 d\u2019h\xE9bergement, pas seulement l\u2019habitation.", question: "Avez-vous une assurance qui couvre l\u2019activit\xE9, et son prix est-il compt\xE9 ?" },
-        { id: "loan", group: G[0], label: "Int\xE9r\xEAts d\u2019emprunt et frais de dossier", unit: "year", estimate: 0, hint: "Int\xE9r\xEAts pay\xE9s sur l\u2019emprunt du bien ou des travaux, au prorata de la partie lou\xE9e.", question: "Avez-vous un emprunt pour le bien ou les travaux ? Ses int\xE9r\xEAts font partie du co\xFBt." },
+        { id: "propertyTax", group: G[0], label: "Taxe fonci\xE8re", unit: "year", estimate: 900, shareable: true, hint: "Saisissez le montant complet de l\u2019avis, puis la part des h\xE9bergements : un pourcentage ou le rapport de surface lou\xE9e.", question: "La taxe fonci\xE8re de la partie lou\xE9e est-elle compt\xE9e ?" },
+        { id: "insurance", group: G[0], label: "Assurance (multirisque, responsabilit\xE9 civile professionnelle)", unit: "year", estimate: 700, shareable: true, hint: "Contrat qui couvre l\u2019activit\xE9 d\u2019h\xE9bergement, pas seulement l\u2019habitation.", question: "Avez-vous une assurance qui couvre l\u2019activit\xE9, et son prix est-il compt\xE9 ?" },
+        { id: "loan", group: G[0], label: "Int\xE9r\xEAts d\u2019emprunt et frais de dossier", unit: "year", estimate: 0, shareable: true, hint: "Int\xE9r\xEAts pay\xE9s sur l\u2019emprunt du bien ou des travaux (montant complet), puis la part de la partie lou\xE9e.", question: "Avez-vous un emprunt pour le bien ou les travaux ? Ses int\xE9r\xEAts font partie du co\xFBt." },
         { id: "depreciation", group: G[0], label: "Amortissement du mobilier, du mat\xE9riel et des travaux", unit: "year", estimate: 0, auto: "depreciation", noncash: true, hint: "Usure des biens saisis dans Rentabilit\xE9 > Amortissements : c\u2019est ce qui permet de les remplacer un jour.", question: "Les biens durables (lits, \xE9lectrom\xE9nager, piscine, travaux) sont-ils saisis dans Amortissements ?" },
-        { id: "coownership", group: G[0], label: "Charges de copropri\xE9t\xE9 ou de syndic", unit: "year", estimate: 0, hint: "Seulement si le bien est en copropri\xE9t\xE9." },
-        { id: "rent", group: G[0], label: "Loyer (si vous louez le lieu)", unit: "year", estimate: 0, hint: "Seulement si vous n\u2019\xEAtes pas propri\xE9taire." },
+        { id: "coownership", group: G[0], label: "Charges de copropri\xE9t\xE9 ou de syndic", unit: "year", estimate: 0, shareable: true, hint: "Seulement si le bien est en copropri\xE9t\xE9." },
+        { id: "rent", group: G[0], label: "Loyer (si vous louez le lieu)", unit: "year", estimate: 0, shareable: true, hint: "Seulement si vous n\u2019\xEAtes pas propri\xE9taire." },
         // Énergie, eau et abonnements
-        { id: "energy", group: G[1], label: "\xC9lectricit\xE9, gaz, chauffage et eau", unit: "year", categoryId: "energy", estimate: 1800, hint: "Part des h\xE9bergements : voir la r\xE8gle de part dans Rentabilit\xE9 > R\xE9glages si la facture couvre aussi votre logement.", question: "L\u2019\xE9nergie et l\u2019eau des h\xE9bergements sont-elles compt\xE9es (et non celles de votre logement) ?" },
-        { id: "internet", group: G[1], label: "Internet, t\xE9l\xE9phone, t\xE9l\xE9vision", unit: "year", estimate: 480, hint: "Abonnement box et mobile pour la part professionnelle." },
+        { id: "energy", group: G[1], label: "\xC9lectricit\xE9, gaz et chauffage", unit: "year", categoryId: "energy", estimate: 1800, shareable: true, hint: "D\xE9penses de la cat\xE9gorie \xAB \xC9nergie et eau \xBB (d\xE9j\xE0 r\xE9duites \xE0 la part des h\xE9bergements par la r\xE8gle de Rentabilit\xE9 > R\xE9glages). Sans d\xE9penses saisies : montant complet des factures, puis part des h\xE9bergements.", question: "L\u2019\xE9nergie des h\xE9bergements est-elle compt\xE9e (et non celle de votre logement) ?" },
+        { id: "water", group: G[1], label: "Eau et assainissement", unit: "year", estimate: 0, shareable: true, volume: true, hint: "Soit le montant de la facture d\u2019eau et sa part des h\xE9bergements, soit le volume consomm\xE9 (m\xB3) \xD7 le prix du m\xB3. Sans saisie : environ 0,3 m\xB3 par nuit\xE9e \xE0 4,50 \u20AC le m\xB3. D\xE9j\xE0 comprise si vos d\xE9penses \xAB \xC9nergie et eau \xBB sont saisies." },
+        { id: "internet", group: G[1], label: "Internet, t\xE9l\xE9phone, t\xE9l\xE9vision", unit: "year", estimate: 480, shareable: true, hint: "Abonnement box et mobile : montant complet, puis la part professionnelle." },
         { id: "pool", group: G[1], label: "Piscine ou spa : produits, \xE9lectricit\xE9, entretien", unit: "year", estimate: 600, hint: "Produits de traitement, pompe, hivernage, contr\xF4le de l\u2019eau." },
-        { id: "garden", group: G[1], label: "Jardin et espaces ext\xE9rieurs", unit: "year", estimate: 300, hint: "Entretien, tonte, taille, plantations." },
-        { id: "waste", group: G[1], label: "D\xE9chets, assainissement, redevances", unit: "year", estimate: 150, hint: "Taxe d\u2019enl\xE8vement des ordures, vidange de fosse septique." },
+        { id: "garden", group: G[1], label: "Jardin et espaces ext\xE9rieurs", unit: "year", estimate: 300, shareable: true, hint: "Entretien, tonte, taille, plantations." },
+        { id: "waste", group: G[1], label: "D\xE9chets et redevances", unit: "year", estimate: 150, shareable: true, hint: "Taxe d\u2019enl\xE8vement des ordures, vidange de fosse septique." },
         // Linge, ménage et accueil
         { id: "laundry", group: G[2], label: "Linge et blanchisserie", unit: "night", categoryId: "laundry", estimate: 3, hint: "Lessive, pressing ou blanchisserie, par nuit\xE9e vendue.", question: "Le lavage du linge (ou le prestataire) est-il compt\xE9 pour chaque s\xE9jour ?" },
         { id: "cleaningProducts", group: G[2], label: "Produits d\u2019entretien", unit: "night", categoryId: "cleaning", estimate: 1, hint: "Produits m\xE9nagers, sacs, \xE9ponges." },
@@ -2398,7 +2449,7 @@ var DomaineAppBundle = (() => {
         { id: "food", group: G[2], label: "Alimentation et boissons (petit-d\xE9jeuner, repas)", unit: "night", categoryId: "food", estimate: 4, hint: "Courses pour les petits-d\xE9jeuners et les repas servis, par nuit\xE9e vendue." },
         { id: "breakage", group: G[2], label: "Casse et remplacement du petit \xE9quipement", unit: "year", estimate: 300, hint: "Vaisselle, linge us\xE9, petit \xE9lectrom\xE9nager." },
         // Entretien et réparations
-        { id: "maintenance", group: G[3], label: "Entretien et r\xE9parations courantes", unit: "year", categoryId: "maintenance", estimate: 800, hint: "Plomberie, peinture, petites r\xE9parations.", question: "Les r\xE9parations et l\u2019entretien courant sont-ils compt\xE9s ?" },
+        { id: "maintenance", group: G[3], label: "Entretien et r\xE9parations courantes", unit: "year", categoryId: "maintenance", estimate: 800, shareable: true, hint: "Plomberie, peinture, petites r\xE9parations.", question: "Les r\xE9parations et l\u2019entretien courant sont-ils compt\xE9s ?" },
         { id: "checks", group: G[3], label: "Contr\xF4les et v\xE9rifications obligatoires", unit: "year", estimate: 200, hint: "Chaudi\xE8re, ramonage, d\xE9tecteurs de fum\xE9e, extincteurs, \xE9lectricit\xE9." },
         // Vente et commissions
         { id: "commissions", group: G[4], label: "Commissions des plateformes (Booking, Airbnb\u2026)", unit: "pct", auto: "commissions", estimate: 8, hint: "Part du prix pr\xE9lev\xE9e par les plateformes, calcul\xE9e d\u2019apr\xE8s vos r\xE9servations (moyenne sur toutes vos r\xE9servations, directes comprises).", question: "Les commissions des plateformes sont-elles compt\xE9es dans le prix de la nuit ?" },
@@ -8819,7 +8870,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "289";
+      APP_VERSION = "290";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -42158,6 +42209,14 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
                 /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(AmountInput, { value: be.safetyPct, suffix: "% en plus", ariaLabel: "Marge de s\xE9curit\xE9", onCommit: (v) => v !== null && update({ ...be, safetyPct: Math.min(50, v) }) })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("label", { className: "block", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "Surface totale du b\xE2timent (priv\xE9 + h\xE9bergements)" }),
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(AmountInput, { value: prof.surface.total ?? 0, suffix: "m\xB2", ariaLabel: "Surface totale", onCommit: (v) => saveProfitability(settings, { ...prof, surface: { ...prof.surface, total: v && v > 0 ? v : null } }, "Surfaces modifi\xE9es.") })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("label", { className: "block", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "Surface occup\xE9e par les h\xE9bergements" }),
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(AmountInput, { value: prof.surface.rented ?? 0, suffix: "m\xB2", ariaLabel: "Surface lou\xE9e", onCommit: (v) => saveProfitability(settings, { ...prof, surface: { ...prof.surface, rented: v && v > 0 ? v : null } }, "Surfaces modifi\xE9es.") })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("label", { className: "block", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("span", { className: "block text-[11px] font-semibold text-neutral-700 mb-0.5", children: "Plancher des conseils de prix" }),
                 /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("select", { value: be.useAsFloor ? be.basis : "off", onChange: (e) => update(e.target.value === "off" ? { ...be, useAsFloor: false } : { ...be, useAsFloor: true, basis: e.target.value }), className: "text-xs border border-neutral-300 rounded-lg px-2.5 py-1.5 bg-white", "data-breakeven-floor": true, children: [
                   /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("option", { value: "full", children: "Ne jamais descendre sous le seuil complet" }),
@@ -42187,7 +42246,10 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: "flex flex-wrap items-center gap-2", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(AmountInput, { value: r.value, suffix: UNIT_LABEL[r.post.unit], ariaLabel: `Montant : ${r.post.label}`, onCommit: (v) => v !== null && setPost(r.post.id, { amount: v, known: true }) }),
-                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("span", { className: "text-[10px] text-neutral-400", children: "puis sortie du champ = montant exact" }),
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("span", { className: "text-[10px] text-neutral-400", children: [
+                  "puis sortie du champ = montant exact",
+                  r.post.shareable ? " (montant complet : la part des h\xE9bergements se r\xE8gle dans la liste plus bas)" : ""
+                ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("button", { type: "button", onClick: () => setPost(r.post.id, { off: true }), className: "px-2.5 py-1 text-[11px] font-semibold border border-neutral-200 rounded-lg hover:bg-neutral-50 cursor-pointer", children: "Pas concern\xE9" })
               ] })
             ] }, r.post.id)) })
@@ -42255,10 +42317,37 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
             " ",
             /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("span", { className: "text-[10px] text-neutral-500", children: UNIT_LABEL[r.post.unit] })
           ] }) : /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: "space-y-1", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(AmountInput, { value: r.value, suffix: UNIT_LABEL[r.post.unit], ariaLabel: r.post.label, onCommit: (v) => v !== null && setPost(r.post.id, { amount: v }) }),
+            r.post.volume && /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("select", { value: r.waterMode, onChange: (e) => setPost(r.post.id, { valueMode: e.target.value }), className: "text-[11px] border border-neutral-300 rounded-lg px-2 py-1 bg-white", "aria-label": "Fa\xE7on de calculer l\u2019eau", "data-water-mode": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("option", { value: "amount", children: "Montant de la facture d\u2019eau" }),
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("option", { value: "volume", children: "Volume consomm\xE9 \xD7 prix du m\xB3" })
+            ] }),
+            r.waterMode === "volume" ? /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: "space-y-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(AmountInput, { value: r.volume, suffix: "m\xB3 par an", ariaLabel: "Volume d\u2019eau par an", onCommit: (v) => v !== null && setPost(r.post.id, { volume: v }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(AmountInput, { value: r.unitPrice, suffix: "\u20AC le m\xB3", ariaLabel: "Prix du m\xB3", onCommit: (v) => v !== null && setPost(r.post.id, { unitPrice: v }) }),
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: "text-[10px] text-neutral-500", children: [
+                "= ",
+                eur22(r.value),
+                " par an avant la part retenue"
+              ] })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(AmountInput, { value: r.value, suffix: r.post.shareable ? "\u20AC par an, montant complet" : UNIT_LABEL[r.post.unit], ariaLabel: r.post.label, onCommit: (v) => v !== null && setPost(r.post.id, { amount: v }) }),
+            r.post.shareable && r.source !== "real" && /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: "flex flex-wrap items-center gap-1.5 text-[10px] text-neutral-600", "data-share": r.post.id, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("span", { children: "Part retenue :" }),
+              /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("select", { value: r.shareMode, onChange: (e) => setPost(r.post.id, { shareMode: e.target.value }), className: "text-[11px] border border-neutral-300 rounded-lg px-1.5 py-0.5 bg-white", "aria-label": `Part retenue : ${r.post.label}`, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("option", { value: "full", children: "Toute la somme" }),
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("option", { value: "percent", children: "Un pourcentage" }),
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("option", { value: "surface", children: "Rapport de surface" })
+              ] }),
+              r.shareMode === "percent" && /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(AmountInput, { value: r.sharePct, suffix: "%", ariaLabel: `Pourcentage retenu : ${r.post.label}`, onCommit: (v) => v !== null && setPost(r.post.id, { sharePct: Math.min(100, v) }) }),
+              r.shareMode === "surface" && /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("span", { children: r.shareIncomplete ? "surfaces \xE0 renseigner en haut de la page" : `surface lou\xE9e \xF7 surface totale = ${fr(r.sharePct)} %` }),
+              r.shareMode !== "full" && !r.shareIncomplete && /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("span", { children: [
+                "soit ",
+                eur22(r.yearTotal),
+                " retenus"
+              ] })
+            ] }),
             /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("div", { className: "flex items-center gap-2 text-[10px] text-neutral-500", children: [
               /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("label", { className: "flex items-center gap-1 cursor-pointer", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("input", { type: "checkbox", checked: r.source === "known", onChange: (e) => setPost(r.post.id, { amount: r.value, known: e.target.checked }), className: "accent-sy-325032" }),
+                /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("input", { type: "checkbox", checked: r.source === "known", onChange: (e) => setPost(r.post.id, r.waterMode === "volume" ? { known: e.target.checked } : { amount: r.value, known: e.target.checked }), className: "accent-sy-325032" }),
                 " Montant exact"
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("button", { type: "button", onClick: () => setPost(r.post.id, { off: true }), className: "underline cursor-pointer", children: "Pas concern\xE9" }),
@@ -43574,7 +43663,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
               /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("h2", { className: "font-serif font-bold text-lg sm:text-xl text-neutral-900", children: "Rentabilit\xE9 et d\xE9penses" }),
               /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("p", { className: "text-[11px] text-neutral-500", children: "Outil de pilotage : ne remplace pas la comptabilit\xE9. Les marges sont des estimations." })
             ] }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("nav", { className: "flex gap-1.5 overflow-x-auto hide-scrollbar", "aria-label": "Rubriques de la rentabilit\xE9", children: tabs.map((t) => {
+            /* @__PURE__ */ (0, import_jsx_runtime63.jsx)("nav", { className: "flex gap-0.5 overflow-x-auto hide-scrollbar", "aria-label": "Rubriques de la rentabilit\xE9", children: tabs.map((t) => {
               const Icon2 = t.icon;
               const on = shownTab === t.id;
               return /* @__PURE__ */ (0, import_jsx_runtime63.jsxs)(
@@ -43582,7 +43671,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
                 {
                   type: "button",
                   onClick: () => setTab(t.id),
-                  className: `flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl whitespace-nowrap cursor-pointer shrink-0 ${on ? "bg-sy-325032 text-white font-bold shadow-xs" : "text-neutral-700 hover:bg-neutral-100"}`,
+                  className: `flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap cursor-pointer shrink-0 ${on ? "bg-sy-325032 text-white font-bold shadow-xs" : "text-neutral-700 hover:bg-neutral-100"}`,
                   children: [
                     /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(Icon2, { className: `w-4 h-4 ${on ? "text-white" : "text-sy-325032"}` }),
                     t.label
