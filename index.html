@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v291</title>
-  <meta name="application-name" content="Gestyria v291" />
+  <title>Gestyria v292</title>
+  <meta name="application-name" content="Gestyria v292" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -2514,6 +2514,15 @@ var DomaineAppBundle = (() => {
     if (!mode) return void 0;
     return mode === "percent" ? { mode, percent: Math.min(100, Math.max(0, typeof r.percent === "number" && isFinite(r.percent) ? r.percent : 100)) } : { mode };
   }
+  function normalizeObjectives(raw) {
+    const r = raw && typeof raw === "object" ? raw : {};
+    const { monthly, ...rest } = r;
+    if (Array.isArray(monthly) && monthly.length === 12) {
+      const values = monthly.map((v) => typeof v === "number" && isFinite(v) && v > 0 ? Math.round(v * 100) / 100 : 0);
+      if (values.some((v) => v > 0)) return { ...rest, monthly: values };
+    }
+    return { ...rest };
+  }
   function categoryShare(cat, surface) {
     const share = cat?.share;
     if (!share || share.mode === "full") return { pct: 100, mode: "full", incomplete: false };
@@ -2567,7 +2576,7 @@ var DomaineAppBundle = (() => {
       surface: normalizeSurface(raw.surface),
       assetCategories,
       widgets: Array.isArray(raw.widgets) ? raw.widgets.filter((w2) => w2 && w2.id && Array.isArray(w2.measures)) : [],
-      objectives: { ...defaults.objectives, ...raw.objectives || {} },
+      objectives: normalizeObjectives(raw.objectives),
       indicators: { ...defaults.indicators, ...raw.indicators || {} },
       breakeven: normalizeBreakeven(raw.breakeven)
     };
@@ -8896,7 +8905,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "291";
+      APP_VERSION = "292";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -40742,10 +40751,28 @@ ${m.message}
     if (current2 === null || previous === null || previous === 0) return null;
     return (current2 - previous) / Math.abs(previous) * 100;
   }
+  function monthObjective(objectives, monthIndex2) {
+    const own = objectives.monthly?.[monthIndex2];
+    if (own && own > 0) return own;
+    const { yearRevenue, monthRevenue } = objectives;
+    return monthRevenue && monthRevenue > 0 ? monthRevenue : yearRevenue && yearRevenue > 0 ? yearRevenue / 12 : 0;
+  }
+  function yearObjective(objectives) {
+    if (objectives.monthly?.some((v) => v > 0)) return round28(Array.from({ length: 12 }, (_, m) => monthObjective(objectives, m)).reduce((s, v) => s + v, 0));
+    return objectives.yearRevenue && objectives.yearRevenue > 0 ? objectives.yearRevenue : 0;
+  }
   function revenueTarget(prof, period) {
-    const { yearRevenue, monthRevenue } = prof.objectives;
-    const perMonth = monthRevenue && monthRevenue > 0 ? monthRevenue : yearRevenue && yearRevenue > 0 ? yearRevenue / 12 : 0;
-    return perMonth > 0 ? round28(perMonth * period.months.length) : null;
+    const total = period.months.reduce((s, m) => s + monthObjective(prof.objectives, m.month), 0);
+    return total > 0 ? round28(total) : null;
+  }
+  function spreadObjective(year, weights) {
+    const total = weights.reduce((s, w2) => s + Math.max(0, w2), 0);
+    if (!(year > 0) || !(total > 0)) return Array(12).fill(0);
+    const values = weights.map((w2) => Math.round(Math.max(0, w2) / total * year));
+    const diff = Math.round(year) - values.reduce((s, v) => s + v, 0);
+    const biggest = values.indexOf(Math.max(...values));
+    values[biggest] += diff;
+    return values;
   }
   var pad2, round28, monthLabel;
   var init_compute = __esm({
@@ -43000,8 +43027,379 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
     }
   });
 
+  // src/core/pricing/schoolHolidays.ts
+  function holidaysOn(date) {
+    return SCHOOL_HOLIDAYS.filter((h2) => date >= h2.from && date < h2.to);
+  }
+  function zonesOnHoliday(date) {
+    return [...new Set(holidaysOn(date).map((h2) => h2.zone))].sort();
+  }
+  function holidayOf(zone, date) {
+    return SCHOOL_HOLIDAYS.find((h2) => h2.zone === zone && date >= h2.from && date < h2.to);
+  }
+  function holidaysUpdateDue(today6) {
+    const year = parseInt(today6.slice(0, 4), 10);
+    if (!(year > 0) || today6 < `${year}-09-25`) return false;
+    return parseInt(HOLIDAYS_LAST_DAY.slice(0, 4), 10) < year + 2;
+  }
+  var SCHOOL_ZONES, HOLIDAYS_YEARS, HOLIDAYS_LAST_DAY, all, SCHOOL_HOLIDAYS;
+  var init_schoolHolidays = __esm({
+    "src/core/pricing/schoolHolidays.ts"() {
+      "use strict";
+      SCHOOL_ZONES = ["A", "B", "C"];
+      HOLIDAYS_YEARS = "2025-2026 \xE0 2027-2028";
+      HOLIDAYS_LAST_DAY = "2028-09-01";
+      all = (kind, from, to) => SCHOOL_ZONES.map((zone) => ({ kind, zone, from, to }));
+      SCHOOL_HOLIDAYS = [
+        // 2025-2026
+        ...all("Toussaint", "2025-10-18", "2025-11-03"),
+        ...all("No\xEBl", "2025-12-20", "2026-01-05"),
+        { kind: "Hiver", zone: "A", from: "2026-02-07", to: "2026-02-23" },
+        { kind: "Hiver", zone: "B", from: "2026-02-14", to: "2026-03-02" },
+        { kind: "Hiver", zone: "C", from: "2026-02-21", to: "2026-03-09" },
+        { kind: "Printemps", zone: "A", from: "2026-04-04", to: "2026-04-20" },
+        { kind: "Printemps", zone: "B", from: "2026-04-11", to: "2026-04-27" },
+        { kind: "Printemps", zone: "C", from: "2026-04-18", to: "2026-05-04" },
+        ...all("\xC9t\xE9", "2026-07-04", "2026-09-01"),
+        // 2026-2027
+        ...all("Toussaint", "2026-10-17", "2026-11-02"),
+        ...all("No\xEBl", "2026-12-19", "2027-01-04"),
+        { kind: "Hiver", zone: "C", from: "2027-02-06", to: "2027-02-22" },
+        { kind: "Hiver", zone: "A", from: "2027-02-13", to: "2027-03-01" },
+        { kind: "Hiver", zone: "B", from: "2027-02-20", to: "2027-03-08" },
+        { kind: "Printemps", zone: "C", from: "2027-04-03", to: "2027-04-19" },
+        { kind: "Printemps", zone: "A", from: "2027-04-10", to: "2027-04-26" },
+        { kind: "Printemps", zone: "B", from: "2027-04-17", to: "2027-05-03" },
+        ...all("\xC9t\xE9", "2027-07-03", "2027-09-02"),
+        // 2027-2028
+        ...all("Toussaint", "2027-10-23", "2027-11-08"),
+        ...all("No\xEBl", "2027-12-18", "2028-01-03"),
+        { kind: "Hiver", zone: "B", from: "2028-02-05", to: "2028-02-21" },
+        { kind: "Hiver", zone: "C", from: "2028-02-12", to: "2028-02-28" },
+        { kind: "Hiver", zone: "A", from: "2028-02-19", to: "2028-03-06" },
+        { kind: "Printemps", zone: "B", from: "2028-04-08", to: "2028-04-24" },
+        { kind: "Printemps", zone: "C", from: "2028-04-15", to: "2028-05-02" },
+        { kind: "Printemps", zone: "A", from: "2028-04-22", to: "2028-05-09" },
+        ...all("\xC9t\xE9", "2028-07-04", HOLIDAYS_LAST_DAY)
+      ];
+    }
+  });
+
+  // src/modules/conseils/content.ts
+  function readAdviceSettings(settings) {
+    const raw = settings.modules.priceAdvice?.settings || {};
+    const num7 = (v, d, min, max) => typeof v === "number" && isFinite(v) ? Math.min(max, Math.max(min, v)) : d;
+    return {
+      source: raw.source === "market" || raw.source === "both" ? raw.source : "stats",
+      horizonDays: Math.round(num7(raw.horizonDays, 60, 7, 180)),
+      maxPct: Math.round(num7(raw.maxPct, 25, 5, 50)),
+      comparables: Array.isArray(raw.comparables) ? raw.comparables.filter((c) => c && typeof c.id === "string" && /^\d{4}-\d{2}-\d{2}$/.test(c.from) && /^\d{4}-\d{2}-\d{2}$/.test(c.to) && typeof c.price === "number" && c.price > 0).map((c) => ({ id: c.id, label: String(c.label || ""), from: c.from, to: c.to, price: c.price, ...c.roomId ? { roomId: String(c.roomId) } : {} })) : []
+    };
+  }
+  function monthSeason(mi) {
+    const g = GENERIC_MONTH[mi] / (GENERIC_MONTH.reduce((s, v) => s + v, 0) / 12);
+    return mi === 6 || mi === 7 || g >= 1.1 ? "high" : g <= 0.9 ? "low" : "mid";
+  }
+  function nightlyPrice(r, rule) {
+    if (!(r.nights > 0)) return null;
+    let amount = r.roomAmount && r.roomAmount > 0 ? r.roomAmount : r.totalAmount > 0 ? r.totalAmount - (r.touristTaxAmount || 0) : 0;
+    if (rule && rule.extraPrice > 0) {
+      const extra = Math.max(0, (r.adultsCount || 0) - rule.baseGuests) + Math.max(0, r.childrenCount || 0);
+      amount -= extra * rule.extraPrice * r.nights;
+    }
+    return amount > 0 ? amount / r.nights : null;
+  }
+  function buildHistory(reservations, roomIds, today6, rules = {}) {
+    const rooms = new Set(roomIds);
+    const stays = reservations.filter((r) => real2(r) && rooms.has(String(r.roomId)) && r.checkOut <= addDaysIso2(today6, 1) && r.checkOut >= addDaysIso2(today6, -730));
+    const start = dayNumber4(today6) - 730;
+    const first = stays.length ? Math.max(start, Math.min(...stays.map((r) => dayNumber4(r.checkIn)))) : dayNumber4(today6);
+    const sold = /* @__PURE__ */ new Map();
+    stays.forEach((r) => {
+      for (let d = Math.max(dayNumber4(r.checkIn), start); d < Math.min(dayNumber4(r.checkOut), dayNumber4(today6)); d++) sold.set(`${r.roomId}|${d}`, 1);
+    });
+    const mSold = Array(12).fill(0);
+    const mAvail = Array(12).fill(0);
+    const wSold = Array(7).fill(0);
+    const wAvail = Array(7).fill(0);
+    const days2 = Math.max(0, dayNumber4(today6) - first);
+    for (let d = first; d < dayNumber4(today6); d++) {
+      const iso = isoOf4(d);
+      const mi = monthIndex(iso);
+      const wi = weekdayOf2(iso);
+      roomIds.forEach((id) => {
+        mAvail[mi]++;
+        wAvail[wi]++;
+        if (sold.has(`${id}|${d}`)) {
+          mSold[mi]++;
+          wSold[wi]++;
+        }
+      });
+    }
+    const month = mAvail.map((a, i) => a >= 20 * Math.max(1, roomIds.length) ? mSold[i] / a : null);
+    const weekday = wAvail.map((a, i) => a >= 8 * Math.max(1, roomIds.length) ? wSold[i] / a : null);
+    const known = month.filter((v) => v !== null);
+    const meanMonth = known.length ? known.reduce((s, v) => s + v, 0) / known.length : 0;
+    const year = stays.filter((r) => r.checkIn >= addDaysIso2(today6, -365));
+    const refPrice = {};
+    roomIds.forEach((id) => {
+      const prices = year.filter((r) => String(r.roomId) === id).map((r) => nightlyPrice(r, rules[id])).filter((p) => p !== null);
+      refPrice[id] = prices.length >= 3 ? round29(median(prices)) : null;
+    });
+    const all2 = year.map((r) => nightlyPrice(r, rules[String(r.roomId)])).filter((p) => p !== null);
+    const seasonal = (list3) => {
+      const out = { high: null, mid: null, low: null };
+      ["high", "mid", "low"].forEach((s) => {
+        const prices = list3.filter((r) => monthSeason(monthIndex(r.checkIn)) === s).map((r) => nightlyPrice(r, rules[String(r.roomId)])).filter((p) => p !== null);
+        out[s] = prices.length >= 3 ? round29(median(prices)) : null;
+      });
+      return out;
+    };
+    const refSeason = {};
+    roomIds.forEach((id) => refSeason[id] = seasonal(stays.filter((r) => String(r.roomId) === id)));
+    return {
+      stays: stays.length,
+      observedDays: days2,
+      month,
+      weekday,
+      meanMonth,
+      refPrice,
+      overallRef: all2.length >= 3 ? round29(median(all2)) : null,
+      refSeason,
+      overallSeason: seasonal(stays),
+      enough: stays.length >= 10 && days2 >= 180 && known.length >= 4
+    };
+  }
+  function marketPrice(comparables, date, roomId) {
+    const prices = comparables.filter((c) => date >= c.from && date <= c.to && (!roomId || !c.roomId || c.roomId === roomId)).map((c) => c.price);
+    const m = median(prices);
+    return m === null ? null : round29(m);
+  }
+  function pace(reservations, roomIds, today6) {
+    const rooms = new Set(roomIds);
+    const list3 = reservations.filter((r) => real2(r) && rooms.has(String(r.roomId)));
+    const share = (from, asOf) => {
+      let sold = 0;
+      list3.forEach((r) => {
+        if (asOf && (!r.createdAt || r.createdAt.slice(0, 10) > asOf)) return;
+        for (let d = Math.max(dayNumber4(r.checkIn), dayNumber4(from)); d < Math.min(dayNumber4(r.checkOut), dayNumber4(from) + 30); d++) sold++;
+      });
+      return sold / (30 * Math.max(1, roomIds.length));
+    };
+    const lastYearStart = addDaysIso2(today6, -365);
+    const withDates = list3.filter((r) => r.createdAt && r.checkIn >= lastYearStart && r.checkIn < addDaysIso2(lastYearStart, 60)).length;
+    if (withDates < 3) return null;
+    const now = share(today6, null);
+    const last = share(lastYearStart, lastYearStart);
+    if (last <= 0) return null;
+    return { now: Math.round(now * 1e3) / 1e3, lastYear: Math.round(last * 1e3) / 1e3, ratio: now / last };
+  }
+  function advise(input7) {
+    const { reservations, rooms, settings, today: today6 } = input7;
+    const roomIds = rooms.map((r) => r.id);
+    const rules = {};
+    rooms.forEach((r) => {
+      if ((r.extraGuestPrice || 0) > 0) rules[r.id] = { baseGuests: r.baseGuests || 2, extraPrice: r.extraGuestPrice };
+    });
+    const history = buildHistory(reservations, roomIds, today6, rules);
+    const pc = pace(reservations, roomIds, today6);
+    const generic = !history.enough;
+    const taken = /* @__PURE__ */ new Set();
+    reservations.filter((r) => r.isBlocked || r.reservationStatus !== "cancelled").forEach((r) => {
+      for (let d = dayNumber4(r.checkIn); d < dayNumber4(r.checkOut); d++) taken.add(`${r.roomId}|${isoOf4(d)}`);
+    });
+    const known = history.month.filter((v) => v !== null);
+    const factor = (profile, idx, mean, genericProfile, genericMean) => {
+      const v = profile[idx];
+      if (!generic && v !== null && mean > 0) return Math.min(1.6, Math.max(0.6, v / mean));
+      return Math.min(1.6, Math.max(0.6, genericProfile[idx] / genericMean));
+    };
+    const gm = GENERIC_MONTH.reduce((s, v) => s + v, 0) / 12;
+    const gw = GENERIC_WEEKDAY.reduce((s, v) => s + v, 0) / 7;
+    const weekdayKnown = history.weekday.filter((v) => v !== null);
+    const wMean = weekdayKnown.length ? weekdayKnown.reduce((s, v) => s + v, 0) / weekdayKnown.length : 0;
+    const noReference = [];
+    const days2 = [];
+    const maxMult = 1 + settings.maxPct / 100;
+    const minMult = 1 - settings.maxPct / 100;
+    const monthSm = Array.from({ length: 12 }, (_, mi) => factor(history.month, mi, history.meanMonth, GENERIC_MONTH, gm));
+    const seasonMean = (s) => {
+      const v = monthSm.filter((_, mi) => monthSeason(mi) === s);
+      return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 1;
+    };
+    rooms.forEach((room) => {
+      let usable = false;
+      for (let i = 0; i < settings.horizonDays; i++) {
+        const date = addDaysIso2(today6, i);
+        if (taken.has(`${room.id}|${date}`)) continue;
+        const market = settings.source !== "stats" ? marketPrice(settings.comparables, date, room.id) : null;
+        const reasons = [];
+        let suggestions = [];
+        let reference = 0;
+        let multiplier = 1;
+        const zones = zonesOnHoliday(date);
+        const mi = monthIndex(date);
+        const sm = factor(history.month, mi, history.meanMonth, GENERIC_MONTH, gm);
+        const monthKind = monthSeason(mi);
+        const anchorPrice = settings.source !== "market" && input7.anchor ? input7.anchor(room.id, date) : 0;
+        const useAnchor = anchorPrice > 0;
+        const seasonRef = !useAnchor && settings.source !== "market" ? history.refSeason[room.id]?.[monthKind] ?? history.overallSeason[monthKind] : null;
+        const statsRef = useAnchor ? anchorPrice : settings.source !== "market" ? seasonRef ?? history.refPrice[room.id] ?? history.overallRef : null;
+        const smEff = useAnchor || seasonRef ? sm / seasonMean(monthKind) : sm;
+        const summer = mi === 6 || mi === 7;
+        const season = sm >= 1.1 || zones.length >= 2 || summer ? "high" : sm <= 0.9 && zones.length === 0 ? "low" : "mid";
+        const weekdayWeight = season === "high" ? 0.35 : season === "low" ? 0.12 : 0.25;
+        const holidayBoost = 1 + 0.05 * zones.length;
+        const upCap = season === "low" ? Math.min(maxMult, 1.05) : season === "mid" ? Math.min(maxMult, 1 + (maxMult - 1) * 0.6) : maxMult;
+        if (zones.length > 0) reasons.push(`Vacances scolaires (zone${zones.length > 1 ? "s" : ""} ${zones.join(", ")})`);
+        if (statsRef) {
+          const sw2 = factor(history.weekday, weekdayOf2(date), wMean, GENERIC_WEEKDAY, gw);
+          let m = (1 + 0.5 * (smEff - 1)) * (1 + weekdayWeight * (sw2 - 1)) * holidayBoost;
+          if (seasonRef) reasons.unshift(`Prix de base de la ${SEASON_LABEL[monthKind]} (vos s\xE9jours de la m\xEAme saison)`);
+          if (sm >= 1.1) reasons.push(`${generic ? "P\xE9riode g\xE9n\xE9ralement tr\xE8s demand\xE9e" : "Mois tr\xE8s demand\xE9 chez vous"} (${MONTHS2[mi]})`);
+          else if (sm <= 0.9) reasons.push(`${generic ? "P\xE9riode g\xE9n\xE9ralement calme" : "Mois calme chez vous"} (${MONTHS2[mi]})`);
+          if (sw2 >= 1.05 && season === "low") reasons.push(`${WEEKDAYS[weekdayOf2(date)]} hors vacances en basse saison : peu de hausse possible`);
+          else if (sw2 >= 1.05) reasons.push(`${WEEKDAYS[weekdayOf2(date)]} : jour de forte demande`);
+          else if (sw2 <= 0.95) reasons.push(`${WEEKDAYS[weekdayOf2(date)]} : jour de faible demande`);
+          if (pc && i < 30 && !generic) {
+            const mp = Math.min(1.1, Math.max(0.9, 1 + 0.4 * (pc.ratio - 1)));
+            if (mp >= 1.03) reasons.push("Vos r\xE9servations avancent plus vite que l\u2019an dernier");
+            else if (mp <= 0.97) reasons.push("Vos r\xE9servations avancent moins vite que l\u2019an dernier");
+            m *= mp;
+          }
+          if (i <= 3) {
+            m *= 0.92;
+            reasons.push("Date tr\xE8s proche encore libre");
+          }
+          m = Math.min(upCap, Math.max(minMult, m));
+          reference = statsRef;
+          multiplier = m;
+          suggestions.push(round5(statsRef * m));
+        }
+        if (market) {
+          const wm = factor(history.weekday, weekdayOf2(date), wMean, GENERIC_WEEKDAY, gw);
+          const mm = Math.min(upCap, Math.max(minMult, (1 + weekdayWeight * (wm - 1)) * holidayBoost));
+          suggestions.push(round5(market * mm));
+          if (!statsRef && wm >= 1.05 && season === "low") reasons.push(`${WEEKDAYS[weekdayOf2(date)]} hors vacances en basse saison : peu de hausse possible`);
+          reasons.push(`Prix constat\xE9s sur des biens comparables : ${String(market).replace(".", ",")} \u20AC en m\xE9diane`);
+          if (!statsRef) {
+            reference = market;
+            multiplier = mm;
+          }
+        }
+        if (suggestions.length === 0) continue;
+        usable = true;
+        let suggested = round5(suggestions.reduce((s, v) => s + v, 0) / suggestions.length);
+        const floorValue = input7.floors?.[room.id];
+        let floor;
+        if (floorValue && suggested < floorValue) {
+          floor = Math.ceil(floorValue / 5) * 5;
+          suggested = floor;
+          reasons.push(`Seuil de rentabilit\xE9 : pas en dessous de ${String(floor).replace(".", ",")} \u20AC`);
+        }
+        days2.push({ roomId: room.id, date, suggested, reference, multiplier: Math.round(multiplier * 1e3) / 1e3, reasons, ...floor ? { floor } : {} });
+      }
+      if (!usable) noReference.push(room.name);
+    });
+    const positioning = {};
+    rooms.forEach((r) => {
+      const realized = history.refPrice[r.id];
+      const tariff = input7.tariffs?.[r.id];
+      if (realized && tariff && tariff > 0) positioning[r.id] = { realized, tariff, gapPct: Math.round((realized - tariff) / tariff * 100) };
+    });
+    return { positioning, history, pace: pc, usingGenericProfile: generic, days: days2, noReference };
+  }
+  function groupAdvice(days2, currentPrice, thresholdPct = 5) {
+    const rows = [];
+    const sorted = [...days2].sort((a, b) => a.roomId.localeCompare(b.roomId) || a.date.localeCompare(b.date));
+    let cur = null;
+    const flush = () => {
+      if (!cur) return;
+      const first = cur.d[0];
+      const last = cur.d[cur.d.length - 1];
+      const current2 = cur.d.reduce((s, x) => s + currentPrice(x.roomId, x.date), 0) / cur.d.length;
+      const gap = current2 > 0 ? Math.round((first.suggested - current2) / current2 * 100) : 0;
+      const reasons = [...new Set(cur.d.flatMap((x) => x.reasons))].slice(0, 4);
+      rows.push({ roomId: first.roomId, from: first.date, to: last.date, nights: cur.d.length, suggested: first.suggested, current: Math.round(current2), gapPct: gap, level: gap >= thresholdPct ? "up" : gap <= -thresholdPct ? "down" : "keep", reasons });
+      cur = null;
+    };
+    sorted.forEach((d) => {
+      if (cur) {
+        const prev = cur.d[cur.d.length - 1];
+        if (prev.roomId === d.roomId && prev.suggested === d.suggested && dayNumber4(d.date) - dayNumber4(prev.date) === 1) {
+          cur.d.push(d);
+          return;
+        }
+        flush();
+      }
+      cur = { d: [d] };
+    });
+    flush();
+    return rows;
+  }
+  function groupAdviceMatrix(days2, roomIds, currentPrice, thresholdPct = 5) {
+    const byDate2 = /* @__PURE__ */ new Map();
+    days2.forEach((d) => byDate2.set(d.date, { ...byDate2.get(d.date) || {}, [d.roomId]: d }));
+    const dates = [...byDate2.keys()].sort();
+    const sig = (date) => roomIds.map((id) => byDate2.get(date)[id]?.suggested ?? "x").join("|");
+    const groups = [];
+    dates.forEach((date) => {
+      const g = groups[groups.length - 1];
+      const prev = g && g[g.length - 1];
+      if (g && prev && dayNumber4(date) - dayNumber4(prev) === 1 && sig(date) === sig(prev)) g.push(date);
+      else groups.push([date]);
+    });
+    return groups.map((g) => {
+      const cells = {};
+      const reasons = [];
+      roomIds.forEach((id) => {
+        const list3 = g.map((date) => byDate2.get(date)[id]).filter((x) => !!x);
+        if (list3.length === 0) return;
+        const current2 = list3.reduce((s, x) => s + currentPrice(id, x.date), 0) / list3.length;
+        const gap = current2 > 0 ? Math.round((list3[0].suggested - current2) / current2 * 100) : 0;
+        cells[id] = { floored: list3[0].floor, reference: list3[0].reference, multiplier: list3[0].multiplier, suggested: list3[0].suggested, current: Math.round(current2), gapPct: gap, level: gap >= thresholdPct ? "up" : gap <= -thresholdPct ? "down" : "keep" };
+        list3[0].reasons.forEach((r) => !reasons.includes(r) && reasons.push(r));
+      });
+      const levels = Object.values(cells).map((c) => c.level);
+      return { from: g[0], to: g[g.length - 1], nights: g.length, cells, level: levels.includes("up") ? "up" : levels.includes("down") ? "down" : "keep", reasons: reasons.slice(0, 4) };
+    });
+  }
+  function adviceRows(rows, roomName) {
+    return [
+      ["H\xE9bergement", "Du", "Au", "Nuits", "Prix conseill\xE9 (\u20AC)", "Prix actuel (\u20AC)", "\xC9cart (%)", "Conseil", "Raisons"],
+      ...rows.map((r) => [roomName(r.roomId), r.from, r.to, r.nights, r.suggested, r.current, r.gapPct, r.level === "up" ? "Augmenter" : r.level === "down" ? "Baisser" : "Garder", r.reasons.join(" ; ")])
+    ];
+  }
+  var DAY5, dayNumber4, isoOf4, weekdayOf2, monthIndex, round5, median, GENERIC_MONTH, GENERIC_WEEKDAY, real2, SEASON_LABEL, round29, addDaysIso2, MONTHS2, WEEKDAYS;
+  var init_content19 = __esm({
+    "src/modules/conseils/content.ts"() {
+      "use strict";
+      init_schoolHolidays();
+      DAY5 = 864e5;
+      dayNumber4 = (iso) => Math.floor(Date.parse(`${iso}T00:00:00Z`) / DAY5);
+      isoOf4 = (n) => new Date(n * DAY5).toISOString().slice(0, 10);
+      weekdayOf2 = (iso) => (new Date(dayNumber4(iso) * DAY5).getUTCDay() + 6) % 7;
+      monthIndex = (iso) => parseInt(iso.slice(5, 7), 10) - 1;
+      round5 = (n) => Math.round(n / 5) * 5;
+      median = (v) => {
+        if (v.length === 0) return null;
+        const s = [...v].sort((a, b) => a - b);
+        const m = Math.floor(s.length / 2);
+        return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+      };
+      GENERIC_MONTH = [0.75, 0.85, 0.8, 1, 1.05, 1.05, 1.35, 1.4, 1, 0.9, 0.7, 1];
+      GENERIC_WEEKDAY = [0.9, 0.9, 0.9, 0.95, 1.1, 1.15, 0.95];
+      real2 = (r) => !r.isBlocked && r.reservationStatus !== "cancelled" && !/ferm|bloq/i.test(r.guestName || "");
+      SEASON_LABEL = { high: "haute saison", mid: "saison interm\xE9diaire", low: "basse saison" };
+      round29 = (n) => Math.round(n * 100) / 100;
+      addDaysIso2 = (iso, n) => isoOf4(dayNumber4(iso) + n);
+      MONTHS2 = ["janvier", "f\xE9vrier", "mars", "avril", "mai", "juin", "juillet", "ao\xFBt", "septembre", "octobre", "novembre", "d\xE9cembre"];
+      WEEKDAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+    }
+  });
+
   // src/modules/rentabilite/SettingsPanel.tsx
-  var import_react69, import_jsx_runtime60, json, PRESETS, SettingsPanel;
+  var import_react69, import_jsx_runtime60, json, PRESETS, MONTH_NAMES, SettingsPanel;
   var init_SettingsPanel = __esm({
     "src/modules/rentabilite/SettingsPanel.tsx"() {
       "use strict";
@@ -43012,6 +43410,9 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
       init_store4();
       init_connector();
       init_content3();
+      init_compute();
+      init_bookingUtils();
+      init_content19();
       init_ShareRule();
       import_jsx_runtime60 = __require("react/jsx-runtime");
       json = (v) => JSON.stringify(v);
@@ -43021,7 +43422,8 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
         { value: "year", label: "L'ann\xE9e" },
         { value: "last12", label: "Les 12 derniers mois" }
       ];
-      SettingsPanel = ({ settings, prof, onToast }) => {
+      MONTH_NAMES = ["Janvier", "F\xE9vrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Ao\xFBt", "Septembre", "Octobre", "Novembre", "D\xE9cembre"];
+      SettingsPanel = ({ settings, prof, reservations = [], onToast }) => {
         const [draft, setDraft] = (0, import_react69.useState)(prof);
         const [newCategory, setNewCategory] = (0, import_react69.useState)("");
         const saved = (0, import_react69.useMemo)(() => json({ ...prof, savedAt: "" }), [prof]);
@@ -43030,6 +43432,21 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
           if (!dirty) setDraft(prof);
         }, [saved]);
         const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
+        const [monthlyOpen, setMonthlyOpen] = (0, import_react69.useState)(!!prof.objectives.monthly);
+        const lastYear = (/* @__PURE__ */ new Date()).getFullYear() - 1;
+        const lastYearLabel = String(lastYear);
+        const lastYearByMonth = (0, import_react69.useMemo)(() => reservations.length ? calculateAnnualRecap(reservations, lastYear).months.map((m) => m.totalRevenue) : [], [reservations, lastYear]);
+        const monthlyTotal = Math.round(Array.from({ length: 12 }, (_, i) => monthObjective({ ...draft.objectives, monthly: draft.objectives.monthly }, i)).reduce((s, v) => s + v, 0) * 100) / 100;
+        const monthlyGap = draft.objectives.yearRevenue && draft.objectives.yearRevenue > 0 ? Math.round((monthlyTotal - draft.objectives.yearRevenue) * 100) / 100 : 0;
+        const spread = (weights, silent = false) => {
+          const year = draft.objectives.yearRevenue || 0;
+          if (!(year > 0)) {
+            if (!silent) onToast("Saisissez d'abord le chiffre d'affaires de l'ann\xE9e : il est r\xE9parti sur les 12 mois.");
+            set({ objectives: { ...draft.objectives, monthly: draft.objectives.monthly || Array(12).fill(0) } });
+            return;
+          }
+          set({ objectives: { ...draft.objectives, monthly: spreadObjective(year, weights) } });
+        };
         const setCategory = (id, patch) => set({ categories: draft.categories.map((c) => c.id === id ? { ...c, ...patch } : c) });
         const moveCategory = (index, delta) => {
           const target = index + delta;
@@ -43174,6 +43591,50 @@ Vos r\xE9servations, factures et fiches clients ne sont pas touch\xE9es. Cette a
               /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(Field, { label: "Chiffre d'affaires de l'ann\xE9e (\u20AC)", children: /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(NumberInput, { optional: true, value: draft.objectives.yearRevenue, onChange: (v) => set({ objectives: { ...draft.objectives, yearRevenue: v } }), suffix: "\u20AC" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(Field, { label: "Chiffre d'affaires par mois (\u20AC)", hint: "\xC0 d\xE9faut : l'objectif annuel divis\xE9 par 12.", children: /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(NumberInput, { optional: true, value: draft.objectives.monthRevenue, onChange: (v) => set({ objectives: { ...draft.objectives, monthRevenue: v } }), suffix: "\u20AC" }) }),
               /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(Field, { label: "Taux d'occupation vis\xE9 (%)", children: /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(NumberInput, { optional: true, value: draft.objectives.occupancy, onChange: (v) => set({ objectives: { ...draft.objectives, occupancy: v } }), suffix: "%" }) })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("div", { className: "pt-3 mt-1 border-t border-neutral-100 space-y-2", "data-objective-monthly": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("label", { className: "flex items-center gap-2 text-xs font-bold text-neutral-800 cursor-pointer", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(
+                  "input",
+                  {
+                    type: "checkbox",
+                    checked: monthlyOpen,
+                    onChange: (e) => {
+                      setMonthlyOpen(e.target.checked);
+                      if (e.target.checked && !draft.objectives.monthly) spread(GENERIC_MONTH, true);
+                      if (!e.target.checked) set({ objectives: { ...draft.objectives, monthly: void 0 } });
+                    },
+                    className: "accent-sy-325032"
+                  }
+                ),
+                "Mensualiser l'objectif de chiffre d'affaires (un montant par mois)"
+              ] }),
+              monthlyOpen && /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)(import_jsx_runtime60.Fragment, { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("p", { className: "text-[11px] text-neutral-500", children: "Les mois sont rarement lou\xE9s pareil : fixez un objectif pour chaque mois. Le suivi du mois, du trimestre et de l'ann\xE9e additionne ces montants. Un mois \xE0 0 reprend l'objectif mensuel uniforme (ou l'annuel \xF7 12)." }),
+                /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("div", { className: "flex flex-wrap gap-2", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(SecondaryButton, { onClick: () => spread(Array(12).fill(1)), children: "R\xE9partir \xE9galement" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(SecondaryButton, { onClick: () => spread(GENERIC_MONTH), children: "Selon la saison (\xE9t\xE9 fort, hiver calme)" }),
+                  lastYearByMonth.some((v) => v > 0) && /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)(SecondaryButton, { onClick: () => spread(lastYearByMonth), children: [
+                    "Selon mon chiffre d'affaires de ",
+                    lastYearLabel
+                  ] })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime60.jsx)("div", { className: "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2", children: MONTH_NAMES.map((name, i) => /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(Field, { label: name, children: /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(
+                  NumberInput,
+                  {
+                    optional: true,
+                    value: draft.objectives.monthly?.[i] || void 0,
+                    onChange: (v) => set({ objectives: { ...draft.objectives, monthly: Array.from({ length: 12 }, (_, k) => k === i ? v || 0 : draft.objectives.monthly?.[k] || 0) } }),
+                    suffix: "\u20AC"
+                  }
+                ) }, name)) }),
+                /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("p", { className: `text-xs font-semibold ${monthlyGap ? "text-amber-800" : "text-neutral-700"}`, "data-objective-total": true, children: [
+                  "Total des 12 mois : ",
+                  formatCurrency(monthlyTotal),
+                  draft.objectives.yearRevenue && draft.objectives.yearRevenue > 0 ? monthlyGap ? ` \xB7 \xE9cart avec l'objectif annuel (${formatCurrency(draft.objectives.yearRevenue)}) : ${monthlyGap > 0 ? "+" : ""}${formatCurrency(monthlyGap)}` : " \xB7 \xE9gal \xE0 l'objectif annuel" : ""
+                ] }),
+                monthlyGap !== 0 && draft.objectives.yearRevenue && draft.objectives.yearRevenue > 0 ? /* @__PURE__ */ (0, import_jsx_runtime60.jsx)(SecondaryButton, { onClick: () => set({ objectives: { ...draft.objectives, yearRevenue: monthlyTotal } }), children: "Prendre le total des mois comme objectif annuel" }) : null
+              ] })
             ] })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("section", { className: card3, children: [
@@ -43870,7 +44331,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
           shownTab === "monthly" && monthly,
           shownTab === "annual" && annual,
           shownTab === "energy" && energy,
-          shownTab === "settings" && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(SettingsPanel, { settings, prof, onToast })
+          shownTab === "settings" && /* @__PURE__ */ (0, import_jsx_runtime63.jsx)(SettingsPanel, { settings, prof, reservations, onToast })
         ] });
       };
     }
@@ -47527,64 +47988,6 @@ Cliquer pour modifier le tarif` : void 0,
           rateEdit && /* @__PURE__ */ (0, import_jsx_runtime77.jsx)(DayRateEditor, { date: rateEdit.date, roomIds: rateEdit.roomIds, onClose: () => setRateEdit(null) })
         ] });
       };
-    }
-  });
-
-  // src/core/pricing/schoolHolidays.ts
-  function holidaysOn(date) {
-    return SCHOOL_HOLIDAYS.filter((h2) => date >= h2.from && date < h2.to);
-  }
-  function zonesOnHoliday(date) {
-    return [...new Set(holidaysOn(date).map((h2) => h2.zone))].sort();
-  }
-  function holidayOf(zone, date) {
-    return SCHOOL_HOLIDAYS.find((h2) => h2.zone === zone && date >= h2.from && date < h2.to);
-  }
-  function holidaysUpdateDue(today6) {
-    const year = parseInt(today6.slice(0, 4), 10);
-    if (!(year > 0) || today6 < `${year}-09-25`) return false;
-    return parseInt(HOLIDAYS_LAST_DAY.slice(0, 4), 10) < year + 2;
-  }
-  var SCHOOL_ZONES, HOLIDAYS_YEARS, HOLIDAYS_LAST_DAY, all, SCHOOL_HOLIDAYS;
-  var init_schoolHolidays = __esm({
-    "src/core/pricing/schoolHolidays.ts"() {
-      "use strict";
-      SCHOOL_ZONES = ["A", "B", "C"];
-      HOLIDAYS_YEARS = "2025-2026 \xE0 2027-2028";
-      HOLIDAYS_LAST_DAY = "2028-09-01";
-      all = (kind, from, to) => SCHOOL_ZONES.map((zone) => ({ kind, zone, from, to }));
-      SCHOOL_HOLIDAYS = [
-        // 2025-2026
-        ...all("Toussaint", "2025-10-18", "2025-11-03"),
-        ...all("No\xEBl", "2025-12-20", "2026-01-05"),
-        { kind: "Hiver", zone: "A", from: "2026-02-07", to: "2026-02-23" },
-        { kind: "Hiver", zone: "B", from: "2026-02-14", to: "2026-03-02" },
-        { kind: "Hiver", zone: "C", from: "2026-02-21", to: "2026-03-09" },
-        { kind: "Printemps", zone: "A", from: "2026-04-04", to: "2026-04-20" },
-        { kind: "Printemps", zone: "B", from: "2026-04-11", to: "2026-04-27" },
-        { kind: "Printemps", zone: "C", from: "2026-04-18", to: "2026-05-04" },
-        ...all("\xC9t\xE9", "2026-07-04", "2026-09-01"),
-        // 2026-2027
-        ...all("Toussaint", "2026-10-17", "2026-11-02"),
-        ...all("No\xEBl", "2026-12-19", "2027-01-04"),
-        { kind: "Hiver", zone: "C", from: "2027-02-06", to: "2027-02-22" },
-        { kind: "Hiver", zone: "A", from: "2027-02-13", to: "2027-03-01" },
-        { kind: "Hiver", zone: "B", from: "2027-02-20", to: "2027-03-08" },
-        { kind: "Printemps", zone: "C", from: "2027-04-03", to: "2027-04-19" },
-        { kind: "Printemps", zone: "A", from: "2027-04-10", to: "2027-04-26" },
-        { kind: "Printemps", zone: "B", from: "2027-04-17", to: "2027-05-03" },
-        ...all("\xC9t\xE9", "2027-07-03", "2027-09-02"),
-        // 2027-2028
-        ...all("Toussaint", "2027-10-23", "2027-11-08"),
-        ...all("No\xEBl", "2027-12-18", "2028-01-03"),
-        { kind: "Hiver", zone: "B", from: "2028-02-05", to: "2028-02-21" },
-        { kind: "Hiver", zone: "C", from: "2028-02-12", to: "2028-02-28" },
-        { kind: "Hiver", zone: "A", from: "2028-02-19", to: "2028-03-06" },
-        { kind: "Printemps", zone: "B", from: "2028-04-08", to: "2028-04-24" },
-        { kind: "Printemps", zone: "C", from: "2028-04-15", to: "2028-05-02" },
-        { kind: "Printemps", zone: "A", from: "2028-04-22", to: "2028-05-09" },
-        ...all("\xC9t\xE9", "2028-07-04", HOLIDAYS_LAST_DAY)
-      ];
     }
   });
 
@@ -52044,6 +52447,7 @@ Cliquer pour modifier le tarif` : void 0,
       init_lucide_react();
       init_settingsStore();
       init_store4();
+      init_compute();
       init_rows();
       import_jsx_runtime83 = __require("react/jsx-runtime");
       LEGACY_DASHBOARD_LOOKS = {
@@ -52267,7 +52671,7 @@ Cliquer pour modifier le tarif` : void 0,
           return calculateAnnualRecap(filteredReservations, selectedYear);
         }, [filteredReservations, selectedYear, settings]);
         const prev = (0, import_react89.useMemo)(() => calculateAnnualRecap(filteredReservations, selectedYear - 1), [filteredReservations, selectedYear, settings]);
-        const yearObjective = isModuleEnabled("profitability", settings) ? getProfitability(settings).objectives.yearRevenue || 0 : 0;
+        const yearObjective3 = isModuleEnabled("profitability", settings) ? yearObjective(getProfitability(settings).objectives) : 0;
         const leadTime = (0, import_react89.useMemo)(() => {
           const days2 = [];
           filteredReservations.forEach((r) => {
@@ -52397,15 +52801,15 @@ Cliquer pour modifier le tarif` : void 0,
                     ] })
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime83.jsx)(Delta3, { now: annual.totalAnnualRevenue, before: prev.totalAnnualRevenue, year: selectedYear, tone: "text-emerald-800" }),
-                  yearObjective > 0 && /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "mt-2", "data-objective-gauge": true, children: [
+                  yearObjective3 > 0 && /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "mt-2", "data-objective-gauge": true, children: [
                     /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("div", { className: "flex justify-between text-[10px] text-emerald-800 mb-0.5", children: [
                       /* @__PURE__ */ (0, import_jsx_runtime83.jsxs)("span", { children: [
                         "Objectif ",
-                        formatCurrency(yearObjective)
+                        formatCurrency(yearObjective3)
                       ] }),
-                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { className: "font-bold", children: pct2(Math.min(999, annual.totalAnnualRevenue / yearObjective * 100), 0) })
+                      /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("span", { className: "font-bold", children: pct2(Math.min(999, annual.totalAnnualRevenue / yearObjective3 * 100), 0) })
                     ] }),
-                    /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { className: "h-1.5 rounded-full bg-emerald-200/70 overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { className: "h-full rounded-full bg-emerald-600", style: { width: `${Math.min(100, annual.totalAnnualRevenue / yearObjective * 100)}%` } }) })
+                    /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { className: "h-1.5 rounded-full bg-emerald-200/70 overflow-hidden", children: /* @__PURE__ */ (0, import_jsx_runtime83.jsx)("div", { className: "h-full rounded-full bg-emerald-600", style: { width: `${Math.min(100, annual.totalAnnualRevenue / yearObjective3 * 100)}%` } }) })
                   ] })
                 ] })
               ] }),
@@ -58577,7 +58981,7 @@ Cliquer pour modifier le tarif` : void 0,
     for (let guard = 0; guard < 400; guard++) {
       out.push({
         key: k,
-        label: by === "week" ? `sem. du ${frDate(k).slice(0, 5)}` : `${MONTHS2[Number(k.slice(5, 7)) - 1]} ${k.slice(0, 4)}`,
+        label: by === "week" ? `sem. du ${frDate(k).slice(0, 5)}` : `${MONTHS3[Number(k.slice(5, 7)) - 1]} ${k.slice(0, 4)}`,
         total: Math.round((sums.get(k) || 0) * 100) / 100
       });
       if (k >= keys[keys.length - 1]) break;
@@ -58589,7 +58993,7 @@ Cliquer pour modifier le tarif` : void 0,
     }
     return out;
   }
-  var import_react109, import_jsx_runtime104, W, H, M, GREEN, RED, GREY, fmt3, selectClass3, ParamChart, MONTHS2, ProductChart, PoolCharts;
+  var import_react109, import_jsx_runtime104, W, H, M, GREEN, RED, GREY, fmt3, selectClass3, ParamChart, MONTHS3, ProductChart, PoolCharts;
   var init_PoolCharts = __esm({
     "src/modules/etablissement/PoolCharts.tsx"() {
       "use strict";
@@ -58671,7 +59075,7 @@ Cliquer pour modifier le tarif` : void 0,
           ] })
         ] });
       };
-      MONTHS2 = ["janv.", "f\xE9vr.", "mars", "avr.", "mai", "juin", "juil.", "ao\xFBt", "sept.", "oct.", "nov.", "d\xE9c."];
+      MONTHS3 = ["janv.", "f\xE9vr.", "mars", "avr.", "mai", "juin", "juil.", "ao\xFBt", "sept.", "oct.", "nov.", "d\xE9c."];
       ProductChart = ({ pool, entries }) => {
         const products = pool.products.filter((p) => p.active);
         const [productId, setProductId] = (0, import_react109.useState)("");
@@ -66908,8 +67312,8 @@ if(C.preview){
     const [y2, m2, d2] = end.split("-").map(Number);
     if (!m1 || !m2) return "";
     const day2 = (d) => d === 1 ? "1er" : String(d);
-    if (everyYear) return `du ${day2(d1)} ${MONTHS3[m1 - 1]} au ${day2(d2)} ${MONTHS3[m2 - 1]}`;
-    return `du ${day2(d1)} ${MONTHS3[m1 - 1]} ${y1} au ${day2(d2)} ${MONTHS3[m2 - 1]} ${y2}`;
+    if (everyYear) return `du ${day2(d1)} ${MONTHS4[m1 - 1]} au ${day2(d2)} ${MONTHS4[m2 - 1]}`;
+    return `du ${day2(d1)} ${MONTHS4[m1 - 1]} ${y1} au ${day2(d2)} ${MONTHS4[m2 - 1]} ${y2}`;
   }
   function servicePrice2(s) {
     if (s.billing === "inclus") return "Inclus";
@@ -67399,7 +67803,7 @@ Sitemap: ${base}sitemap.xml
       ""
     ].join("\n");
   }
-  var esc3, inlineFormat, stripFormat, paras, euro5, MONTHS3, SERVICE_UNITS4, byOrder3, publicSection, extFor, safeId;
+  var esc3, inlineFormat, stripFormat, paras, euro5, MONTHS4, SERVICE_UNITS4, byOrder3, publicSection, extFor, safeId;
   var init_generate = __esm({
     "src/modules/siteweb/generate.ts"() {
       "use strict";
@@ -67421,7 +67825,7 @@ Sitemap: ${base}sitemap.xml
         return `<p>${inlineFormat(esc3(p)).replace(/\n/g, "<br>")}</p>`;
       }).join("");
       euro5 = (n) => `${n.toLocaleString("fr-FR", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })} \u20AC`;
-      MONTHS3 = ["janvier", "f\xE9vrier", "mars", "avril", "mai", "juin", "juillet", "ao\xFBt", "septembre", "octobre", "novembre", "d\xE9cembre"];
+      MONTHS4 = ["janvier", "f\xE9vrier", "mars", "avril", "mai", "juin", "juillet", "ao\xFBt", "septembre", "octobre", "novembre", "d\xE9cembre"];
       SERVICE_UNITS4 = { nuit: "nuit", personne: "personne", animal: "animal", repas: "repas", creneau: "cr\xE9neau", sejour: "s\xE9jour" };
       byOrder3 = (a, b) => (a.order || 0) - (b.order || 0);
       publicSection = (book, kind) => book.sections.find((s) => s.kind === kind && s.enabled && s.privacy === "public");
@@ -70074,319 +70478,6 @@ Sitemap: ${base}sitemap.xml
           ] })
         ] });
       };
-    }
-  });
-
-  // src/modules/conseils/content.ts
-  function readAdviceSettings(settings) {
-    const raw = settings.modules.priceAdvice?.settings || {};
-    const num7 = (v, d, min, max) => typeof v === "number" && isFinite(v) ? Math.min(max, Math.max(min, v)) : d;
-    return {
-      source: raw.source === "market" || raw.source === "both" ? raw.source : "stats",
-      horizonDays: Math.round(num7(raw.horizonDays, 60, 7, 180)),
-      maxPct: Math.round(num7(raw.maxPct, 25, 5, 50)),
-      comparables: Array.isArray(raw.comparables) ? raw.comparables.filter((c) => c && typeof c.id === "string" && /^\d{4}-\d{2}-\d{2}$/.test(c.from) && /^\d{4}-\d{2}-\d{2}$/.test(c.to) && typeof c.price === "number" && c.price > 0).map((c) => ({ id: c.id, label: String(c.label || ""), from: c.from, to: c.to, price: c.price, ...c.roomId ? { roomId: String(c.roomId) } : {} })) : []
-    };
-  }
-  function monthSeason(mi) {
-    const g = GENERIC_MONTH[mi] / (GENERIC_MONTH.reduce((s, v) => s + v, 0) / 12);
-    return mi === 6 || mi === 7 || g >= 1.1 ? "high" : g <= 0.9 ? "low" : "mid";
-  }
-  function nightlyPrice(r, rule) {
-    if (!(r.nights > 0)) return null;
-    let amount = r.roomAmount && r.roomAmount > 0 ? r.roomAmount : r.totalAmount > 0 ? r.totalAmount - (r.touristTaxAmount || 0) : 0;
-    if (rule && rule.extraPrice > 0) {
-      const extra = Math.max(0, (r.adultsCount || 0) - rule.baseGuests) + Math.max(0, r.childrenCount || 0);
-      amount -= extra * rule.extraPrice * r.nights;
-    }
-    return amount > 0 ? amount / r.nights : null;
-  }
-  function buildHistory(reservations, roomIds, today6, rules = {}) {
-    const rooms = new Set(roomIds);
-    const stays = reservations.filter((r) => real2(r) && rooms.has(String(r.roomId)) && r.checkOut <= addDaysIso2(today6, 1) && r.checkOut >= addDaysIso2(today6, -730));
-    const start = dayNumber4(today6) - 730;
-    const first = stays.length ? Math.max(start, Math.min(...stays.map((r) => dayNumber4(r.checkIn)))) : dayNumber4(today6);
-    const sold = /* @__PURE__ */ new Map();
-    stays.forEach((r) => {
-      for (let d = Math.max(dayNumber4(r.checkIn), start); d < Math.min(dayNumber4(r.checkOut), dayNumber4(today6)); d++) sold.set(`${r.roomId}|${d}`, 1);
-    });
-    const mSold = Array(12).fill(0);
-    const mAvail = Array(12).fill(0);
-    const wSold = Array(7).fill(0);
-    const wAvail = Array(7).fill(0);
-    const days2 = Math.max(0, dayNumber4(today6) - first);
-    for (let d = first; d < dayNumber4(today6); d++) {
-      const iso = isoOf4(d);
-      const mi = monthIndex(iso);
-      const wi = weekdayOf2(iso);
-      roomIds.forEach((id) => {
-        mAvail[mi]++;
-        wAvail[wi]++;
-        if (sold.has(`${id}|${d}`)) {
-          mSold[mi]++;
-          wSold[wi]++;
-        }
-      });
-    }
-    const month = mAvail.map((a, i) => a >= 20 * Math.max(1, roomIds.length) ? mSold[i] / a : null);
-    const weekday = wAvail.map((a, i) => a >= 8 * Math.max(1, roomIds.length) ? wSold[i] / a : null);
-    const known = month.filter((v) => v !== null);
-    const meanMonth = known.length ? known.reduce((s, v) => s + v, 0) / known.length : 0;
-    const year = stays.filter((r) => r.checkIn >= addDaysIso2(today6, -365));
-    const refPrice = {};
-    roomIds.forEach((id) => {
-      const prices = year.filter((r) => String(r.roomId) === id).map((r) => nightlyPrice(r, rules[id])).filter((p) => p !== null);
-      refPrice[id] = prices.length >= 3 ? round29(median(prices)) : null;
-    });
-    const all2 = year.map((r) => nightlyPrice(r, rules[String(r.roomId)])).filter((p) => p !== null);
-    const seasonal = (list3) => {
-      const out = { high: null, mid: null, low: null };
-      ["high", "mid", "low"].forEach((s) => {
-        const prices = list3.filter((r) => monthSeason(monthIndex(r.checkIn)) === s).map((r) => nightlyPrice(r, rules[String(r.roomId)])).filter((p) => p !== null);
-        out[s] = prices.length >= 3 ? round29(median(prices)) : null;
-      });
-      return out;
-    };
-    const refSeason = {};
-    roomIds.forEach((id) => refSeason[id] = seasonal(stays.filter((r) => String(r.roomId) === id)));
-    return {
-      stays: stays.length,
-      observedDays: days2,
-      month,
-      weekday,
-      meanMonth,
-      refPrice,
-      overallRef: all2.length >= 3 ? round29(median(all2)) : null,
-      refSeason,
-      overallSeason: seasonal(stays),
-      enough: stays.length >= 10 && days2 >= 180 && known.length >= 4
-    };
-  }
-  function marketPrice(comparables, date, roomId) {
-    const prices = comparables.filter((c) => date >= c.from && date <= c.to && (!roomId || !c.roomId || c.roomId === roomId)).map((c) => c.price);
-    const m = median(prices);
-    return m === null ? null : round29(m);
-  }
-  function pace(reservations, roomIds, today6) {
-    const rooms = new Set(roomIds);
-    const list3 = reservations.filter((r) => real2(r) && rooms.has(String(r.roomId)));
-    const share = (from, asOf) => {
-      let sold = 0;
-      list3.forEach((r) => {
-        if (asOf && (!r.createdAt || r.createdAt.slice(0, 10) > asOf)) return;
-        for (let d = Math.max(dayNumber4(r.checkIn), dayNumber4(from)); d < Math.min(dayNumber4(r.checkOut), dayNumber4(from) + 30); d++) sold++;
-      });
-      return sold / (30 * Math.max(1, roomIds.length));
-    };
-    const lastYearStart = addDaysIso2(today6, -365);
-    const withDates = list3.filter((r) => r.createdAt && r.checkIn >= lastYearStart && r.checkIn < addDaysIso2(lastYearStart, 60)).length;
-    if (withDates < 3) return null;
-    const now = share(today6, null);
-    const last = share(lastYearStart, lastYearStart);
-    if (last <= 0) return null;
-    return { now: Math.round(now * 1e3) / 1e3, lastYear: Math.round(last * 1e3) / 1e3, ratio: now / last };
-  }
-  function advise(input7) {
-    const { reservations, rooms, settings, today: today6 } = input7;
-    const roomIds = rooms.map((r) => r.id);
-    const rules = {};
-    rooms.forEach((r) => {
-      if ((r.extraGuestPrice || 0) > 0) rules[r.id] = { baseGuests: r.baseGuests || 2, extraPrice: r.extraGuestPrice };
-    });
-    const history = buildHistory(reservations, roomIds, today6, rules);
-    const pc = pace(reservations, roomIds, today6);
-    const generic = !history.enough;
-    const taken = /* @__PURE__ */ new Set();
-    reservations.filter((r) => r.isBlocked || r.reservationStatus !== "cancelled").forEach((r) => {
-      for (let d = dayNumber4(r.checkIn); d < dayNumber4(r.checkOut); d++) taken.add(`${r.roomId}|${isoOf4(d)}`);
-    });
-    const known = history.month.filter((v) => v !== null);
-    const factor = (profile, idx, mean, genericProfile, genericMean) => {
-      const v = profile[idx];
-      if (!generic && v !== null && mean > 0) return Math.min(1.6, Math.max(0.6, v / mean));
-      return Math.min(1.6, Math.max(0.6, genericProfile[idx] / genericMean));
-    };
-    const gm = GENERIC_MONTH.reduce((s, v) => s + v, 0) / 12;
-    const gw = GENERIC_WEEKDAY.reduce((s, v) => s + v, 0) / 7;
-    const weekdayKnown = history.weekday.filter((v) => v !== null);
-    const wMean = weekdayKnown.length ? weekdayKnown.reduce((s, v) => s + v, 0) / weekdayKnown.length : 0;
-    const noReference = [];
-    const days2 = [];
-    const maxMult = 1 + settings.maxPct / 100;
-    const minMult = 1 - settings.maxPct / 100;
-    const monthSm = Array.from({ length: 12 }, (_, mi) => factor(history.month, mi, history.meanMonth, GENERIC_MONTH, gm));
-    const seasonMean = (s) => {
-      const v = monthSm.filter((_, mi) => monthSeason(mi) === s);
-      return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 1;
-    };
-    rooms.forEach((room) => {
-      let usable = false;
-      for (let i = 0; i < settings.horizonDays; i++) {
-        const date = addDaysIso2(today6, i);
-        if (taken.has(`${room.id}|${date}`)) continue;
-        const market = settings.source !== "stats" ? marketPrice(settings.comparables, date, room.id) : null;
-        const reasons = [];
-        let suggestions = [];
-        let reference = 0;
-        let multiplier = 1;
-        const zones = zonesOnHoliday(date);
-        const mi = monthIndex(date);
-        const sm = factor(history.month, mi, history.meanMonth, GENERIC_MONTH, gm);
-        const monthKind = monthSeason(mi);
-        const anchorPrice = settings.source !== "market" && input7.anchor ? input7.anchor(room.id, date) : 0;
-        const useAnchor = anchorPrice > 0;
-        const seasonRef = !useAnchor && settings.source !== "market" ? history.refSeason[room.id]?.[monthKind] ?? history.overallSeason[monthKind] : null;
-        const statsRef = useAnchor ? anchorPrice : settings.source !== "market" ? seasonRef ?? history.refPrice[room.id] ?? history.overallRef : null;
-        const smEff = useAnchor || seasonRef ? sm / seasonMean(monthKind) : sm;
-        const summer = mi === 6 || mi === 7;
-        const season = sm >= 1.1 || zones.length >= 2 || summer ? "high" : sm <= 0.9 && zones.length === 0 ? "low" : "mid";
-        const weekdayWeight = season === "high" ? 0.35 : season === "low" ? 0.12 : 0.25;
-        const holidayBoost = 1 + 0.05 * zones.length;
-        const upCap = season === "low" ? Math.min(maxMult, 1.05) : season === "mid" ? Math.min(maxMult, 1 + (maxMult - 1) * 0.6) : maxMult;
-        if (zones.length > 0) reasons.push(`Vacances scolaires (zone${zones.length > 1 ? "s" : ""} ${zones.join(", ")})`);
-        if (statsRef) {
-          const sw2 = factor(history.weekday, weekdayOf2(date), wMean, GENERIC_WEEKDAY, gw);
-          let m = (1 + 0.5 * (smEff - 1)) * (1 + weekdayWeight * (sw2 - 1)) * holidayBoost;
-          if (seasonRef) reasons.unshift(`Prix de base de la ${SEASON_LABEL[monthKind]} (vos s\xE9jours de la m\xEAme saison)`);
-          if (sm >= 1.1) reasons.push(`${generic ? "P\xE9riode g\xE9n\xE9ralement tr\xE8s demand\xE9e" : "Mois tr\xE8s demand\xE9 chez vous"} (${MONTHS4[mi]})`);
-          else if (sm <= 0.9) reasons.push(`${generic ? "P\xE9riode g\xE9n\xE9ralement calme" : "Mois calme chez vous"} (${MONTHS4[mi]})`);
-          if (sw2 >= 1.05 && season === "low") reasons.push(`${WEEKDAYS[weekdayOf2(date)]} hors vacances en basse saison : peu de hausse possible`);
-          else if (sw2 >= 1.05) reasons.push(`${WEEKDAYS[weekdayOf2(date)]} : jour de forte demande`);
-          else if (sw2 <= 0.95) reasons.push(`${WEEKDAYS[weekdayOf2(date)]} : jour de faible demande`);
-          if (pc && i < 30 && !generic) {
-            const mp = Math.min(1.1, Math.max(0.9, 1 + 0.4 * (pc.ratio - 1)));
-            if (mp >= 1.03) reasons.push("Vos r\xE9servations avancent plus vite que l\u2019an dernier");
-            else if (mp <= 0.97) reasons.push("Vos r\xE9servations avancent moins vite que l\u2019an dernier");
-            m *= mp;
-          }
-          if (i <= 3) {
-            m *= 0.92;
-            reasons.push("Date tr\xE8s proche encore libre");
-          }
-          m = Math.min(upCap, Math.max(minMult, m));
-          reference = statsRef;
-          multiplier = m;
-          suggestions.push(round5(statsRef * m));
-        }
-        if (market) {
-          const wm = factor(history.weekday, weekdayOf2(date), wMean, GENERIC_WEEKDAY, gw);
-          const mm = Math.min(upCap, Math.max(minMult, (1 + weekdayWeight * (wm - 1)) * holidayBoost));
-          suggestions.push(round5(market * mm));
-          if (!statsRef && wm >= 1.05 && season === "low") reasons.push(`${WEEKDAYS[weekdayOf2(date)]} hors vacances en basse saison : peu de hausse possible`);
-          reasons.push(`Prix constat\xE9s sur des biens comparables : ${String(market).replace(".", ",")} \u20AC en m\xE9diane`);
-          if (!statsRef) {
-            reference = market;
-            multiplier = mm;
-          }
-        }
-        if (suggestions.length === 0) continue;
-        usable = true;
-        let suggested = round5(suggestions.reduce((s, v) => s + v, 0) / suggestions.length);
-        const floorValue = input7.floors?.[room.id];
-        let floor;
-        if (floorValue && suggested < floorValue) {
-          floor = Math.ceil(floorValue / 5) * 5;
-          suggested = floor;
-          reasons.push(`Seuil de rentabilit\xE9 : pas en dessous de ${String(floor).replace(".", ",")} \u20AC`);
-        }
-        days2.push({ roomId: room.id, date, suggested, reference, multiplier: Math.round(multiplier * 1e3) / 1e3, reasons, ...floor ? { floor } : {} });
-      }
-      if (!usable) noReference.push(room.name);
-    });
-    const positioning = {};
-    rooms.forEach((r) => {
-      const realized = history.refPrice[r.id];
-      const tariff = input7.tariffs?.[r.id];
-      if (realized && tariff && tariff > 0) positioning[r.id] = { realized, tariff, gapPct: Math.round((realized - tariff) / tariff * 100) };
-    });
-    return { positioning, history, pace: pc, usingGenericProfile: generic, days: days2, noReference };
-  }
-  function groupAdvice(days2, currentPrice, thresholdPct = 5) {
-    const rows = [];
-    const sorted = [...days2].sort((a, b) => a.roomId.localeCompare(b.roomId) || a.date.localeCompare(b.date));
-    let cur = null;
-    const flush = () => {
-      if (!cur) return;
-      const first = cur.d[0];
-      const last = cur.d[cur.d.length - 1];
-      const current2 = cur.d.reduce((s, x) => s + currentPrice(x.roomId, x.date), 0) / cur.d.length;
-      const gap = current2 > 0 ? Math.round((first.suggested - current2) / current2 * 100) : 0;
-      const reasons = [...new Set(cur.d.flatMap((x) => x.reasons))].slice(0, 4);
-      rows.push({ roomId: first.roomId, from: first.date, to: last.date, nights: cur.d.length, suggested: first.suggested, current: Math.round(current2), gapPct: gap, level: gap >= thresholdPct ? "up" : gap <= -thresholdPct ? "down" : "keep", reasons });
-      cur = null;
-    };
-    sorted.forEach((d) => {
-      if (cur) {
-        const prev = cur.d[cur.d.length - 1];
-        if (prev.roomId === d.roomId && prev.suggested === d.suggested && dayNumber4(d.date) - dayNumber4(prev.date) === 1) {
-          cur.d.push(d);
-          return;
-        }
-        flush();
-      }
-      cur = { d: [d] };
-    });
-    flush();
-    return rows;
-  }
-  function groupAdviceMatrix(days2, roomIds, currentPrice, thresholdPct = 5) {
-    const byDate2 = /* @__PURE__ */ new Map();
-    days2.forEach((d) => byDate2.set(d.date, { ...byDate2.get(d.date) || {}, [d.roomId]: d }));
-    const dates = [...byDate2.keys()].sort();
-    const sig = (date) => roomIds.map((id) => byDate2.get(date)[id]?.suggested ?? "x").join("|");
-    const groups = [];
-    dates.forEach((date) => {
-      const g = groups[groups.length - 1];
-      const prev = g && g[g.length - 1];
-      if (g && prev && dayNumber4(date) - dayNumber4(prev) === 1 && sig(date) === sig(prev)) g.push(date);
-      else groups.push([date]);
-    });
-    return groups.map((g) => {
-      const cells = {};
-      const reasons = [];
-      roomIds.forEach((id) => {
-        const list3 = g.map((date) => byDate2.get(date)[id]).filter((x) => !!x);
-        if (list3.length === 0) return;
-        const current2 = list3.reduce((s, x) => s + currentPrice(id, x.date), 0) / list3.length;
-        const gap = current2 > 0 ? Math.round((list3[0].suggested - current2) / current2 * 100) : 0;
-        cells[id] = { floored: list3[0].floor, reference: list3[0].reference, multiplier: list3[0].multiplier, suggested: list3[0].suggested, current: Math.round(current2), gapPct: gap, level: gap >= thresholdPct ? "up" : gap <= -thresholdPct ? "down" : "keep" };
-        list3[0].reasons.forEach((r) => !reasons.includes(r) && reasons.push(r));
-      });
-      const levels = Object.values(cells).map((c) => c.level);
-      return { from: g[0], to: g[g.length - 1], nights: g.length, cells, level: levels.includes("up") ? "up" : levels.includes("down") ? "down" : "keep", reasons: reasons.slice(0, 4) };
-    });
-  }
-  function adviceRows(rows, roomName) {
-    return [
-      ["H\xE9bergement", "Du", "Au", "Nuits", "Prix conseill\xE9 (\u20AC)", "Prix actuel (\u20AC)", "\xC9cart (%)", "Conseil", "Raisons"],
-      ...rows.map((r) => [roomName(r.roomId), r.from, r.to, r.nights, r.suggested, r.current, r.gapPct, r.level === "up" ? "Augmenter" : r.level === "down" ? "Baisser" : "Garder", r.reasons.join(" ; ")])
-    ];
-  }
-  var DAY5, dayNumber4, isoOf4, weekdayOf2, monthIndex, round5, median, GENERIC_MONTH, GENERIC_WEEKDAY, real2, SEASON_LABEL, round29, addDaysIso2, MONTHS4, WEEKDAYS;
-  var init_content19 = __esm({
-    "src/modules/conseils/content.ts"() {
-      "use strict";
-      init_schoolHolidays();
-      DAY5 = 864e5;
-      dayNumber4 = (iso) => Math.floor(Date.parse(`${iso}T00:00:00Z`) / DAY5);
-      isoOf4 = (n) => new Date(n * DAY5).toISOString().slice(0, 10);
-      weekdayOf2 = (iso) => (new Date(dayNumber4(iso) * DAY5).getUTCDay() + 6) % 7;
-      monthIndex = (iso) => parseInt(iso.slice(5, 7), 10) - 1;
-      round5 = (n) => Math.round(n / 5) * 5;
-      median = (v) => {
-        if (v.length === 0) return null;
-        const s = [...v].sort((a, b) => a - b);
-        const m = Math.floor(s.length / 2);
-        return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
-      };
-      GENERIC_MONTH = [0.75, 0.85, 0.8, 1, 1.05, 1.05, 1.35, 1.4, 1, 0.9, 0.7, 1];
-      GENERIC_WEEKDAY = [0.9, 0.9, 0.9, 0.95, 1.1, 1.15, 0.95];
-      real2 = (r) => !r.isBlocked && r.reservationStatus !== "cancelled" && !/ferm|bloq/i.test(r.guestName || "");
-      SEASON_LABEL = { high: "haute saison", mid: "saison interm\xE9diaire", low: "basse saison" };
-      round29 = (n) => Math.round(n * 100) / 100;
-      addDaysIso2 = (iso, n) => isoOf4(dayNumber4(iso) + n);
-      MONTHS4 = ["janvier", "f\xE9vrier", "mars", "avril", "mai", "juin", "juillet", "ao\xFBt", "septembre", "octobre", "novembre", "d\xE9cembre"];
-      WEEKDAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
     }
   });
 
