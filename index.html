@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v294</title>
-  <meta name="application-name" content="Gestyria v294" />
+  <title>Gestyria v296</title>
+  <meta name="application-name" content="Gestyria v296" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8905,7 +8905,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "294";
+      APP_VERSION = "296";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -24982,15 +24982,15 @@ function beds24Bookings_() {
         }, [activeTab]);
         return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("header", { className: "sy-header bg-white border-b border-neutral-200/90 sticky top-0 z-40 shadow-xs", children: [
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "max-w-7xl mx-auto px-2 sm:px-6 lg:px-8", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center justify-between h-14 sm:h-16 gap-1 sm:gap-4", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "sy-brand-top flex items-center gap-2 shrink-0", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "sy-brand-top flex items-center gap-2 min-w-0 sm:shrink-0", children: [
               /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(DomaineLogo, { size: "sm" }),
               /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
                 "div",
                 {
                   onDoubleClick: onToggleAppVersion,
-                  className: "cursor-pointer select-none group",
+                  className: "cursor-pointer select-none group min-w-0",
                   children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "text-sm sm:text-xl font-bold tracking-tight text-neutral-900 font-serif flex items-center gap-1.5 leading-none transition-colors group-hover:text-sy-325032", children: establishmentName }),
+                    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "text-sm sm:text-xl font-bold tracking-tight text-neutral-900 font-serif leading-none truncate sm:overflow-visible transition-colors group-hover:text-sy-325032", children: establishmentName }),
                     appVersion === "official" ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("p", { className: "text-[10px] sm:text-xs text-neutral-500 font-sans mt-0.5 tracking-wide", children: "officiel" }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("p", { className: "text-[9px] sm:text-xs text-neutral-500 font-sans mt-0.5 hidden xs:block", children: [
                       settings.establishment.subtitle,
                       /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "hidden sm:inline text-neutral-400", title: "Nom et version du logiciel", children: [
@@ -25043,7 +25043,7 @@ function beds24Bookings_() {
             ] })
           ] }) }),
           /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "bg-neutral-50/90 border-t border-neutral-200/80 py-2", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "max-w-7xl mx-auto px-2 sm:px-6 lg:px-8", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center justify-between gap-1 sm:gap-2", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center gap-1.5 sm:gap-2 overflow-x-auto hide-scrollbar", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center gap-1 sm:gap-2 overflow-x-auto hide-scrollbar min-w-0", children: [
               /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
                 "button",
                 {
@@ -25053,7 +25053,7 @@ function beds24Bookings_() {
                   "aria-label": backLabel ? `Retour \xE0 l'onglet pr\xE9c\xE9dent : ${backLabel}` : "Retour \xE0 l'onglet pr\xE9c\xE9dent",
                   title: backLabel ? `Retour : ${backLabel}` : "Aucun onglet pr\xE9c\xE9dent",
                   "data-tab-back": true,
-                  className: "p-2 bg-white rounded-xl text-neutral-800 border border-neutral-300 shadow-2xs flex items-center justify-center shrink-0 enabled:hover:bg-neutral-100 enabled:hover:text-sy-325032 enabled:cursor-pointer enabled:active:scale-95 disabled:opacity-35 disabled:cursor-default transition-colors",
+                  className: "p-1.5 sm:p-2 bg-white rounded-xl text-neutral-800 border border-neutral-300 shadow-2xs flex items-center justify-center shrink-0 enabled:hover:bg-neutral-100 enabled:hover:text-sy-325032 enabled:cursor-pointer enabled:active:scale-95 disabled:opacity-35 disabled:cursor-default transition-colors",
                   children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(ArrowLeft, { className: "w-4 h-4 stroke-[2.2]" })
                 }
               ),
@@ -25063,7 +25063,7 @@ function beds24Bookings_() {
                   onClick: () => setIsMobileMenuOpen(true),
                   "aria-label": "Choisir l'onglet",
                   title: "Menu des onglets et navigation",
-                  className: "lg:hidden p-2 bg-white rounded-xl text-neutral-800 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer border border-neutral-300 shadow-2xs flex items-center justify-center shrink-0 active:scale-95",
+                  className: "lg:hidden p-1.5 sm:p-2 bg-white rounded-xl text-neutral-800 hover:text-neutral-900 hover:bg-neutral-100 transition-colors cursor-pointer border border-neutral-300 shadow-2xs flex items-center justify-center shrink-0 active:scale-95",
                   children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Menu, { className: "w-4 h-4 stroke-[2.2]" })
                 }
               ),
@@ -25082,7 +25082,7 @@ function beds24Bookings_() {
                   {
                     value: selectedMonth,
                     onChange: (e) => onMonthChange(Number(e.target.value)),
-                    className: "header-date-select bg-transparent text-neutral-900 font-serif font-bold text-[11px] sm:text-xs focus:outline-hidden cursor-pointer max-w-[80px] sm:max-w-none truncate px-0",
+                    className: "header-date-select bg-transparent text-neutral-900 font-serif font-bold text-[11px] sm:text-xs focus:outline-hidden cursor-pointer max-w-[56px] sm:max-w-none truncate px-0",
                     children: MONTH_NAMES_FR.map((m, idx) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("option", { value: idx, children: m }, m))
                   }
                 ),
@@ -25091,7 +25091,7 @@ function beds24Bookings_() {
                   {
                     value: selectedYear,
                     onChange: (e) => onYearChange(Number(e.target.value)),
-                    className: "header-date-select bg-transparent text-neutral-900 font-mono font-bold text-[11px] sm:text-xs focus:outline-hidden cursor-pointer max-w-[48px] sm:max-w-none px-0",
+                    className: "header-date-select bg-transparent text-neutral-900 font-mono font-bold text-[11px] sm:text-xs focus:outline-hidden cursor-pointer max-w-[42px] sm:max-w-none px-0",
                     children: years.map((y) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("option", { value: y, children: y }, y))
                   }
                 ),
@@ -25106,7 +25106,7 @@ function beds24Bookings_() {
                 )
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(EstablishmentSwitcher, {}),
-              /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center gap-1 px-2 py-1.5 sm:px-2.5 bg-emerald-100/90 border border-emerald-300 text-emerald-900 rounded-xl font-mono font-bold text-[10px] sm:text-xs shadow-2xs shrink-0", title: "Revenu total du mois s\xE9lectionn\xE9", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "flex items-center gap-1 px-1.5 py-1.5 sm:px-2.5 bg-emerald-100/90 border border-emerald-300 text-emerald-900 rounded-xl font-mono font-bold text-[10px] sm:text-xs shadow-2xs shrink-0", title: "Revenu total du mois s\xE9lectionn\xE9", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { className: "sm:hidden", "data-revenue-mobile": true, children: [
                   Math.round(currentMonthRevenue),
                   " \u20AC"
@@ -25114,12 +25114,12 @@ function beds24Bookings_() {
                 /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { className: "hidden sm:inline", children: formatCurrency(currentMonthRevenue) })
               ] })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "shrink-0 flex items-center gap-1.5", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "shrink-0 flex items-center gap-1 sm:gap-1.5", children: [
               canOpenSettings() && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
                 "button",
                 {
                   onClick: onOpenSettings,
-                  className: "sm:hidden p-2 bg-white rounded-xl text-neutral-800 hover:text-sy-325032 hover:bg-neutral-100 transition-colors cursor-pointer border border-neutral-300 shadow-2xs flex items-center justify-center active:scale-95",
+                  className: "sm:hidden p-1.5 bg-white rounded-xl text-neutral-800 hover:text-sy-325032 hover:bg-neutral-100 transition-colors cursor-pointer border border-neutral-300 shadow-2xs flex items-center justify-center active:scale-95",
                   title: "Param\xE9trage de l'\xE9tablissement et des modules",
                   "aria-label": "Param\xE9trage",
                   children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Settings, { className: "w-4 h-4 stroke-[2.2]" })
@@ -25129,7 +25129,7 @@ function beds24Bookings_() {
                 "button",
                 {
                   onClick: () => onOpenNewReservation(),
-                  className: "sm:hidden p-2.5 bg-sy-325032 hover:bg-sy-253d25 text-white rounded-xl shadow-xs transition-all cursor-pointer active:scale-95 flex items-center justify-center",
+                  className: "sm:hidden p-2 bg-sy-325032 hover:bg-sy-253d25 text-white rounded-xl shadow-xs transition-all cursor-pointer active:scale-95 flex items-center justify-center",
                   title: "Nouvelle r\xE9servation",
                   children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(Plus, { className: "w-4 h-4 stroke-[2.5]" })
                 }
@@ -37610,7 +37610,7 @@ ${stock.map((s) => `- ${s.name}${s.place ? ` (${s.place})` : ""} : ${String(s.ga
                 }
               )
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("div", { className: "flex gap-1 mt-3 p-0.5 bg-neutral-100 rounded-xl w-full sm:w-fit", "data-meals-views": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("div", { className: "flex gap-1 mt-3 p-0.5 bg-neutral-100 rounded-xl w-full sm:w-fit overflow-x-auto hide-scrollbar", "data-meals-views": true, children: [
               ["menu", "Carte", "Carte"],
               ["settings", "Horaires et r\xE9glages", "Horaires"],
               ...ingredientsOn ? [["ingredients", "Ingr\xE9dients et co\xFBts", "Ingr\xE9dients"]] : [],
@@ -40317,7 +40317,7 @@ ${m.message}
                 }
               )
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("div", { className: "flex gap-1 mt-3 p-0.5 bg-neutral-100 rounded-xl w-full sm:w-fit", "data-livret-views": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime51.jsx)("div", { className: "flex gap-1 mt-3 p-0.5 bg-neutral-100 rounded-xl w-full sm:w-fit overflow-x-auto hide-scrollbar", "data-livret-views": true, children: [
               ["content", "Contenu"],
               ["publication", "Publication"],
               ["emails", "E-mails du s\xE9jour"],
