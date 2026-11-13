@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v296</title>
-  <meta name="application-name" content="Gestyria v296" />
+  <title>Gestyria v297</title>
+  <meta name="application-name" content="Gestyria v297" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8905,7 +8905,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "296";
+      APP_VERSION = "297";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -24937,6 +24937,13 @@ function beds24Bookings_() {
         };
         const [isExportMenuOpen, setIsExportMenuOpen] = (0, import_react21.useState)(false);
         const [isMobileMenuOpen, setIsMobileMenuOpen] = (0, import_react21.useState)(false);
+        const [narrow, setNarrow] = (0, import_react21.useState)(() => typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches);
+        (0, import_react21.useEffect)(() => {
+          const mq = window.matchMedia("(max-width: 639px)");
+          const on = () => setNarrow(mq.matches);
+          mq.addEventListener("change", on);
+          return () => mq.removeEventListener("change", on);
+        }, []);
         const exportMenuRef = (0, import_react21.useRef)(null);
         (0, import_react21.useEffect)(() => {
           const handleClickOutside = (event) => {
@@ -25082,8 +25089,8 @@ function beds24Bookings_() {
                   {
                     value: selectedMonth,
                     onChange: (e) => onMonthChange(Number(e.target.value)),
-                    className: "header-date-select bg-transparent text-neutral-900 font-serif font-bold text-[11px] sm:text-xs focus:outline-hidden cursor-pointer max-w-[56px] sm:max-w-none truncate px-0",
-                    children: MONTH_NAMES_FR.map((m, idx) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("option", { value: idx, children: m }, m))
+                    className: "header-date-select bg-transparent text-neutral-900 font-serif font-bold text-[11px] sm:text-xs focus:outline-hidden cursor-pointer sm:max-w-none px-0",
+                    children: MONTH_NAMES_FR.map((m, idx) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("option", { value: idx, children: narrow && m.length > 4 ? m.slice(0, 3) + "." : m }, m))
                   }
                 ),
                 /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
@@ -25091,7 +25098,7 @@ function beds24Bookings_() {
                   {
                     value: selectedYear,
                     onChange: (e) => onYearChange(Number(e.target.value)),
-                    className: "header-date-select bg-transparent text-neutral-900 font-mono font-bold text-[11px] sm:text-xs focus:outline-hidden cursor-pointer max-w-[42px] sm:max-w-none px-0",
+                    className: "header-date-select bg-transparent text-neutral-900 font-mono font-bold text-[11px] sm:text-xs focus:outline-hidden cursor-pointer sm:max-w-none px-0",
                     children: years.map((y) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("option", { value: y, children: y }, y))
                   }
                 ),
