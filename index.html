@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v298</title>
-  <meta name="application-name" content="Gestyria v298" />
+  <title>Gestyria v299</title>
+  <meta name="application-name" content="Gestyria v299" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -6271,6 +6271,43 @@ footer{background:#111}
     }
   });
 
+  // src/core/sync/autoSync.ts
+  function requestAutoSync() {
+    try {
+      window.dispatchEvent(new CustomEvent(AUTO_SYNC_EVENT));
+    } catch {
+    }
+  }
+  function createDebouncedSync(run, delayMs = AUTO_SYNC_DELAY_MS, timers = browserTimers) {
+    let timer = null;
+    return {
+      request() {
+        if (timer !== null) timers.clear(timer);
+        timer = timers.set(() => {
+          timer = null;
+          run();
+        }, delayMs);
+      },
+      cancel() {
+        if (timer !== null) timers.clear(timer);
+        timer = null;
+      },
+      pending: () => timer !== null
+    };
+  }
+  var AUTO_SYNC_EVENT, AUTO_SYNC_DELAY_MS, browserTimers;
+  var init_autoSync = __esm({
+    "src/core/sync/autoSync.ts"() {
+      "use strict";
+      AUTO_SYNC_EVENT = "domaine_sylvaria_data_changed";
+      AUTO_SYNC_DELAY_MS = 2500;
+      browserTimers = {
+        set: ((fn, ms) => setTimeout(fn, ms)),
+        clear: ((id) => clearTimeout(id))
+      };
+    }
+  });
+
   // src/core/settings/settingsStore.ts
   function mergeWithDefaults(stored) {
     const defaults = createDefaultSettings();
@@ -6356,6 +6393,7 @@ footer{background:#111}
   function saveSettings(next, journalMessage) {
     writeSettings({ ...next, updatedAt: (/* @__PURE__ */ new Date()).toISOString() });
     if (journalMessage) logEvent("info", journalMessage);
+    if (!sessionOnly) requestAutoSync();
   }
   function hasSavedSettings() {
     return readStored() !== null;
@@ -6418,6 +6456,7 @@ footer{background:#111}
       init_registry();
       init_journal();
       init_storage();
+      init_autoSync();
       init_license();
       SETTINGS_STORAGE_KEY = "domaine_sylvaria_settings_v1";
       current = (() => {
@@ -6485,6 +6524,7 @@ footer{background:#111}
       })
     );
     writeRateOverrides(next);
+    requestAutoSync();
   }
   function subscribe2(cb) {
     listeners4.add(cb);
@@ -6573,6 +6613,7 @@ footer{background:#111}
       "use strict";
       import_react2 = __require("react");
       init_settingsStore();
+      init_autoSync();
       RATE_OVERRIDES_STORAGE_KEY = "domaine_sylvaria_rate_overrides_v1";
       MANUAL_PRICE_COLOR = "#7C3AED";
       overrides = readStoredOverrides();
@@ -7045,6 +7086,7 @@ footer{background:#111}
   }
   function saveStoredBreakfastIngredients(items) {
     safeSetItem(INGREDIENTS_STORAGE_KEY, JSON.stringify(items));
+    requestAutoSync();
   }
   function getStoredMealItems() {
     try {
@@ -7059,6 +7101,7 @@ footer{background:#111}
   }
   function saveStoredMealItems(items) {
     safeSetItem(MEAL_ITEMS_STORAGE_KEY, JSON.stringify(items));
+    requestAutoSync();
   }
   function calculateIngredientCost(item2) {
     if (item2.unit === "u") {
@@ -7840,6 +7883,7 @@ footer{background:#111}
     if (dismissed.includes(uid2)) return;
     try {
       localStorage.setItem(ICAL_DISMISSED_STORAGE_KEY, JSON.stringify([...dismissed, uid2]));
+      requestAutoSync();
     } catch {
     }
   }
@@ -8391,6 +8435,7 @@ footer{background:#111}
       init_catalog();
       init_costFields();
       init_pricing();
+      init_autoSync();
       init_rateCalendar();
       ROOMS = { ...LEGACY_ROOMS };
       refreshRooms();
@@ -8869,7 +8914,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "298";
+      APP_VERSION = "299";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -29486,7 +29531,7 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
             /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("strong", { children: "lisent" }),
             " les calendriers des plateformes (import). Pour l'autre sens, c'est la plateforme qui vient lire un calendrier fourni par l'application : collez le lien ci-dessous dans Airbnb (Calendrier > Disponibilit\xE9 > Importer un calendrier) ou Booking (Tarifs et disponibilit\xE9s > Synchroniser les calendriers > Importer). Chaque plateforme y retrouve vos r\xE9servations directes, vos blocages et celles des ",
             /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("em", { children: "autres" }),
-            " plateformes, jamais les siennes ; sans nom ni montant. Elle actualise ce calendrier elle-m\xEAme, de quelques heures \xE0 une journ\xE9e : une r\xE9servation prise entre-temps peut encore \xEAtre propos\xE9e. Les dates viennent de la derni\xE8re sauvegarde dans Google (\xAB Enregistrer \xBB). Ces liens donnent acc\xE8s \xE0 vos dates : ne les communiquez pas."
+            " plateformes, jamais les siennes ; sans nom ni montant. Elle actualise ce calendrier elle-m\xEAme, de quelques heures \xE0 une journ\xE9e : une r\xE9servation prise entre-temps peut encore \xEAtre propos\xE9e. Les dates sont celles du dernier envoi vers Google, qui part tout seul apr\xE8s chaque modification (le bouton \xAB Enregistrer \xBB le force). Ces liens donnent acc\xE8s \xE0 vos dates : ne les communiquez pas."
           ] }),
           !target ? /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "text-xs text-neutral-500", "data-ical-export-nourl": true, children: "Renseignez d'abord le connecteur Google (Param\xE9trage > Google Sheets)." }) : token === null ? /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "text-xs text-neutral-500", children: "V\xE9rification du connecteur\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime19.jsxs)("div", { className: "space-y-3", children: [
             error && /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("p", { className: "p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-950", "data-ical-export-error": true, children: error }),
@@ -29649,7 +29694,7 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
             /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(CalendarSync, { className: "w-4 h-4 text-sy-325032" }),
             "Calendriers iCal"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(InfoNote, { children: "Collez le lien d'export iCal de chaque plateforme (Airbnb : Calendrier > Disponibilit\xE9 > Exporter ; Booking : Tarifs et disponibilit\xE9s > Synchroniser les calendriers). Ces liens sont envoy\xE9s au Google Sheet avec le bouton \xAB Enregistrer \xBB, puis lus par l'import automatique (toutes les heures). Ils donnent acc\xE8s \xE0 vos calendriers : ne les communiquez pas. Un lien laiss\xE9 vide pour un h\xE9bergement garde celui enregistr\xE9 dans le script Google." }),
+          /* @__PURE__ */ (0, import_jsx_runtime20.jsx)(InfoNote, { children: "Collez le lien d'export iCal de chaque plateforme (Airbnb : Calendrier > Disponibilit\xE9 > Exporter ; Booking : Tarifs et disponibilit\xE9s > Synchroniser les calendriers). Ces liens sont envoy\xE9s au Google Sheet automatiquement (le bouton \xAB Enregistrer \xBB le force), puis lus par l'import automatique (toutes les heures). Ils donnent acc\xE8s \xE0 vos calendriers : ne les communiquez pas. Un lien laiss\xE9 vide pour un h\xE9bergement garde celui enregistr\xE9 dans le script Google." }),
           /* @__PURE__ */ (0, import_jsx_runtime20.jsx)("div", { className: "space-y-3", children: settings.accommodations.map((acc) => {
             const feeds = draft.feeds[acc.id] || [];
             return /* @__PURE__ */ (0, import_jsx_runtime20.jsxs)("div", { className: `p-3 rounded-xl border border-neutral-200 ${acc.active ? "bg-white" : "bg-neutral-50 opacity-70"}`, children: [
@@ -30958,6 +31003,7 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
   function savePrivacy(config) {
     try {
       localStorage.setItem(PRIVACY_KEY, JSON.stringify(config));
+      requestAutoSync();
     } catch {
     }
   }
@@ -31166,6 +31212,7 @@ ${policy}</body></html>`;
   var init_privacy = __esm({
     "src/core/privacy/privacy.ts"() {
       "use strict";
+      init_autoSync();
       PRIVACY_KEY = "domaine_sylvaria_privacy_v1";
       ANON_NAME = "Client anonymis\xE9";
       CONTACT_EDITS_KEY = "domaine_sylvaria_contact_edits_v1";
@@ -80044,6 +80091,16 @@ ${annex}
         window.removeEventListener("domaine_sylvaria_trigger_sync", handleSyncEvent);
       };
     }, [reservations, externalReviews, triggerBackgroundSync]);
+    const triggerSyncRef = (0, import_react166.useRef)(triggerBackgroundSync);
+    triggerSyncRef.current = triggerBackgroundSync;
+    (0, import_react166.useEffect)(() => {
+      const debounced = createDebouncedSync(() => triggerSyncRef.current(reservationsRef.current, externalReviewsRef.current));
+      window.addEventListener(AUTO_SYNC_EVENT, debounced.request);
+      return () => {
+        window.removeEventListener(AUTO_SYNC_EVENT, debounced.request);
+        debounced.cancel();
+      };
+    }, []);
     (0, import_react166.useEffect)(() => {
       let warned = false;
       const onLocked = (ev) => {
@@ -81176,6 +81233,7 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       init_InvoiceConfigModal();
       init_InvoiceModal();
       init_invoices();
+      init_autoSync();
       init_GoogleSheetsSyncModal();
       init_ReservationModal();
       init_ReservationDetailsModal();
