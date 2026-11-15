@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v300</title>
-  <meta name="application-name" content="Gestyria v300" />
+  <title>Gestyria v301</title>
+  <meta name="application-name" content="Gestyria v301" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8914,7 +8914,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "300";
+      APP_VERSION = "301";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -73189,6 +73189,9 @@ ${text}` : text });
         paid,
         credit: false
       });
+      (c.partialCredits || []).forEach((p) => {
+        lines2.push({ number: p.number, date: p.date, ...stayLine(c, r), total: -round211(p.amount || 0), status: `Avoir partiel sur ${c.invoiceNumber || ""}`, paid: false, credit: true });
+      });
     });
     cancelled.forEach((x) => {
       const r = x.reservationId ? byId.get(x.reservationId) : void 0;
@@ -73408,6 +73411,13 @@ ${text}` : text });
     const max = used.reduce((n, u) => Math.max(n, sequenceOf(u, prefix, year)), floor);
     return `${prefix}-${year}-${String(max + 1).padStart(4, "0")}`;
   }
+  function usedCreditNumbers() {
+    return [
+      ...Object.keys(readCancelled()),
+      ...Object.values(readCancelled()).flatMap((c) => (c?.invoice?.partialCredits || []).map((p) => p.number)),
+      ...Object.values(readRegistry2()).flatMap((c) => (c?.partialCredits || []).map((p) => p.number))
+    ];
+  }
   function usedInvoiceNumbers() {
     const trash = readJson4(TRASH_KEY2, []);
     return [
@@ -73496,6 +73506,24 @@ ${text}` : text });
     notify17();
     return registry[reservationId];
   }
+  function createPartialCredit(reservationId, amount, reason, date = today6()) {
+    if (!writeAllowed(REGISTRY_KEY3)) return { ok: false, error: "Licence en lecture seule : l'avoir ne peut pas \xEAtre cr\xE9\xE9." };
+    const registry = readRegistry2();
+    const invoice = registry[reservationId];
+    if (!isValidated(invoice)) return { ok: false, error: "Aucune facture valid\xE9e pour ce s\xE9jour." };
+    if (!reason.trim()) return { ok: false, error: "Indiquez le motif de l'avoir : il figure sur le document." };
+    const value = round212(amount);
+    if (!(value > 0)) return { ok: false, error: "Le montant de l'avoir doit \xEAtre sup\xE9rieur \xE0 z\xE9ro." };
+    const remaining = round212((invoice.totalAmount || 0) - creditedAmount(invoice));
+    if (value > remaining) return { ok: false, error: `Le montant d\xE9passe ce qui reste \xE0 cr\xE9diter sur cette facture (${remaining.toFixed(2).replace(".", ",")} \u20AC).` };
+    if (invoice.invoiceDate && date < invoice.invoiceDate) return { ok: false, error: "L'avoir ne peut pas \xEAtre dat\xE9 avant la facture." };
+    const creditNote = { number: nextNumber("AV", date.slice(0, 4), usedCreditNumbers()), date, reason: reason.trim(), amount: value, partial: true };
+    const updated = { ...invoice, partialCredits: [...invoice.partialCredits || [], creditNote] };
+    registry[reservationId] = updated;
+    writeJson(REGISTRY_KEY3, registry);
+    notify17();
+    return { ok: true, invoice: updated, entry: { reservationId, invoice: updated, creditNote, cancelledAt: (/* @__PURE__ */ new Date()).toISOString() } };
+  }
   function cancelWithCreditNote(reservationId, reason, date = today6(), fallback) {
     if (!writeAllowed(REGISTRY_KEY3)) return { ok: false, error: "Licence en lecture seule : la facture ne peut pas \xEAtre annul\xE9e." };
     const registry = readRegistry2();
@@ -73503,13 +73531,16 @@ ${text}` : text });
     if (!isValidated(invoice)) return { ok: false, error: "Aucune facture valid\xE9e pour ce s\xE9jour." };
     if (!reason.trim()) return { ok: false, error: "Indiquez le motif de l'annulation : il figure sur l'avoir." };
     if (invoice.invoiceDate && date < invoice.invoiceDate) return { ok: false, error: "L'avoir ne peut pas \xEAtre dat\xE9 avant la facture qu'il annule." };
+    const remaining = round212((invoice.totalAmount || 0) - creditedAmount(invoice));
+    if (!(remaining > 0)) return { ok: false, error: "Cette facture est d\xE9j\xE0 enti\xE8rement cr\xE9dit\xE9e." };
     const year = date.slice(0, 4);
     const cancelledMap = readCancelled();
     const creditNote = {
-      number: nextNumber("AV", year, Object.keys(cancelledMap)),
+      number: nextNumber("AV", year, usedCreditNumbers()),
       date,
       reason: reason.trim(),
-      amount: round212(invoice.totalAmount || 0)
+      amount: remaining
+      // Le reste dû : l'avoir d'annulation tient compte des avoirs partiels déjà émis
     };
     const frozen = { ...invoice, snapshot: invoice.snapshot || fallback?.snapshot, seller: invoice.seller || fallback?.seller };
     const cancelled = { reservationId, invoice: frozen, creditNote, cancelledAt: (/* @__PURE__ */ new Date()).toISOString() };
@@ -73520,7 +73551,7 @@ ${text}` : text });
     notify17();
     return { ok: true, cancelled };
   }
-  var REGISTRY_KEY3, DRAFTS_KEY, CANCELLED_KEY, TRASH_KEY2, COUNTER_PREFIX, INVOICES_EVENT, readJson4, writeJson, notify17, today6, round212, readRegistry2, readDrafts, readCancelled, listCancelled, isValidated, snapshotAsReservation, counterOf, peekInvoiceNumber;
+  var REGISTRY_KEY3, DRAFTS_KEY, CANCELLED_KEY, TRASH_KEY2, COUNTER_PREFIX, INVOICES_EVENT, readJson4, writeJson, notify17, today6, round212, readRegistry2, readDrafts, readCancelled, listCancelled, isValidated, snapshotAsReservation, creditedAmount, counterOf, peekInvoiceNumber;
   var init_invoices = __esm({
     "src/core/invoicing/invoices.ts"() {
       "use strict";
@@ -73556,6 +73587,7 @@ ${text}` : text });
       listCancelled = () => Object.values(readCancelled()).sort((a, b) => b.creditNote.number.localeCompare(a.creditNote.number, void 0, { numeric: true }));
       isValidated = (c) => !!c && typeof c === "object" && !!c.invoiceNumber;
       snapshotAsReservation = (snapshot) => ({ ...snapshot });
+      creditedAmount = (invoice) => round212((invoice?.partialCredits || []).reduce((n, c) => n + (c.amount || 0), 0));
       counterOf = (year) => {
         const n = parseInt(localStorage.getItem(COUNTER_PREFIX + year) || "0", 10);
         return isNaN(n) || n < 0 ? 0 : n;
@@ -74191,6 +74223,9 @@ ${text}` : text });
         );
         const [problem, setProblem] = (0, import_react158.useState)(null);
         const [cancelOpen, setCancelOpen] = (0, import_react158.useState)(false);
+        const [partialOpen, setPartialOpen] = (0, import_react158.useState)(false);
+        const [partialAmount, setPartialAmount] = (0, import_react158.useState)("");
+        const [partialReason, setPartialReason] = (0, import_react158.useState)("");
         const [cancelReason, setCancelReason] = (0, import_react158.useState)("");
         (0, import_react158.useEffect)(() => {
           if (isOpen) {
@@ -74307,6 +74342,17 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
           onToast(`Facture ${res2.cancelled.invoice.invoiceNumber} annul\xE9e par l'avoir ${res2.cancelled.creditNote.number}.`);
           onClose();
           onCreditNote?.(res2.cancelled);
+        };
+        const handlePartialCredit = () => {
+          const amount = parseFloat(partialAmount.replace(",", "."));
+          const res2 = createPartialCredit(reservation.id, amount, partialReason);
+          if (res2.ok === false) {
+            onToast(res2.error);
+            return;
+          }
+          onToast(`Avoir partiel ${res2.entry.creditNote.number} cr\xE9\xE9 sur la facture ${res2.invoice.invoiceNumber}.`);
+          onClose();
+          onCreditNote?.(res2.entry);
         };
         const paymentChanged = locked && (paymentType !== validated.paymentType || paymentState !== validated.paymentState);
         return /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200", children: /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "bg-white rounded-2xl shadow-2xl border border-neutral-300 max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden my-auto", children: [
@@ -74555,6 +74601,45 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
               ] }),
               problem.missing && /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("ul", { className: "list-disc pl-5", children: problem.missing.map((m) => /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("li", { children: m }, m)) })
             ] }),
+            locked && (validated?.partialCredits?.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { "data-invoice-partials": true, className: "bg-neutral-50 border border-neutral-200 rounded-xl p-3 space-y-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "font-bold text-neutral-800", children: [
+                "Avoirs partiels sur cette facture (d\xE9j\xE0 cr\xE9dit\xE9 : ",
+                formatCurrency(creditedAmount(validated)),
+                ")"
+              ] }),
+              validated.partialCredits.map((p) => /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "flex items-center justify-between gap-2", "data-partial-row": true, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("span", { children: [
+                  p.number,
+                  " \xB7 ",
+                  formatCurrency(-p.amount),
+                  " \xB7 ",
+                  p.reason
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("button", { type: "button", "data-partial-view": true, onClick: () => {
+                  onClose();
+                  onCreditNote?.({ reservationId: reservation.id, invoice: validated, creditNote: p, cancelledAt: "" });
+                }, className: "px-2 py-1 font-semibold text-sy-325032 bg-emerald-50 border border-emerald-200 rounded-lg cursor-pointer", children: "Voir" })
+              ] }, p.number))
+            ] }),
+            locked && partialOpen && /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { "data-invoice-partial": true, className: "bg-amber-50 border border-amber-300 rounded-xl p-4 space-y-2.5", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "font-bold text-amber-900 text-sm", children: [
+                "Avoir partiel sur la facture ",
+                validated.invoiceNumber
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("p", { className: "text-amber-900", children: [
+                "Cr\xE9dite une partie de la facture (geste commercial, erreur sur un poste). La facture reste valable pour le reste. Il reste ",
+                formatCurrency(Math.max(0, calculatedTotal - creditedAmount(validated))),
+                " \xE0 cr\xE9diter au maximum. Cette op\xE9ration ne s'annule pas."
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("label", { className: "block font-semibold text-amber-900", children: "Montant \xE0 cr\xE9diter (\u20AC TTC)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("input", { type: "text", inputMode: "decimal", "data-invoice-partial-amount": true, value: partialAmount, onChange: (e) => setPartialAmount(e.target.value), className: "w-full px-3 py-2 bg-white border border-amber-300 rounded-lg" }),
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("label", { className: "block font-semibold text-amber-900", children: "Motif (il figure sur l'avoir)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("input", { type: "text", "data-invoice-partial-reason": true, value: partialReason, onChange: (e) => setPartialReason(e.target.value), placeholder: "Ex : geste commercial, repas non consomm\xE9s", className: "w-full px-3 py-2 bg-white border border-amber-300 rounded-lg" }),
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "flex justify-end gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("button", { type: "button", onClick: () => setPartialOpen(false), className: "px-3 py-2 font-semibold text-neutral-600 hover:bg-neutral-200 rounded-xl cursor-pointer", children: "Annuler" }),
+                /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("button", { type: "button", "data-invoice-partial-confirm": true, disabled: !partialReason.trim() || !(parseFloat(partialAmount.replace(",", ".")) > 0), onClick: handlePartialCredit, className: "px-4 py-2 font-bold text-white bg-amber-700 hover:bg-amber-800 rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-default", children: "Cr\xE9er l'avoir partiel" })
+              ] })
+            ] }),
             locked && cancelOpen && /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { "data-invoice-cancel": true, className: "bg-rose-50 border border-rose-300 rounded-xl p-4 space-y-2.5", children: [
               /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "font-bold text-rose-900 text-sm", children: [
                 "Annuler la facture ",
@@ -74599,6 +74684,16 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
                 /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("strong", { className: "text-neutral-900 font-mono", children: formatCurrency(calculatedTotal) })
               ] }),
               locked ? /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "flex flex-wrap items-center justify-end gap-2", children: [
+                !cancelOpen && !partialOpen && /* @__PURE__ */ (0, import_jsx_runtime157.jsx)(
+                  "button",
+                  {
+                    type: "button",
+                    "data-invoice-partial-open": true,
+                    onClick: () => setPartialOpen(true),
+                    className: "flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors cursor-pointer",
+                    children: /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("span", { children: "Avoir partiel" })
+                  }
+                ),
                 !cancelOpen && /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)(
                   "button",
                   {
@@ -74792,19 +74887,21 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
         const docLabel = isCredit ? "Avoir" : "Facture";
         const todayFormatted = formatDateFr(isCredit ? cancelled.creditNote.date : config.invoiceDate || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
         const sign = isCredit ? -1 : 1;
-        const roomAmount = sign * (reservation.roomAmount || 0);
-        const mealsAmount = sign * (reservation.mealsAmount || 0);
-        const drinksAmount = sign * (reservation.drinksAmount || 0);
-        const dogCareAmount = sign * (reservation.dogCareAmount || 0);
-        const otherAmount = sign * (reservation.otherAmount || 0);
-        const touristTaxAmount = sign * (reservation.touristTaxAmount || 0);
+        const factor = isCredit && cancelled.invoice.totalAmount ? Math.min(1, (cancelled.creditNote.amount || 0) / cancelled.invoice.totalAmount) : 1;
+        const k = sign * factor;
+        const roomAmount = k * (reservation.roomAmount || 0);
+        const mealsAmount = k * (reservation.mealsAmount || 0);
+        const drinksAmount = k * (reservation.drinksAmount || 0);
+        const dogCareAmount = k * (reservation.dogCareAmount || 0);
+        const otherAmount = k * (reservation.otherAmount || 0);
+        const touristTaxAmount = k * (reservation.touristTaxAmount || 0);
         const displayedRoomAmount = config.showHebergement ? roomAmount : 0;
         const displayedMealsAmount = config.showRepas ? mealsAmount : 0;
         const displayedDrinksAmount = config.showRepas ? drinksAmount : 0;
         const displayedDogCareAmount = config.showAutre ? dogCareAmount : 0;
         const displayedOtherAmount = config.showAutre ? otherAmount : 0;
         const displayedTouristTaxAmount = config.showAutre ? touristTaxAmount : 0;
-        const totalAmount = config.showHebergement || config.showRepas || config.showAutre ? displayedRoomAmount + displayedMealsAmount + displayedDrinksAmount + displayedDogCareAmount + displayedOtherAmount + displayedTouristTaxAmount : sign * (reservation.totalAmount || 0);
+        const totalAmount = config.showHebergement || config.showRepas || config.showAutre ? displayedRoomAmount + displayedMealsAmount + displayedDrinksAmount + displayedDogCareAmount + displayedOtherAmount + displayedTouristTaxAmount : k * (reservation.totalAmount || 0);
         const vat = vatBreakdown(
           [
             { service: "room", ttc: displayedRoomAmount },
@@ -74834,7 +74931,7 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
                     "Facture \u2022 ",
                     invoiceNumber
                   ] }) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("p", { className: "text-[11px] text-neutral-300", children: isCredit ? `Annule la facture ${cancelled.invoice.invoiceNumber}` : cancelled ? `Facture annul\xE9e par l'avoir ${cancelled.creditNote.number}` : isDraft ? "Sans num\xE9ro : \xE0 valider dans Facturation" : `Facture valid\xE9e pour ${config.guestName || reservation.guestName}` })
+                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("p", { className: "text-[11px] text-neutral-300", children: isCredit ? cancelled.creditNote.partial ? `Avoir partiel sur la facture ${cancelled.invoice.invoiceNumber}` : `Annule la facture ${cancelled.invoice.invoiceNumber}` : cancelled ? `Facture annul\xE9e par l'avoir ${cancelled.creditNote.number}` : isDraft ? "Sans num\xE9ro : \xE0 valider dans Facturation" : `Facture valid\xE9e pour ${config.guestName || reservation.guestName}` })
                 ] })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("div", { className: "flex items-center gap-2", children: [
@@ -74966,7 +75063,7 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
                   ] }),
                   isCredit && /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)(import_jsx_runtime158.Fragment, { children: [
                     /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("div", { "data-credit-reference": true, children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("strong", { children: "Annule la facture :" }),
+                      /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("strong", { children: cancelled.creditNote.partial ? "Avoir partiel sur la facture :" : "Annule la facture :" }),
                       " n\xB0 ",
                       cancelled.invoice.invoiceNumber,
                       " du ",
