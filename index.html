@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v299</title>
-  <meta name="application-name" content="Gestyria v299" />
+  <title>Gestyria v300</title>
+  <meta name="application-name" content="Gestyria v300" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8914,7 +8914,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "299";
+      APP_VERSION = "300";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -26497,6 +26497,43 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
     }
   });
 
+  // src/core/invoicing/vat.ts
+  function vatBreakdown(lines2, rates, exempt = 0) {
+    const enabled = vatEnabled(rates);
+    const byRate = /* @__PURE__ */ new Map();
+    for (const l of lines2) {
+      const rate = enabled ? cleanRate(rates?.[l.service]) : 0;
+      byRate.set(rate, round25((byRate.get(rate) || 0) + (l.ttc || 0)));
+    }
+    const groups = [...byRate.entries()].sort((a, b) => a[0] - b[0]).map(([rate, ttc]) => {
+      const ht = rate > 0 ? round25(ttc / (1 + rate / 100)) : ttc;
+      return { rate, ht, vat: round25(ttc - ht), ttc };
+    });
+    const totalHt = round25(groups.reduce((s, g) => s + g.ht, 0));
+    const totalVat = round25(groups.reduce((s, g) => s + g.vat, 0));
+    const ex = round25(exempt || 0);
+    return { enabled, groups, totalHt, totalVat, exempt: ex, totalTtc: round25(groups.reduce((s, g) => s + g.ttc, 0) + ex) };
+  }
+  var VAT_SERVICES, round25, cleanRate, vatEnabled;
+  var init_vat = __esm({
+    "src/core/invoicing/vat.ts"() {
+      "use strict";
+      VAT_SERVICES = [
+        { id: "room", label: "H\xE9bergement" },
+        { id: "meals", label: "Repas et petits-d\xE9jeuners" },
+        { id: "drinks", label: "Boissons" },
+        { id: "dogCare", label: "Garde d'animaux" },
+        { id: "other", label: "Prestations annexes" }
+      ];
+      round25 = (n) => Math.round(n * 100) / 100;
+      cleanRate = (v) => {
+        const n = typeof v === "number" ? v : parseFloat(String(v ?? "").replace(",", "."));
+        return isFinite(n) && n > 0 && n < 100 ? round25(n) : 0;
+      };
+      vatEnabled = (rates) => !!rates && VAT_SERVICES.some((s) => cleanRate(rates[s.id]) > 0);
+    }
+  });
+
   // src/modules/tarifs/LastMinuteCard.tsx
   var import_jsx_runtime10, LastMinuteCard;
   var init_LastMinuteCard = __esm({
@@ -26868,6 +26905,7 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
       import_react27 = __require("react");
       init_lucide_react();
       init_touristTax();
+      init_vat();
       init_LastMinuteCard();
       init_cancellation();
       init_settingsStore();
@@ -26915,6 +26953,21 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
             /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Site internet", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(TextInput, { value: draft.website, onChange: (v) => set({ website: v }) }) }),
             /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "SIRET", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(TextInput, { value: draft.siret, onChange: (v) => set({ siret: v }) }) }),
             /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: "Mention TVA", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(TextInput, { value: draft.vatMention, onChange: (v) => set({ vatMention: v }) }) })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime13.jsxs)("div", { className: "mt-5 rounded-xl border border-neutral-200 p-3.5", "data-vat-rates": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "text-xs font-bold text-neutral-800 mb-1", children: "TVA par prestation (facultatif)" }),
+            /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("p", { className: "text-[11px] text-neutral-600 mb-3 leading-relaxed", children: "Si vous \xEAtes assujetti \xE0 la TVA, saisissez ci-dessous le taux de chaque prestation (en %). Gestyria ne propose aucun taux : v\xE9rifiez-les aupr\xE8s de votre comptable ou du service des imp\xF4ts. Les montants de vos r\xE9servations sont alors consid\xE9r\xE9s comme TTC et la facture d\xE9taille hors taxe, TVA et TTC. La taxe de s\xE9jour n'est jamais soumise \xE0 la TVA. Laissez vide si vous n'\xEAtes pas assujetti : la facture reprend alors seulement la mention de TVA ci-dessus." }),
+            /* @__PURE__ */ (0, import_jsx_runtime13.jsx)("div", { className: "grid grid-cols-1 sm:grid-cols-3 gap-3", children: VAT_SERVICES.map((sv) => /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(Field, { label: sv.label + " (%)", children: /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
+              "input",
+              {
+                "data-vat-rate": sv.id,
+                inputMode: "decimal",
+                value: String(draft.vatRates?.[sv.id] ?? ""),
+                onChange: (e) => set({ vatRates: { ...draft.vatRates || {}, [sv.id]: e.target.value } }),
+                placeholder: "vide = sans TVA",
+                className: "w-full px-3 py-2 text-sm border border-neutral-300 rounded-lg bg-white"
+              }
+            ) }, sv.id)) })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime13.jsx)(
             SaveBar,
@@ -34160,23 +34213,23 @@ Cette op\xE9ration est d\xE9finitive.`
       });
     }
     const portions = Math.max(1, d.productQuantity || 1);
-    const unitCost = round25(total / portions);
-    const labor = d.laborMinutes !== void 0 ? round25(d.laborMinutes / 60 * cost.laborRate / portions) : d.moCost || 0;
-    const material = d.materialMinutes !== void 0 ? round25(d.materialMinutes / 60 * cost.materialRate / portions) : d.matCost || 0;
-    const revient = round25(unitCost + labor + material);
+    const unitCost = round26(total / portions);
+    const labor = d.laborMinutes !== void 0 ? round26(d.laborMinutes / 60 * cost.laborRate / portions) : d.moCost || 0;
+    const material = d.materialMinutes !== void 0 ? round26(d.materialMinutes / 60 * cost.materialRate / portions) : d.matCost || 0;
+    const revient = round26(unitCost + labor + material);
     const price = d.sellingPrice || 0;
     return {
       hasLines,
-      total: round25(total),
+      total: round26(total),
       portions,
       unitCost,
       labor,
       material,
       revient,
-      suggestMin: cost.marginMin === null ? null : round25(revient * (1 + cost.marginMin / 100)),
-      suggestMax: cost.marginMax === null ? null : round25(revient * (1 + cost.marginMax / 100)),
-      marginBrut: round25(price - unitCost),
-      marginNet: round25(price - unitCost - labor - material),
+      suggestMin: cost.marginMin === null ? null : round26(revient * (1 + cost.marginMin / 100)),
+      suggestMax: cost.marginMax === null ? null : round26(revient * (1 + cost.marginMax / 100)),
+      marginBrut: round26(price - unitCost),
+      marginNet: round26(price - unitCost - labor - material),
       missing
     };
   }
@@ -34275,7 +34328,7 @@ Cette op\xE9ration est d\xE9finitive.`
     };
     return sorted.length ? [at(""), ...sorted.map(at)] : [];
   }
-  var DEFAULT_SHOPS, num4, round25, round4, normName, priceOf, unitsFor, defaultLineUnit, LINE_UNIT_LABEL, isComputed, kindOf, KIND_LABEL2, DISH_CATEGORIES, categoriesFor, usedBy, REF_SHOPS, referenceMissing, uniq, ingredientTypes, subCategoriesFor, sameMap;
+  var DEFAULT_SHOPS, num4, round26, round4, normName, priceOf, unitsFor, defaultLineUnit, LINE_UNIT_LABEL, isComputed, kindOf, KIND_LABEL2, DISH_CATEGORIES, categoriesFor, usedBy, REF_SHOPS, referenceMissing, uniq, ingredientTypes, subCategoriesFor, sameMap;
   var init_content18 = __esm({
     "src/modules/cuisine/content.ts"() {
       "use strict";
@@ -34286,7 +34339,7 @@ Cette op\xE9ration est d\xE9finitive.`
         { id: "leclerc", name: "Leclerc" }
       ];
       num4 = (v) => typeof v === "number" && isFinite(v) ? v : null;
-      round25 = (n) => Math.round(n * 100) / 100;
+      round26 = (n) => Math.round(n * 100) / 100;
       round4 = (n) => Math.round(n * 1e4) / 1e4;
       normName = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/œ/g, "oe").replace(/[^a-z0-9]+/g, " ").trim();
       priceOf = (ing, cost) => priceInfo(ing, cost).price;
@@ -36543,7 +36596,7 @@ ${establishmentName}`;
     const rows = dishes.map((d) => {
       const known = d.price > 0 && d.revient > 0;
       const q = qty.get(d.id) || 0;
-      const margin = known ? round26(d.price - d.revient) : null;
+      const margin = known ? round27(d.price - d.revient) : null;
       return {
         id: d.id,
         name: d.name,
@@ -36551,10 +36604,10 @@ ${establishmentName}`;
         price: d.price,
         revient: d.revient,
         margin,
-        marginPct: known ? round26((d.price - d.revient) / d.price * 100) : null,
+        marginPct: known ? round27((d.price - d.revient) / d.price * 100) : null,
         qty: q,
-        revenue: d.price > 0 ? round26(q * d.price) : null,
-        totalMargin: margin === null ? null : round26(q * margin),
+        revenue: d.price > 0 ? round27(q * d.price) : null,
+        totalMargin: margin === null ? null : round27(q * margin),
         klass: ""
       };
     });
@@ -36572,9 +36625,9 @@ ${establishmentName}`;
       });
     }
     rows.sort((a, b) => b.qty - a.qty || (b.margin ?? -1e9) - (a.margin ?? -1e9) || a.name.localeCompare(b.name, "fr"));
-    return { rows, orders: used, unmatched: Array.from(unmatched, ([name, q]) => ({ name, qty: q })).sort((a, b) => b.qty - a.qty), classified, avgQty: round26(avgQty), avgMargin: round26(avgMargin) };
+    return { rows, orders: used, unmatched: Array.from(unmatched, ([name, q]) => ({ name, qty: q })).sort((a, b) => b.qty - a.qty), classified, avgQty: round27(avgQty), avgMargin: round27(avgMargin) };
   }
-  var CLASS_LABEL, round26, counts;
+  var CLASS_LABEL, round27, counts;
   var init_analysis = __esm({
     "src/modules/repas/analysis.ts"() {
       "use strict";
@@ -36584,7 +36637,7 @@ ${establishmentName}`;
         puzzle: { label: "Rentable, peu command\xE9", advice: "Bonne marge mais peu command\xE9 : mieux le pr\xE9senter ou le sugg\xE9rer." },
         weak: { label: "\xC0 revoir", advice: "Peu command\xE9 et peu rentable : \xE0 repenser ou retirer." }
       };
-      round26 = (n) => Math.round(n * 100) / 100;
+      round27 = (n) => Math.round(n * 100) / 100;
       counts = (status2) => status2 === "confirmed" || status2 === "done";
     }
   });
@@ -36824,9 +36877,9 @@ ${establishmentName}`;
     const needs = [...acc.entries()].map(([id, v]) => {
       const ing = ingredients.find((i) => i.id === id);
       const qty = round32(v.qty);
-      const prices = cost.shops.map((s) => ({ shopId: s.id, shopName: s.name, price: ing.prices?.[s.id] })).filter((p) => typeof p.price === "number" && isFinite(p.price) && p.price >= 0).map((p) => ({ ...p, total: round27(p.price * qty) })).sort((a, b) => a.total - b.total);
+      const prices = cost.shops.map((s) => ({ shopId: s.id, shopName: s.name, price: ing.prices?.[s.id] })).filter((p) => typeof p.price === "number" && isFinite(p.price) && p.price >= 0).map((p) => ({ ...p, total: round28(p.price * qty) })).sort((a, b) => a.total - b.total);
       const best = prices[0] || null;
-      const estimate = best ? best.total : ing.unitPrice > 0 ? round27(ing.unitPrice * qty) : null;
+      const estimate = best ? best.total : ing.unitPrice > 0 ? round28(ing.unitPrice * qty) : null;
       return { ingredientId: id, name: ing.name, unit: ing.unit, qty, dishes: [...v.dishes].sort(), prices, best, estimate };
     });
     needs.sort((a, b) => (a.best?.shopName || "\uFFFF").localeCompare(b.best?.shopName || "\uFFFF", "fr") || a.name.localeCompare(b.name, "fr"));
@@ -36834,7 +36887,7 @@ ${establishmentName}`;
       needs,
       unknown,
       orders: used.length,
-      total: round27(needs.reduce((n, x) => n + (x.estimate || 0), 0)),
+      total: round28(needs.reduce((n, x) => n + (x.estimate || 0), 0)),
       withoutPrice: needs.filter((x) => x.estimate === null).length
     };
   }
@@ -36851,13 +36904,13 @@ ${establishmentName}`;
     lines2.push("", `Total estim\xE9 : ${String(result.total).replace(".", ",")} \u20AC`);
     return lines2.join("\n");
   }
-  var round32, round27, UNIT_LABEL2;
+  var round32, round28, UNIT_LABEL2;
   var init_shopping = __esm({
     "src/modules/repas/shopping.ts"() {
       "use strict";
       init_content2();
       round32 = (n) => Math.round(n * 1e3) / 1e3;
-      round27 = (n) => Math.round(n * 100) / 100;
+      round28 = (n) => Math.round(n * 100) / 100;
       UNIT_LABEL2 = { u: "pi\xE8ce(s)", kg: "kg", l: "l" };
     }
   });
@@ -40715,15 +40768,15 @@ ${m.message}
       months.push({
         label: `${MONTH_NAMES_FR[m.month].slice(0, 4)}. ${String(m.year).slice(2)}`,
         revenue: recap.totalRevenue,
-        expenses: round28(expenseByMonth.get(`${m.year}-${pad2(m.month + 1)}`) || 0),
+        expenses: round29(expenseByMonth.get(`${m.year}-${pad2(m.month + 1)}`) || 0),
         occupancy: avail > 0 ? sold / avail * 100 : null
       });
     });
     stays = countedStays.size;
     const roomLines = Array.from(rooms.values()).filter((l) => l.revenue > 0 || l.nights > 0 || activeLodgingIds.has(l.roomId)).map((l) => ({
       ...l,
-      revenue: round28(l.revenue),
-      roomRevenue: round28(l.roomRevenue),
+      revenue: round29(l.revenue),
+      roomRevenue: round29(l.roomRevenue),
       occupancy: l.isLodging && l.availableNights > 0 ? l.nights / l.availableNights * 100 : null,
       adr: l.isLodging && l.nights > 0 ? l.roomRevenue / l.nights : null,
       revpar: l.isLodging && l.availableNights > 0 ? l.roomRevenue / l.availableNights : null
@@ -40784,28 +40837,28 @@ ${m.message}
       return {
         bucket,
         label: bucket === "" ? "Non r\xE9percut\xE9 dans la fiche de r\xE9servation" : field4 ? field4.label : "Poste supprim\xE9",
-        expenses: round28(v.expenses),
-        depreciation: round28(v.depreciation),
-        total: round28(total),
+        expenses: round29(v.expenses),
+        depreciation: round29(v.depreciation),
+        total: round29(total),
         perNight: bucket !== "" && nightsSold > 0 ? total / nightsSold : null,
         current: field4 ? field4.perNight : null,
         known: !!field4
       };
     }).sort((a, b) => a.bucket === "" ? 1 : b.bucket === "" ? -1 : b.total - a.total);
     const marginDeductions = (prof.deductSocialCharges ? socialCharges : 0) + (prof.deductStayCosts ? stayCosts : 0) + (prof.deductDepreciation ? depreciation : 0) + expensesTotal;
-    const margin = round28(revenue - marginDeductions);
+    const margin = round29(revenue - marginDeductions);
     return {
       period,
-      revenue: round28(revenue),
-      roomRevenue: round28(roomRevenue),
-      mealsRevenue: round28(mealsRevenue),
-      drinksRevenue: round28(drinksRevenue),
-      dogCareRevenue: round28(dogCareRevenue),
-      otherRevenue: round28(Math.max(0, revenue - roomRevenue - mealsRevenue - drinksRevenue - dogCareRevenue)),
-      commissions: round28(commissions),
-      touristTax: round28(touristTax),
-      collected: round28(collected),
-      toCollect: round28(Math.max(0, revenue - collected)),
+      revenue: round29(revenue),
+      roomRevenue: round29(roomRevenue),
+      mealsRevenue: round29(mealsRevenue),
+      drinksRevenue: round29(drinksRevenue),
+      dogCareRevenue: round29(dogCareRevenue),
+      otherRevenue: round29(Math.max(0, revenue - roomRevenue - mealsRevenue - drinksRevenue - dogCareRevenue)),
+      commissions: round29(commissions),
+      touristTax: round29(touristTax),
+      collected: round29(collected),
+      toCollect: round29(Math.max(0, revenue - collected)),
       stays,
       nightsSold,
       availableNights,
@@ -40813,18 +40866,18 @@ ${m.message}
       adr: nightsSold > 0 ? lodgingRoomRevenue / nightsSold : null,
       revpar: noCapacity ? null : lodgingRoomRevenue / availableNights,
       invoicesCount,
-      invoicesTotal: round28(invoicesTotal),
-      invoicesPaid: round28(invoicesPaid),
-      expensesTotal: round28(expensesTotal),
-      expensesPaid: round28(expensesPaid),
-      expensesExcluded: round28(expensesPaid - expensesTotal),
+      invoicesTotal: round29(invoicesTotal),
+      invoicesPaid: round29(invoicesPaid),
+      expensesTotal: round29(expensesTotal),
+      expensesPaid: round29(expensesPaid),
+      expensesExcluded: round29(expensesPaid - expensesTotal),
       expensesCount: periodExpenses.length,
-      expensesFixed: round28(expensesFixed),
-      expensesVariable: round28(expensesVariable),
-      byCategory: Array.from(byCat.values()).map((l) => ({ ...l, amount: round28(l.amount) })).sort((a, b) => b.amount - a.amount),
-      socialCharges: round28(socialCharges),
-      stayCosts: round28(stayCosts),
-      depreciation: round28(depreciation),
+      expensesFixed: round29(expensesFixed),
+      expensesVariable: round29(expensesVariable),
+      byCategory: Array.from(byCat.values()).map((l) => ({ ...l, amount: round29(l.amount) })).sort((a, b) => b.amount - a.amount),
+      socialCharges: round29(socialCharges),
+      stayCosts: round29(stayCosts),
+      depreciation: round29(depreciation),
       costing,
       margin,
       marginPercent: revenue > 0 ? margin / revenue * 100 : null,
@@ -40845,12 +40898,12 @@ ${m.message}
     return monthRevenue && monthRevenue > 0 ? monthRevenue : yearRevenue && yearRevenue > 0 ? yearRevenue / 12 : 0;
   }
   function yearObjective(objectives) {
-    if (objectives.monthly?.some((v) => v > 0)) return round28(Array.from({ length: 12 }, (_, m) => monthObjective(objectives, m)).reduce((s, v) => s + v, 0));
+    if (objectives.monthly?.some((v) => v > 0)) return round29(Array.from({ length: 12 }, (_, m) => monthObjective(objectives, m)).reduce((s, v) => s + v, 0));
     return objectives.yearRevenue && objectives.yearRevenue > 0 ? objectives.yearRevenue : 0;
   }
   function revenueTarget(prof, period) {
     const total = period.months.reduce((s, m) => s + monthObjective(prof.objectives, m.month), 0);
-    return total > 0 ? round28(total) : null;
+    return total > 0 ? round29(total) : null;
   }
   function spreadObjective(year, weights) {
     const total = weights.reduce((s, w2) => s + Math.max(0, w2), 0);
@@ -40861,7 +40914,7 @@ ${m.message}
     values[biggest] += diff;
     return values;
   }
-  var pad2, round28, monthLabel;
+  var pad2, round29, monthLabel;
   var init_compute = __esm({
     "src/modules/rentabilite/compute.ts"() {
       "use strict";
@@ -40869,7 +40922,7 @@ ${m.message}
       init_costFields();
       init_content3();
       pad2 = (n) => String(n).padStart(2, "0");
-      round28 = (n) => Math.round(n * 100) / 100;
+      round29 = (n) => Math.round(n * 100) / 100;
       monthLabel = (m) => `${MONTH_NAMES_FR[m.month]} ${m.year}`;
     }
   });
@@ -43231,14 +43284,14 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
     const refPrice = {};
     roomIds.forEach((id) => {
       const prices = year.filter((r) => String(r.roomId) === id).map((r) => nightlyPrice(r, rules[id])).filter((p) => p !== null);
-      refPrice[id] = prices.length >= 3 ? round29(median(prices)) : null;
+      refPrice[id] = prices.length >= 3 ? round210(median(prices)) : null;
     });
     const all2 = year.map((r) => nightlyPrice(r, rules[String(r.roomId)])).filter((p) => p !== null);
     const seasonal = (list3) => {
       const out = { high: null, mid: null, low: null };
       ["high", "mid", "low"].forEach((s) => {
         const prices = list3.filter((r) => monthSeason(monthIndex(r.checkIn)) === s).map((r) => nightlyPrice(r, rules[String(r.roomId)])).filter((p) => p !== null);
-        out[s] = prices.length >= 3 ? round29(median(prices)) : null;
+        out[s] = prices.length >= 3 ? round210(median(prices)) : null;
       });
       return out;
     };
@@ -43251,7 +43304,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
       weekday,
       meanMonth,
       refPrice,
-      overallRef: all2.length >= 3 ? round29(median(all2)) : null,
+      overallRef: all2.length >= 3 ? round210(median(all2)) : null,
       refSeason,
       overallSeason: seasonal(stays),
       enough: stays.length >= 10 && days2 >= 180 && known.length >= 4
@@ -43260,7 +43313,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
   function marketPrice(comparables, date, roomId) {
     const prices = comparables.filter((c) => date >= c.from && date <= c.to && (!roomId || !c.roomId || c.roomId === roomId)).map((c) => c.price);
     const m = median(prices);
-    return m === null ? null : round29(m);
+    return m === null ? null : round210(m);
   }
   function pace(reservations, roomIds, today7) {
     const rooms = new Set(roomIds);
@@ -43457,7 +43510,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
       ...rows.map((r) => [roomName(r.roomId), r.from, r.to, r.nights, r.suggested, r.current, r.gapPct, r.level === "up" ? "Augmenter" : r.level === "down" ? "Baisser" : "Garder", r.reasons.join(" ; ")])
     ];
   }
-  var DAY5, dayNumber4, isoOf4, weekdayOf2, monthIndex, round5, median, GENERIC_MONTH, GENERIC_WEEKDAY, real2, SEASON_LABEL, round29, addDaysIso2, MONTHS2, WEEKDAYS;
+  var DAY5, dayNumber4, isoOf4, weekdayOf2, monthIndex, round5, median, GENERIC_MONTH, GENERIC_WEEKDAY, real2, SEASON_LABEL, round210, addDaysIso2, MONTHS2, WEEKDAYS;
   var init_content19 = __esm({
     "src/modules/conseils/content.ts"() {
       "use strict";
@@ -43478,7 +43531,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
       GENERIC_WEEKDAY = [0.9, 0.9, 0.9, 0.95, 1.1, 1.15, 0.95];
       real2 = (r) => !r.isBlocked && r.reservationStatus !== "cancelled" && !/ferm|bloq/i.test(r.guestName || "");
       SEASON_LABEL = { high: "haute saison", mid: "saison interm\xE9diaire", low: "basse saison" };
-      round29 = (n) => Math.round(n * 100) / 100;
+      round210 = (n) => Math.round(n * 100) / 100;
       addDaysIso2 = (iso, n) => isoOf4(dayNumber4(iso) + n);
       MONTHS2 = ["janvier", "f\xE9vrier", "mars", "avril", "mai", "juin", "juillet", "ao\xFBt", "septembre", "octobre", "novembre", "d\xE9cembre"];
       WEEKDAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
@@ -73131,7 +73184,7 @@ ${text}` : text });
         number: c.invoiceNumber || "FA-PROVISOIRE",
         date: c.invoiceDate || r?.checkIn,
         ...stayLine(c, r),
-        total: round210(c.totalAmount !== void 0 ? c.totalAmount : r?.totalAmount || 0),
+        total: round211(c.totalAmount !== void 0 ? c.totalAmount : r?.totalAmount || 0),
         status: paid ? "R\xE9gl\xE9e" : "\xC0 r\xE9gler",
         paid,
         credit: false
@@ -73140,15 +73193,15 @@ ${text}` : text });
     cancelled.forEach((x) => {
       const r = x.reservationId ? byId.get(x.reservationId) : void 0;
       const stay = stayLine(x.invoice, r);
-      const amount = round210(x.creditNote.amount || 0);
-      lines2.push({ number: x.invoice.invoiceNumber || "", date: x.invoice.invoiceDate, ...stay, total: round210(x.invoice.totalAmount ?? amount), status: `Annul\xE9e par ${x.creditNote.number}`, paid: false, credit: false });
+      const amount = round211(x.creditNote.amount || 0);
+      lines2.push({ number: x.invoice.invoiceNumber || "", date: x.invoice.invoiceDate, ...stay, total: round211(x.invoice.totalAmount ?? amount), status: `Annul\xE9e par ${x.creditNote.number}`, paid: false, credit: false });
       lines2.push({ number: x.creditNote.number, date: x.creditNote.date, ...stay, total: -amount, status: `Avoir sur ${x.invoice.invoiceNumber || ""}`, paid: false, credit: true });
     });
     const shown = lines2.filter((l) => inPeriod(l.date, period)).sort((a, b) => Number(a.credit) - Number(b.credit) || a.number.localeCompare(b.number, void 0, { numeric: true }));
     const invoices = shown.filter((l) => !l.credit).length;
     const credits = shown.length - invoices;
-    const total = round210(shown.reduce((n, l) => n + l.total, 0));
-    const paidTotal = round210(shown.filter((l) => l.paid).reduce((n, l) => n + l.total, 0));
+    const total = round211(shown.reduce((n, l) => n + l.total, 0));
+    const paidTotal = round211(shown.filter((l) => l.paid).reduce((n, l) => n + l.total, 0));
     const count = `${invoices} facture${invoices > 1 ? "s" : ""}` + (credits ? `, ${credits} avoir${credits > 1 ? "s" : ""}` : "");
     return [
       ["N\xB0 de facture", "Date de facture", "Client", "H\xE9bergement", "Arriv\xE9e", "D\xE9part", "Nuits", "Montant (\u20AC)", "Mention TVA", "R\xE8glement"],
@@ -73162,9 +73215,9 @@ ${text}` : text });
     const byStatus = /* @__PURE__ */ new Map();
     stays.forEach((r) => {
       const s = TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer;
-      byStatus.set(s, round210((byStatus.get(s) || 0) + (r.touristTaxAmount || 0)));
+      byStatus.set(s, round211((byStatus.get(s) || 0) + (r.touristTaxAmount || 0)));
     });
-    const mine = round210(stays.filter((r) => statusOf4(r) === "a_declarer").reduce((n, r) => n + (r.touristTaxAmount || 0), 0));
+    const mine = round211(stays.filter((r) => statusOf4(r) === "a_declarer").reduce((n, r) => n + (r.touristTaxAmount || 0), 0));
     return [
       ["Arriv\xE9e", "D\xE9part", "Nuits", "H\xE9bergement", "Client", "Adultes", "Enfants", "Taxe (\u20AC)", "Statut", "\xC0 v\xE9rifier"],
       ...stays.map((r) => [
@@ -73175,22 +73228,22 @@ ${text}` : text });
         r.guestName,
         r.adultsCount,
         r.childrenCount,
-        round210(r.touristTaxAmount || 0),
+        round211(r.touristTaxAmount || 0),
         TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer,
         r.touristTaxNeedsVerification ? "Oui" : ""
       ]),
-      [`Total (${stays.length} s\xE9jour${stays.length > 1 ? "s" : ""})`, null, null, null, null, null, null, round210(stays.reduce((n, r) => n + (r.touristTaxAmount || 0), 0)), null, null],
+      [`Total (${stays.length} s\xE9jour${stays.length > 1 ? "s" : ""})`, null, null, null, null, null, null, round211(stays.reduce((n, r) => n + (r.touristTaxAmount || 0), 0)), null, null],
       ...[...byStatus.entries()].map(([s, v]) => [`dont ${s}`, null, null, null, null, null, null, v, null, null]),
       ["\xC0 D\xC9CLARER ET REVERSER PAR VOUS (hors plateformes)", null, null, null, null, null, null, mine, null, null]
     ];
   }
-  var inPeriod, round210, isReal, TAX_STATUS;
+  var inPeriod, round211, isReal, TAX_STATUS;
   var init_accounting = __esm({
     "src/core/export/accounting.ts"() {
       "use strict";
       init_pricing();
       inPeriod = (date, p) => !!date && date >= p.from && date <= p.to;
-      round210 = (n) => Math.round(n * 100) / 100;
+      round211 = (n) => Math.round(n * 100) / 100;
       isReal = (r) => !r.isBlocked && !/ferm|bloq/i.test(r.guestName || "");
       TAX_STATUS = {
         prise_en_charge: "Collect\xE9e et revers\xE9e par la plateforme",
@@ -73323,7 +73376,14 @@ ${text}` : text });
   }
   function sellerOf(est) {
     const s = (v) => typeof v === "string" ? v : "";
+    const src = est.vatRates && typeof est.vatRates === "object" ? est.vatRates : {};
+    const vatRates = {};
+    for (const sv of VAT_SERVICES) {
+      const r = cleanRate(src[sv.id]);
+      if (r > 0) vatRates[sv.id] = r;
+    }
     return {
+      ...Object.keys(vatRates).length ? { vatRates } : {},
       name: s(est.name),
       address: s(est.address),
       postalCode: s(est.postalCode),
@@ -73408,7 +73468,7 @@ ${text}` : text });
     const invoice = {
       ...draft,
       invoiceDate: date,
-      totalAmount: round211(draft.totalAmount),
+      totalAmount: round212(draft.totalAmount),
       invoiceNumber: nextNumber("FA", year, usedInvoiceNumbers(), counterOf(year)),
       status: "validated",
       validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
@@ -73449,7 +73509,7 @@ ${text}` : text });
       number: nextNumber("AV", year, Object.keys(cancelledMap)),
       date,
       reason: reason.trim(),
-      amount: round211(invoice.totalAmount || 0)
+      amount: round212(invoice.totalAmount || 0)
     };
     const frozen = { ...invoice, snapshot: invoice.snapshot || fallback?.snapshot, seller: invoice.seller || fallback?.seller };
     const cancelled = { reservationId, invoice: frozen, creditNote, cancelledAt: (/* @__PURE__ */ new Date()).toISOString() };
@@ -73460,11 +73520,12 @@ ${text}` : text });
     notify17();
     return { ok: true, cancelled };
   }
-  var REGISTRY_KEY3, DRAFTS_KEY, CANCELLED_KEY, TRASH_KEY2, COUNTER_PREFIX, INVOICES_EVENT, readJson4, writeJson, notify17, today6, round211, readRegistry2, readDrafts, readCancelled, listCancelled, isValidated, snapshotAsReservation, counterOf, peekInvoiceNumber;
+  var REGISTRY_KEY3, DRAFTS_KEY, CANCELLED_KEY, TRASH_KEY2, COUNTER_PREFIX, INVOICES_EVENT, readJson4, writeJson, notify17, today6, round212, readRegistry2, readDrafts, readCancelled, listCancelled, isValidated, snapshotAsReservation, counterOf, peekInvoiceNumber;
   var init_invoices = __esm({
     "src/core/invoicing/invoices.ts"() {
       "use strict";
       init_storage();
+      init_vat();
       REGISTRY_KEY3 = "domaine_sylvaria_invoices_registry_v1";
       DRAFTS_KEY = "domaine_sylvaria_invoices_drafts_v1";
       CANCELLED_KEY = "domaine_sylvaria_invoices_cancelled_v1";
@@ -73488,7 +73549,7 @@ ${text}` : text });
         }
       };
       today6 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-      round211 = (n) => Math.round(n * 100) / 100;
+      round212 = (n) => Math.round(n * 100) / 100;
       readRegistry2 = () => readJson4(REGISTRY_KEY3, {});
       readDrafts = () => readJson4(DRAFTS_KEY, {});
       readCancelled = () => readJson4(CANCELLED_KEY, {});
@@ -74652,6 +74713,7 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
     "src/components/InvoiceModal.tsx"() {
       "use strict";
       import_react159 = __require("react");
+      init_vat();
       init_invoices();
       init_bookingUtils();
       init_DomaineLogo();
@@ -74743,6 +74805,18 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
         const displayedOtherAmount = config.showAutre ? otherAmount : 0;
         const displayedTouristTaxAmount = config.showAutre ? touristTaxAmount : 0;
         const totalAmount = config.showHebergement || config.showRepas || config.showAutre ? displayedRoomAmount + displayedMealsAmount + displayedDrinksAmount + displayedDogCareAmount + displayedOtherAmount + displayedTouristTaxAmount : sign * (reservation.totalAmount || 0);
+        const vat = vatBreakdown(
+          [
+            { service: "room", ttc: displayedRoomAmount },
+            { service: "meals", ttc: displayedMealsAmount },
+            { service: "drinks", ttc: displayedDrinksAmount },
+            { service: "dogCare", ttc: displayedDogCareAmount },
+            { service: "other", ttc: displayedOtherAmount }
+          ],
+          est.vatRates,
+          displayedTouristTaxAmount
+        );
+        const vatOn = vat.enabled;
         const handlePrint = () => {
           if (withTerms2) print();
           else window.print();
@@ -75000,13 +75074,32 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
                 ] })
               ] }) }),
               /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("div", { className: "flex justify-end mb-8 font-sans", children: /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("table", { className: "w-full sm:w-1/2 border-collapse text-xs", children: /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tbody", { children: [
-                /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tr", { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-slate-600 font-medium", children: "Total Hors Taxe / Brut :" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-right font-mono font-bold text-slate-900", children: formatCurrency(totalAmount) })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tr", { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-slate-600 font-medium", children: "TVA :" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-right text-slate-700 italic", children: vatShort })
+                vatOn ? /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)(import_jsx_runtime158.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tr", { "data-invoice-vat-total-ht": true, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-slate-600 font-medium", children: "Total hors taxe :" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-right font-mono font-bold text-slate-900", children: formatCurrency(vat.totalHt) })
+                  ] }),
+                  vat.groups.map((g) => /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tr", { "data-invoice-vat-line": g.rate, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-slate-600 font-medium", children: g.rate > 0 ? `TVA ${String(g.rate).replace(".", ",")} % (sur ${formatCurrency(g.ht)}) :` : "Prestations sans TVA :" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-right font-mono text-slate-900", children: g.rate > 0 ? formatCurrency(g.vat) : formatCurrency(g.ttc) })
+                  ] }, g.rate)),
+                  vat.exempt !== 0 && /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tr", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-slate-600 font-medium", children: "Taxe de s\xE9jour (hors TVA) :" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-right font-mono text-slate-900", children: formatCurrency(vat.exempt) })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tr", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-slate-600 font-medium", children: "Total TTC :" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-right font-mono font-bold text-slate-900", children: formatCurrency(vat.totalTtc) })
+                  ] })
+                ] }) : /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)(import_jsx_runtime158.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tr", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-slate-600 font-medium", children: "Total Hors Taxe / Brut :" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-right font-mono font-bold text-slate-900", children: formatCurrency(totalAmount) })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tr", { children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-slate-600 font-medium", children: "TVA :" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-right text-slate-700 italic", children: vatShort })
+                  ] })
                 ] }),
                 /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tr", { className: "border-t-2 border-b-2 border-sy-2d5a27 bg-slate-100", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-2 text-base font-bold text-sy-2d5a27 font-serif", children: isCredit ? "Total de l'avoir :" : "Net \xE0 Payer :" }),
