@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v305</title>
-  <meta name="application-name" content="Gestyria v305" />
+  <title>Gestyria v306</title>
+  <meta name="application-name" content="Gestyria v306" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8720,6 +8720,14 @@ footer{background:#111}
       ...Array.isArray(trash) ? trash.map((t) => t?.config?.invoiceNumber) : []
     ].filter((n) => !!n);
   }
+  function duplicateInvoiceNumbers() {
+    const seen = {};
+    const add = (n, guest) => {
+      if (n) (seen[n] || (seen[n] = [])).push(guest || "client inconnu");
+    };
+    Object.values(readRegistry2()).forEach((c) => add(c?.invoiceNumber, c?.guestName));
+    return Object.entries(seen).filter(([, g]) => g.length > 1).map(([number, guests]) => ({ number, guests }));
+  }
   function lastInvoiceDate(year) {
     const dates = [
       ...Object.values(readRegistry2()).filter((c) => sequenceOf(c?.invoiceNumber, "FA", year) > 0).map((c) => c.invoiceDate),
@@ -9313,7 +9321,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "305";
+      APP_VERSION = "306";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -73868,6 +73876,15 @@ ${text}` : text });
         ).sort().reverse();
         return /* @__PURE__ */ (0, import_jsx_runtime156.jsxs)("div", { className: "space-y-6 animate-in fade-in duration-200", children: [
           /* @__PURE__ */ (0, import_jsx_runtime156.jsx)(AccountingExports, { reservations, registry, cancelled, onToast }),
+          duplicateInvoiceNumbers().length > 0 && /* @__PURE__ */ (0, import_jsx_runtime156.jsxs)("div", { "data-invoice-duplicates": true, className: "bg-rose-50 border border-rose-300 rounded-2xl p-4 space-y-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime156.jsx)("h3", { className: "text-sm font-bold text-rose-900", children: "Deux factures portent le m\xEAme num\xE9ro" }),
+            /* @__PURE__ */ (0, import_jsx_runtime156.jsx)("p", { className: "text-xs text-rose-800", children: "Cela arrive quand deux appareils valident une facture en m\xEAme temps, sans connexion. Un num\xE9ro de facture doit \xEAtre unique : annulez l'une des deux par un avoir (\xAB R\xE8glement / avoir \xBB), puis refaites-la depuis un seul appareil." }),
+            /* @__PURE__ */ (0, import_jsx_runtime156.jsx)("ul", { className: "text-xs text-rose-900 list-disc pl-5", children: duplicateInvoiceNumbers().map((d) => /* @__PURE__ */ (0, import_jsx_runtime156.jsxs)("li", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime156.jsx)("b", { children: d.number }),
+              " : ",
+              d.guests.join(" et ")
+            ] }, d.number)) })
+          ] }),
           trash.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime156.jsxs)("div", { "data-invoice-trash": true, className: "bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2", children: [
             /* @__PURE__ */ (0, import_jsx_runtime156.jsx)("h3", { className: "text-sm font-bold text-amber-900", children: "Factures supprim\xE9es avant la mise en place des avoirs" }),
             /* @__PURE__ */ (0, import_jsx_runtime156.jsx)("p", { className: "text-xs text-amber-800", children: "Une facture ne se supprime plus : elle s'annule par un avoir. Celles-ci avaient \xE9t\xE9 supprim\xE9es auparavant ; leur num\xE9ro reste r\xE9serv\xE9. Vous pouvez les restaurer pour combler le trou dans la num\xE9rotation, puis les annuler par un avoir si besoin." }),
