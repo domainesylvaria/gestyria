@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v304</title>
-  <meta name="application-name" content="Gestyria v304" />
+  <title>Gestyria v305</title>
+  <meta name="application-name" content="Gestyria v305" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8644,7 +8644,7 @@ footer{background:#111}
   function invoiceTotalFor(r, show) {
     if (!show.showHebergement && !show.showRepas && !show.showAutre) return r.totalAmount || 0;
     const v = (n) => typeof n === "number" && isFinite(n) ? n : 0;
-    const sum = (show.showHebergement ? v(r.roomAmount) : 0) + (show.showRepas ? v(r.mealsAmount) + v(r.drinksAmount) : 0) + (show.showAutre ? v(r.dogCareAmount) + v(r.otherAmount) + v(r.touristTaxAmount) : 0);
+    const sum = (show.showHebergement ? v(r.roomAmount) : 0) + (show.showRepas ? v(r.mealsAmount) + v(r.drinksAmount) : 0) + (show.showAutre ? v(r.dogCareAmount) + v(r.otherAmount) + invoicedTouristTax(r) : 0);
     return round25(sum);
   }
   function buildSnapshot(r, roomName) {
@@ -8666,7 +8666,7 @@ footer{background:#111}
       dogCareAmount: num7(r.dogCareAmount),
       otherAmount: num7(r.otherAmount),
       otherDescription: r.otherDescription || "",
-      touristTaxAmount: num7(r.touristTaxAmount),
+      touristTaxAmount: invoicedTouristTax(r),
       totalAmount: num7(r.totalAmount)
     };
   }
@@ -8901,7 +8901,7 @@ footer{background:#111}
     notify4();
     return { ok: true, cancelled };
   }
-  var REGISTRY_KEY2, DRAFTS_KEY, CANCELLED_KEY, DEPOSITS_KEY, TRASH_KEY, COUNTER_PREFIX, INVOICES_EVENT, readJson, writeJson, notify4, today, round25, readRegistry2, readDrafts, readDeposits, depositsOf, depositedAmount, deductedAmount, readCancelled, listCancelled, isValidated, isPlatformBooking, snapshotAsReservation, creditedAmount, counterOf, peekInvoiceNumber;
+  var REGISTRY_KEY2, DRAFTS_KEY, CANCELLED_KEY, DEPOSITS_KEY, TRASH_KEY, COUNTER_PREFIX, INVOICES_EVENT, readJson, writeJson, notify4, today, round25, readRegistry2, readDrafts, readDeposits, depositsOf, depositedAmount, deductedAmount, readCancelled, listCancelled, isValidated, isPlatformBooking, invoicedTouristTax, hasBillableExtras, snapshotAsReservation, creditedAmount, counterOf, peekInvoiceNumber;
   var init_invoices = __esm({
     "src/core/invoicing/invoices.ts"() {
       "use strict";
@@ -8942,6 +8942,11 @@ footer{background:#111}
       listCancelled = () => Object.values(readCancelled()).sort((a, b) => b.creditNote.number.localeCompare(a.creditNote.number, void 0, { numeric: true }));
       isValidated = (c) => !!c && typeof c === "object" && !!c.invoiceNumber;
       isPlatformBooking = (r) => ["airbnb", "booking", "abritel"].includes(String(r.bookingSource || "").toLowerCase());
+      invoicedTouristTax = (r) => {
+        const status2 = r.touristTaxStatus || (isPlatformBooking(r) ? "prise_en_charge" : "a_declarer");
+        return status2 === "prise_en_charge" ? 0 : typeof r.touristTaxAmount === "number" && isFinite(r.touristTaxAmount) ? r.touristTaxAmount : 0;
+      };
+      hasBillableExtras = (r) => [r.mealsAmount, r.drinksAmount, r.dogCareAmount, r.otherAmount].some((n) => typeof n === "number" && n > 0);
       snapshotAsReservation = (snapshot) => ({ ...snapshot });
       creditedAmount = (invoice) => round25((invoice?.partialCredits || []).reduce((n, c) => n + (c.amount || 0), 0));
       counterOf = (year) => {
@@ -9308,7 +9313,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "304";
+      APP_VERSION = "305";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -73753,6 +73758,7 @@ ${text}` : text });
         onToast = () => {
         }
       }) => {
+        const [showPlatformStays, setShowPlatformStays] = (0, import_react157.useState)(false);
         const [registry, setRegistry] = (0, import_react157.useState)({});
         const [trash, setTrash] = (0, import_react157.useState)(() => listTrashedInvoices());
         const [cancelled, setCancelled] = (0, import_react157.useState)(() => listCancelled());
@@ -73809,7 +73815,9 @@ ${text}` : text });
             isPaid
           };
         }).sort((a, b) => b.invNum.localeCompare(a.invNum, void 0, { numeric: true }));
-        const pendingInvoiceReservations = validReservations.filter((r) => !isValidated(registry[r.id])).sort((a, b) => (b.checkIn || "").localeCompare(a.checkIn || ""));
+        const unbilledReservations = validReservations.filter((r) => !isValidated(registry[r.id]));
+        const platformNothingToBill = unbilledReservations.filter((r) => isPlatformBooking(r) && !hasBillableExtras(r));
+        const pendingInvoiceReservations = unbilledReservations.filter((r) => showPlatformStays || !(isPlatformBooking(r) && !hasBillableExtras(r))).sort((a, b) => (b.checkIn || "").localeCompare(a.checkIn || ""));
         const totalInvoicesCount = editedInvoiceItems.length;
         const totalInvoicedRevenue = editedInvoiceItems.reduce((acc, item2) => acc + item2.totalAmount, 0);
         const paidInvoices = editedInvoiceItems.filter((item2) => item2.isPaid);
@@ -74049,7 +74057,15 @@ ${text}` : text });
                     /* @__PURE__ */ (0, import_jsx_runtime156.jsx)("option", { value: "a_regler", children: "Factures \xC0 r\xE9gler uniquement" })
                   ]
                 }
-              ) }) : /* @__PURE__ */ (0, import_jsx_runtime156.jsx)("div", { className: "text-neutral-400 flex items-center text-[11px] italic px-2", children: "Affichage des s\xE9jours n'ayant pas encore de facture g\xE9n\xE9r\xE9e" }),
+              ) }) : /* @__PURE__ */ (0, import_jsx_runtime156.jsxs)("div", { className: "text-neutral-400 flex flex-col justify-center text-[11px] italic px-2 gap-1", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime156.jsx)("span", { children: "Affichage des s\xE9jours n'ayant pas encore de facture g\xE9n\xE9r\xE9e" }),
+                platformNothingToBill.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime156.jsxs)("label", { className: "not-italic flex items-center gap-1.5 text-neutral-600 cursor-pointer", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime156.jsx)("input", { type: "checkbox", "data-show-platform-stays": true, checked: showPlatformStays, onChange: (e) => setShowPlatformStays(e.target.checked) }),
+                  "Afficher aussi ",
+                  platformNothingToBill.length,
+                  " s\xE9jour(s) de plateforme sans repas ni extra"
+                ] })
+              ] }),
               /* @__PURE__ */ (0, import_jsx_runtime156.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime156.jsxs)(
                 "select",
                 {
@@ -75094,7 +75110,7 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
         const drinksAmount = k * (reservation.drinksAmount || 0);
         const dogCareAmount = k * (reservation.dogCareAmount || 0);
         const otherAmount = k * (reservation.otherAmount || 0);
-        const touristTaxAmount = k * (reservation.touristTaxAmount || 0);
+        const touristTaxAmount = k * (validated || isCredit || deposit ? reservation.touristTaxAmount || 0 : invoicedTouristTax(reservation));
         const displayedRoomAmount = config.showHebergement ? roomAmount : 0;
         const displayedMealsAmount = config.showRepas ? mealsAmount : 0;
         const displayedDrinksAmount = config.showRepas ? drinksAmount : 0;
