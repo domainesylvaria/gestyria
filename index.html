@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v301</title>
-  <meta name="application-name" content="Gestyria v301" />
+  <title>Gestyria v302</title>
+  <meta name="application-name" content="Gestyria v302" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -5527,6 +5527,7 @@ footer{background:#111}
         domaine_sylvaria_invoices_registry_v1: "invoicing",
         domaine_sylvaria_invoices_drafts_v1: "invoicing",
         domaine_sylvaria_invoices_cancelled_v1: "invoicing",
+        domaine_sylvaria_invoices_deposits_v1: "invoicing",
         domaine_sylvaria_contact_edits_v1: "contacts"
       };
       setWriteGuard(licenseAllowsWrite);
@@ -8914,7 +8915,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "301";
+      APP_VERSION = "302";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -17673,6 +17674,7 @@ ${body}
         jsonStore("invoices", "Registre des factures", "map", "domaine_sylvaria_invoices_registry_v1"),
         jsonStore("invoiceDrafts", "Brouillons de factures", "map", "domaine_sylvaria_invoices_drafts_v1"),
         jsonStore("invoicesCancelled", "Factures annul\xE9es et avoirs", "map", "domaine_sylvaria_invoices_cancelled_v1"),
+        jsonStore("invoiceDeposits", "Factures d'acompte", "map", "domaine_sylvaria_invoices_deposits_v1"),
         jsonStore("contacts", "Fiches contacts modifi\xE9es", "map", "domaine_sylvaria_contact_edits_v1"),
         jsonStore("breakfastIngredients", "Ingr\xE9dients petits-d\xE9jeuners", "replace", "domaine_sylvaria_breakfast_ingredients_v1"),
         jsonStore("mealItems", "Carte des plats", "replace", "domaine_sylvaria_meals_items_v1"),
@@ -73157,202 +73159,6 @@ ${text}` : text });
     }
   });
 
-  // src/core/export/accounting.ts
-  function periodOf(year, month) {
-    const y = String(year);
-    if (!month) return { from: `${y}-01-01`, to: `${y}-12-31`, label: y };
-    const mm = String(month).padStart(2, "0");
-    const last = new Date(year, month, 0).getDate();
-    return { from: `${y}-${mm}-01`, to: `${y}-${mm}-${String(last).padStart(2, "0")}`, label: `${y}-${mm}` };
-  }
-  function invoiceJournalRows(reservations, registry, period, roomName, vatMention, cancelled = []) {
-    const byId = new Map(reservations.map((r) => [r.id, r]));
-    const stayLine = (c, r) => ({
-      name: c.guestName || r?.guestName || "Client",
-      room: c.snapshot?.roomName || (r ? roomName(String(r.roomId)) : c.snapshot?.roomId ? roomName(String(c.snapshot.roomId)) : ""),
-      checkIn: c.snapshot?.checkIn || r?.checkIn,
-      checkOut: c.snapshot?.checkOut || r?.checkOut,
-      nights: c.snapshot?.nights ?? r?.nights
-    });
-    const lines2 = [];
-    Object.keys(registry).forEach((id) => {
-      const c = registry[id];
-      const r = byId.get(id);
-      if (!c || (r ? !isReal(r) : !c.snapshot)) return;
-      const paid = c.paymentState === "acquittee" || c.paymentState === void 0 && r?.paymentStatus === "paid";
-      lines2.push({
-        number: c.invoiceNumber || "FA-PROVISOIRE",
-        date: c.invoiceDate || r?.checkIn,
-        ...stayLine(c, r),
-        total: round211(c.totalAmount !== void 0 ? c.totalAmount : r?.totalAmount || 0),
-        status: paid ? "R\xE9gl\xE9e" : "\xC0 r\xE9gler",
-        paid,
-        credit: false
-      });
-      (c.partialCredits || []).forEach((p) => {
-        lines2.push({ number: p.number, date: p.date, ...stayLine(c, r), total: -round211(p.amount || 0), status: `Avoir partiel sur ${c.invoiceNumber || ""}`, paid: false, credit: true });
-      });
-    });
-    cancelled.forEach((x) => {
-      const r = x.reservationId ? byId.get(x.reservationId) : void 0;
-      const stay = stayLine(x.invoice, r);
-      const amount = round211(x.creditNote.amount || 0);
-      lines2.push({ number: x.invoice.invoiceNumber || "", date: x.invoice.invoiceDate, ...stay, total: round211(x.invoice.totalAmount ?? amount), status: `Annul\xE9e par ${x.creditNote.number}`, paid: false, credit: false });
-      lines2.push({ number: x.creditNote.number, date: x.creditNote.date, ...stay, total: -amount, status: `Avoir sur ${x.invoice.invoiceNumber || ""}`, paid: false, credit: true });
-    });
-    const shown = lines2.filter((l) => inPeriod(l.date, period)).sort((a, b) => Number(a.credit) - Number(b.credit) || a.number.localeCompare(b.number, void 0, { numeric: true }));
-    const invoices = shown.filter((l) => !l.credit).length;
-    const credits = shown.length - invoices;
-    const total = round211(shown.reduce((n, l) => n + l.total, 0));
-    const paidTotal = round211(shown.filter((l) => l.paid).reduce((n, l) => n + l.total, 0));
-    const count = `${invoices} facture${invoices > 1 ? "s" : ""}` + (credits ? `, ${credits} avoir${credits > 1 ? "s" : ""}` : "");
-    return [
-      ["N\xB0 de facture", "Date de facture", "Client", "H\xE9bergement", "Arriv\xE9e", "D\xE9part", "Nuits", "Montant (\u20AC)", "Mention TVA", "R\xE8glement"],
-      ...shown.map((l) => [l.number, l.date ?? null, l.name, l.room, l.checkIn ?? null, l.checkOut ?? null, l.nights ?? null, l.total, vatMention, l.status]),
-      [`Total (${count})`, null, null, null, null, null, null, total, null, `dont r\xE9gl\xE9 : ${paidTotal}`]
-    ];
-  }
-  function touristTaxRows(reservations, period, roomName) {
-    const stays = reservations.filter((r) => isReal(r) && r.reservationStatus !== "cancelled" && inPeriod(r.checkOut, period) && (r.touristTaxAmount || 0) > 0).sort((a, b) => a.checkOut.localeCompare(b.checkOut));
-    const statusOf4 = (r) => r.touristTaxStatus || (isOtaSource(r.bookingSource, r) ? "prise_en_charge" : "a_declarer");
-    const byStatus = /* @__PURE__ */ new Map();
-    stays.forEach((r) => {
-      const s = TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer;
-      byStatus.set(s, round211((byStatus.get(s) || 0) + (r.touristTaxAmount || 0)));
-    });
-    const mine = round211(stays.filter((r) => statusOf4(r) === "a_declarer").reduce((n, r) => n + (r.touristTaxAmount || 0), 0));
-    return [
-      ["Arriv\xE9e", "D\xE9part", "Nuits", "H\xE9bergement", "Client", "Adultes", "Enfants", "Taxe (\u20AC)", "Statut", "\xC0 v\xE9rifier"],
-      ...stays.map((r) => [
-        r.checkIn,
-        r.checkOut,
-        r.nights,
-        roomName(String(r.roomId)),
-        r.guestName,
-        r.adultsCount,
-        r.childrenCount,
-        round211(r.touristTaxAmount || 0),
-        TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer,
-        r.touristTaxNeedsVerification ? "Oui" : ""
-      ]),
-      [`Total (${stays.length} s\xE9jour${stays.length > 1 ? "s" : ""})`, null, null, null, null, null, null, round211(stays.reduce((n, r) => n + (r.touristTaxAmount || 0), 0)), null, null],
-      ...[...byStatus.entries()].map(([s, v]) => [`dont ${s}`, null, null, null, null, null, null, v, null, null]),
-      ["\xC0 D\xC9CLARER ET REVERSER PAR VOUS (hors plateformes)", null, null, null, null, null, null, mine, null, null]
-    ];
-  }
-  var inPeriod, round211, isReal, TAX_STATUS;
-  var init_accounting = __esm({
-    "src/core/export/accounting.ts"() {
-      "use strict";
-      init_pricing();
-      inPeriod = (date, p) => !!date && date >= p.from && date <= p.to;
-      round211 = (n) => Math.round(n * 100) / 100;
-      isReal = (r) => !r.isBlocked && !/ferm|bloq/i.test(r.guestName || "");
-      TAX_STATUS = {
-        prise_en_charge: "Collect\xE9e et revers\xE9e par la plateforme",
-        a_declarer: "\xC0 d\xE9clarer et reverser par l'\xE9tablissement",
-        non_prise_en_compte: "Non prise en compte (exon\xE9ration ou autre)"
-      };
-    }
-  });
-
-  // src/components/AccountingExports.tsx
-  var import_react156, import_jsx_runtime155, MONTHS6, AccountingExports;
-  var init_AccountingExports = __esm({
-    "src/components/AccountingExports.tsx"() {
-      "use strict";
-      import_react156 = __require("react");
-      init_lucide_react();
-      init_bookingUtils();
-      init_settingsStore();
-      init_csv();
-      init_accounting();
-      import_jsx_runtime155 = __require("react/jsx-runtime");
-      MONTHS6 = ["Toute l'ann\xE9e", "Janvier", "F\xE9vrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Ao\xFBt", "Septembre", "Octobre", "Novembre", "D\xE9cembre"];
-      AccountingExports = ({ reservations, registry, cancelled = [], onToast = () => {
-      } }) => {
-        const thisYear = (/* @__PURE__ */ new Date()).getFullYear();
-        const [year, setYear] = (0, import_react156.useState)(thisYear);
-        const [month, setMonth] = (0, import_react156.useState)(0);
-        const years = (0, import_react156.useMemo)(() => {
-          const found = /* @__PURE__ */ new Set([thisYear]);
-          reservations.forEach((r) => {
-            const y = parseInt((r.checkOut || "").slice(0, 4), 10);
-            if (y > 2e3) found.add(y);
-          });
-          return [...found].sort((a, b) => b - a);
-        }, [reservations, thisYear]);
-        const period = periodOf(year, month);
-        const name = (id) => roomFor(id).name;
-        const exportJournal = () => {
-          const rows = invoiceJournalRows(reservations, registry, period, name, getSettings().establishment.vatMention, cancelled);
-          downloadCsv(`journal-factures_${period.label}.csv`, rows, ";");
-          onToast(rows.length > 2 ? `Journal des factures de ${period.label} t\xE9l\xE9charg\xE9.` : `Aucune facture \xE9dit\xE9e sur ${period.label} : le fichier ne contient que les titres.`);
-        };
-        const exportTax = () => {
-          const rows = touristTaxRows(reservations, period, name);
-          downloadCsv(`taxe-de-sejour_${period.label}.csv`, rows, ";");
-          onToast(rows.length > 4 ? `Taxe de s\xE9jour de ${period.label} t\xE9l\xE9charg\xE9e.` : `Aucune taxe de s\xE9jour sur ${period.label} : le fichier ne contient que les titres.`);
-        };
-        const select = "text-xs border border-neutral-300 rounded-lg px-2.5 py-1.5 bg-white";
-        return /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("div", { className: "bg-white rounded-2xl p-4 sm:p-5 border border-neutral-200/90 shadow-2xs space-y-3", "data-accounting-exports": true, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("div", { className: "flex items-start gap-2.5", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("div", { className: "p-2 bg-emerald-50 text-emerald-800 rounded-xl", children: /* @__PURE__ */ (0, import_jsx_runtime155.jsx)(FileSpreadsheet, { className: "w-4 h-4" }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("div", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("h3", { className: "text-sm font-bold text-neutral-900", children: "Exports pour votre comptable" }),
-              /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("p", { className: "text-[11px] text-neutral-500", children: "Fichiers CSV que votre tableur (Excel, LibreOffice) ouvre directement. Choisissez la p\xE9riode, puis le fichier voulu." })
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("div", { className: "flex flex-wrap items-center gap-2", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("select", { value: year, onChange: (e) => setYear(parseInt(e.target.value, 10)), className: select, "aria-label": "Ann\xE9e", children: years.map((y) => /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("option", { value: y, children: y }, y)) }),
-            /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("select", { value: month, onChange: (e) => setMonth(parseInt(e.target.value, 10)), className: select, "aria-label": "Mois", children: MONTHS6.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("option", { value: i, children: m }, m)) }),
-            /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("button", { type: "button", onClick: exportJournal, className: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg cursor-pointer", "data-export-journal": true, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime155.jsx)(Download, { className: "w-3.5 h-3.5" }),
-              " Journal des factures"
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("button", { type: "button", onClick: exportTax, className: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg cursor-pointer", "data-export-tax": true, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime155.jsx)(Download, { className: "w-3.5 h-3.5" }),
-              " Taxe de s\xE9jour"
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("p", { className: "text-[10px] text-neutral-500", children: "Le journal liste les factures \xE9dit\xE9es dans la p\xE9riode (date de facture). La taxe de s\xE9jour liste les s\xE9jours qui se terminent dans la p\xE9riode ; elle est indicative : la d\xE9claration se fait aupr\xE8s de votre commune." })
-        ] });
-      };
-    }
-  });
-
-  // src/core/invoiceTrash.ts
-  var REGISTRY_KEY2, TRASH_KEY, readJson3, listTrashedInvoices, restoreInvoice;
-  var init_invoiceTrash = __esm({
-    "src/core/invoiceTrash.ts"() {
-      "use strict";
-      init_storage();
-      REGISTRY_KEY2 = "domaine_sylvaria_invoices_registry_v1";
-      TRASH_KEY = "domaine_sylvaria_invoices_trash_v1";
-      readJson3 = (key, fallback) => {
-        try {
-          const raw = localStorage.getItem(key);
-          return raw ? JSON.parse(raw) : fallback;
-        } catch {
-          return fallback;
-        }
-      };
-      listTrashedInvoices = () => readJson3(TRASH_KEY, []);
-      restoreInvoice = (reservationId) => {
-        const registry = readJson3(REGISTRY_KEY2, {});
-        if (!writeAllowed(REGISTRY_KEY2)) return registry;
-        const trash = listTrashedInvoices();
-        const found = trash.find((t) => t.reservationId === reservationId);
-        if (found && !registry[reservationId]) {
-          registry[reservationId] = found.config;
-          localStorage.setItem(REGISTRY_KEY2, JSON.stringify(registry));
-        }
-        localStorage.setItem(TRASH_KEY, JSON.stringify(trash.filter((t) => t.reservationId !== reservationId)));
-        return registry;
-      };
-    }
-  });
-
   // src/core/invoicing/invoices.ts
   function buildSnapshot(r, roomName) {
     const num7 = (n) => typeof n === "number" && isFinite(n) ? n : 0;
@@ -73419,17 +73225,19 @@ ${text}` : text });
     ];
   }
   function usedInvoiceNumbers() {
-    const trash = readJson4(TRASH_KEY2, []);
+    const trash = readJson3(TRASH_KEY, []);
     return [
       ...Object.values(readRegistry2()).map((c) => c?.invoiceNumber),
       ...Object.values(readCancelled()).map((c) => c?.invoice?.invoiceNumber),
+      ...Object.keys(readDeposits()),
       ...Array.isArray(trash) ? trash.map((t) => t?.config?.invoiceNumber) : []
     ].filter((n) => !!n);
   }
   function lastInvoiceDate(year) {
     const dates = [
       ...Object.values(readRegistry2()).filter((c) => sequenceOf(c?.invoiceNumber, "FA", year) > 0).map((c) => c.invoiceDate),
-      ...Object.values(readCancelled()).filter((c) => sequenceOf(c?.invoice?.invoiceNumber, "FA", year) > 0).map((c) => c.invoice.invoiceDate)
+      ...Object.values(readCancelled()).filter((c) => sequenceOf(c?.invoice?.invoiceNumber, "FA", year) > 0).map((c) => c.invoice.invoiceDate),
+      ...Object.values(readDeposits()).filter((c) => sequenceOf(c?.invoiceNumber, "FA", year) > 0).map((c) => c.invoiceDate)
     ].filter(Boolean);
     return dates.sort().pop() || "";
   }
@@ -73449,7 +73257,7 @@ ${text}` : text });
     return { blocking, warnings };
   }
   function saveDraft(reservationId, draft) {
-    if (!writeAllowed(REGISTRY_KEY3)) return false;
+    if (!writeAllowed(REGISTRY_KEY2)) return false;
     const drafts = readDrafts();
     drafts[reservationId] = { ...draft, savedAt: (/* @__PURE__ */ new Date()).toISOString() };
     writeJson(DRAFTS_KEY, drafts);
@@ -73464,7 +73272,7 @@ ${text}` : text });
     notify17();
   }
   function validateInvoice(reservationId, draft, snapshot, seller) {
-    if (!writeAllowed(REGISTRY_KEY3)) return { ok: false, error: "Licence en lecture seule : la facture ne peut pas \xEAtre valid\xE9e." };
+    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : la facture ne peut pas \xEAtre valid\xE9e." };
     const registry = readRegistry2();
     if (isValidated(registry[reservationId])) return { ok: false, error: `Ce s\xE9jour a d\xE9j\xE0 la facture ${registry[reservationId].invoiceNumber}.` };
     const date = draft.invoiceDate || today6();
@@ -73478,15 +73286,24 @@ ${text}` : text });
     const invoice = {
       ...draft,
       invoiceDate: date,
-      totalAmount: round212(draft.totalAmount),
+      totalAmount: round211(draft.totalAmount),
       invoiceNumber: nextNumber("FA", year, usedInvoiceNumbers(), counterOf(year)),
       status: "validated",
       validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
       snapshot,
       seller
     };
+    const free = depositsOf(reservationId, true);
+    if (free.length) {
+      invoice.depositsDeducted = free.map((d) => ({ number: d.invoiceNumber, date: d.invoiceDate, amount: round211(d.totalAmount) }));
+      const all2 = readDeposits();
+      free.forEach((d) => {
+        all2[d.invoiceNumber] = { ...all2[d.invoiceNumber], consumedBy: invoice.invoiceNumber };
+      });
+      writeJson(DEPOSITS_KEY, all2);
+    }
     registry[reservationId] = invoice;
-    writeJson(REGISTRY_KEY3, registry);
+    writeJson(REGISTRY_KEY2, registry);
     localStorage.setItem(COUNTER_PREFIX + year, String(sequenceOf(invoice.invoiceNumber, "FA", year)));
     const drafts = readDrafts();
     if (reservationId in drafts) {
@@ -73497,42 +73314,77 @@ ${text}` : text });
     return { ok: true, invoice };
   }
   function updatePayment(reservationId, paymentType, paymentState) {
-    if (!writeAllowed(REGISTRY_KEY3)) return null;
+    if (!writeAllowed(REGISTRY_KEY2)) return null;
     const registry = readRegistry2();
     const current3 = registry[reservationId];
     if (!isValidated(current3)) return null;
     registry[reservationId] = { ...current3, paymentType, paymentState };
-    writeJson(REGISTRY_KEY3, registry);
+    writeJson(REGISTRY_KEY2, registry);
     notify17();
     return registry[reservationId];
   }
   function createPartialCredit(reservationId, amount, reason, date = today6()) {
-    if (!writeAllowed(REGISTRY_KEY3)) return { ok: false, error: "Licence en lecture seule : l'avoir ne peut pas \xEAtre cr\xE9\xE9." };
+    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : l'avoir ne peut pas \xEAtre cr\xE9\xE9." };
     const registry = readRegistry2();
     const invoice = registry[reservationId];
     if (!isValidated(invoice)) return { ok: false, error: "Aucune facture valid\xE9e pour ce s\xE9jour." };
     if (!reason.trim()) return { ok: false, error: "Indiquez le motif de l'avoir : il figure sur le document." };
-    const value = round212(amount);
+    const value = round211(amount);
     if (!(value > 0)) return { ok: false, error: "Le montant de l'avoir doit \xEAtre sup\xE9rieur \xE0 z\xE9ro." };
-    const remaining = round212((invoice.totalAmount || 0) - creditedAmount(invoice));
+    const remaining = round211((invoice.totalAmount || 0) - creditedAmount(invoice) - deductedAmount(invoice));
     if (value > remaining) return { ok: false, error: `Le montant d\xE9passe ce qui reste \xE0 cr\xE9diter sur cette facture (${remaining.toFixed(2).replace(".", ",")} \u20AC).` };
     if (invoice.invoiceDate && date < invoice.invoiceDate) return { ok: false, error: "L'avoir ne peut pas \xEAtre dat\xE9 avant la facture." };
     const creditNote = { number: nextNumber("AV", date.slice(0, 4), usedCreditNumbers()), date, reason: reason.trim(), amount: value, partial: true };
     const updated = { ...invoice, partialCredits: [...invoice.partialCredits || [], creditNote] };
     registry[reservationId] = updated;
-    writeJson(REGISTRY_KEY3, registry);
+    writeJson(REGISTRY_KEY2, registry);
     notify17();
     return { ok: true, invoice: updated, entry: { reservationId, invoice: updated, creditNote, cancelledAt: (/* @__PURE__ */ new Date()).toISOString() } };
   }
+  function createDeposit(reservationId, amount, draft, snapshot, seller) {
+    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : la facture d'acompte ne peut pas \xEAtre cr\xE9\xE9e." };
+    if (isValidated(readRegistry2()[reservationId])) return { ok: false, error: "Ce s\xE9jour a d\xE9j\xE0 sa facture finale : un acompte ne peut plus \xEAtre factur\xE9." };
+    const value = round211(amount);
+    if (!(value > 0)) return { ok: false, error: "Le montant de l'acompte doit \xEAtre sup\xE9rieur \xE0 z\xE9ro." };
+    const remaining = round211((snapshot.totalAmount || 0) - depositedAmount(reservationId));
+    if (value > remaining) return { ok: false, error: `L'acompte d\xE9passe ce qui reste \xE0 facturer sur le s\xE9jour (${remaining.toFixed(2).replace(".", ",")} \u20AC).` };
+    const date = draft.invoiceDate || today6();
+    const check = checkMentions(seller, { ...draft, invoiceDate: date, totalAmount: value }, snapshot);
+    if (check.blocking.length) return { ok: false, error: "Des mentions obligatoires manquent.", missing: check.blocking };
+    const year = date.slice(0, 4);
+    const last = lastInvoiceDate(year);
+    if (last && date < last) return { ok: false, error: `La date d'\xE9mission ne peut pas \xEAtre ant\xE9rieure \xE0 celle de la derni\xE8re facture (${last.split("-").reverse().join("/")}).` };
+    const number = nextNumber("FA", year, usedInvoiceNumbers(), counterOf(year));
+    const deposit = {
+      ...draft,
+      invoiceDate: date,
+      totalAmount: value,
+      invoiceNumber: number,
+      status: "validated",
+      validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      snapshot,
+      seller,
+      kind: "deposit",
+      reservationId,
+      stayTotal: round211(snapshot.totalAmount || 0)
+    };
+    const all2 = readDeposits();
+    all2[number] = deposit;
+    writeJson(DEPOSITS_KEY, all2);
+    localStorage.setItem(COUNTER_PREFIX + year, String(sequenceOf(number, "FA", year)));
+    notify17();
+    return { ok: true, deposit };
+  }
   function cancelWithCreditNote(reservationId, reason, date = today6(), fallback) {
-    if (!writeAllowed(REGISTRY_KEY3)) return { ok: false, error: "Licence en lecture seule : la facture ne peut pas \xEAtre annul\xE9e." };
+    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : la facture ne peut pas \xEAtre annul\xE9e." };
     const registry = readRegistry2();
     const invoice = registry[reservationId];
     if (!isValidated(invoice)) return { ok: false, error: "Aucune facture valid\xE9e pour ce s\xE9jour." };
     if (!reason.trim()) return { ok: false, error: "Indiquez le motif de l'annulation : il figure sur l'avoir." };
     if (invoice.invoiceDate && date < invoice.invoiceDate) return { ok: false, error: "L'avoir ne peut pas \xEAtre dat\xE9 avant la facture qu'il annule." };
-    const remaining = round212((invoice.totalAmount || 0) - creditedAmount(invoice));
-    if (!(remaining > 0)) return { ok: false, error: "Cette facture est d\xE9j\xE0 enti\xE8rement cr\xE9dit\xE9e." };
+    const deducted = deductedAmount(invoice);
+    const remaining = round211((invoice.totalAmount || 0) - creditedAmount(invoice) - deducted);
+    if (remaining < 0 || remaining === 0 && !(deducted > 0)) return { ok: false, error: "Cette facture est d\xE9j\xE0 enti\xE8rement cr\xE9dit\xE9e." };
     const year = date.slice(0, 4);
     const cancelledMap = readCancelled();
     const creditNote = {
@@ -73546,24 +73398,35 @@ ${text}` : text });
     const cancelled = { reservationId, invoice: frozen, creditNote, cancelledAt: (/* @__PURE__ */ new Date()).toISOString() };
     cancelledMap[creditNote.number] = cancelled;
     writeJson(CANCELLED_KEY, cancelledMap);
+    const deposits = readDeposits();
+    let released = false;
+    Object.keys(deposits).forEach((n) => {
+      if (deposits[n].consumedBy === invoice.invoiceNumber) {
+        const { consumedBy, ...rest } = deposits[n];
+        deposits[n] = rest;
+        released = true;
+      }
+    });
+    if (released) writeJson(DEPOSITS_KEY, deposits);
     delete registry[reservationId];
-    writeJson(REGISTRY_KEY3, registry);
+    writeJson(REGISTRY_KEY2, registry);
     notify17();
     return { ok: true, cancelled };
   }
-  var REGISTRY_KEY3, DRAFTS_KEY, CANCELLED_KEY, TRASH_KEY2, COUNTER_PREFIX, INVOICES_EVENT, readJson4, writeJson, notify17, today6, round212, readRegistry2, readDrafts, readCancelled, listCancelled, isValidated, snapshotAsReservation, creditedAmount, counterOf, peekInvoiceNumber;
+  var REGISTRY_KEY2, DRAFTS_KEY, CANCELLED_KEY, DEPOSITS_KEY, TRASH_KEY, COUNTER_PREFIX, INVOICES_EVENT, readJson3, writeJson, notify17, today6, round211, readRegistry2, readDrafts, readDeposits, depositsOf, depositedAmount, deductedAmount, readCancelled, listCancelled, isValidated, snapshotAsReservation, creditedAmount, counterOf, peekInvoiceNumber;
   var init_invoices = __esm({
     "src/core/invoicing/invoices.ts"() {
       "use strict";
       init_storage();
       init_vat();
-      REGISTRY_KEY3 = "domaine_sylvaria_invoices_registry_v1";
+      REGISTRY_KEY2 = "domaine_sylvaria_invoices_registry_v1";
       DRAFTS_KEY = "domaine_sylvaria_invoices_drafts_v1";
       CANCELLED_KEY = "domaine_sylvaria_invoices_cancelled_v1";
-      TRASH_KEY2 = "domaine_sylvaria_invoices_trash_v1";
+      DEPOSITS_KEY = "domaine_sylvaria_invoices_deposits_v1";
+      TRASH_KEY = "domaine_sylvaria_invoices_trash_v1";
       COUNTER_PREFIX = "domaine_sylvaria_invoice_counter_";
       INVOICES_EVENT = "domaine_sylvaria_trigger_sync";
-      readJson4 = (key, fallback) => {
+      readJson3 = (key, fallback) => {
         try {
           const raw = localStorage.getItem(key);
           const parsed = raw ? JSON.parse(raw) : null;
@@ -73580,14 +73443,18 @@ ${text}` : text });
         }
       };
       today6 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-      round212 = (n) => Math.round(n * 100) / 100;
-      readRegistry2 = () => readJson4(REGISTRY_KEY3, {});
-      readDrafts = () => readJson4(DRAFTS_KEY, {});
-      readCancelled = () => readJson4(CANCELLED_KEY, {});
+      round211 = (n) => Math.round(n * 100) / 100;
+      readRegistry2 = () => readJson3(REGISTRY_KEY2, {});
+      readDrafts = () => readJson3(DRAFTS_KEY, {});
+      readDeposits = () => readJson3(DEPOSITS_KEY, {});
+      depositsOf = (reservationId, freeOnly = false) => Object.values(readDeposits()).filter((d) => d?.reservationId === reservationId && (!freeOnly || !d.consumedBy)).sort((a, b) => a.invoiceNumber.localeCompare(b.invoiceNumber, void 0, { numeric: true }));
+      depositedAmount = (reservationId) => round211(depositsOf(reservationId, true).reduce((n, d) => n + (d.totalAmount || 0), 0));
+      deductedAmount = (invoice) => round211((invoice?.depositsDeducted || []).reduce((n, d) => n + (d.amount || 0), 0));
+      readCancelled = () => readJson3(CANCELLED_KEY, {});
       listCancelled = () => Object.values(readCancelled()).sort((a, b) => b.creditNote.number.localeCompare(a.creditNote.number, void 0, { numeric: true }));
       isValidated = (c) => !!c && typeof c === "object" && !!c.invoiceNumber;
       snapshotAsReservation = (snapshot) => ({ ...snapshot });
-      creditedAmount = (invoice) => round212((invoice?.partialCredits || []).reduce((n, c) => n + (c.amount || 0), 0));
+      creditedAmount = (invoice) => round211((invoice?.partialCredits || []).reduce((n, c) => n + (c.amount || 0), 0));
       counterOf = (year) => {
         const n = parseInt(localStorage.getItem(COUNTER_PREFIX + year) || "0", 10);
         return isNaN(n) || n < 0 ? 0 : n;
@@ -73595,6 +73462,209 @@ ${text}` : text });
       peekInvoiceNumber = (date) => {
         const year = (date || today6()).slice(0, 4);
         return nextNumber("FA", year, usedInvoiceNumbers(), counterOf(year));
+      };
+    }
+  });
+
+  // src/core/export/accounting.ts
+  function periodOf(year, month) {
+    const y = String(year);
+    if (!month) return { from: `${y}-01-01`, to: `${y}-12-31`, label: y };
+    const mm = String(month).padStart(2, "0");
+    const last = new Date(year, month, 0).getDate();
+    return { from: `${y}-${mm}-01`, to: `${y}-${mm}-${String(last).padStart(2, "0")}`, label: `${y}-${mm}` };
+  }
+  function invoiceJournalRows(reservations, registry, period, roomName, vatMention, cancelled = [], deposits = []) {
+    const byId = new Map(reservations.map((r) => [r.id, r]));
+    const stayLine = (c, r) => ({
+      name: c.guestName || r?.guestName || "Client",
+      room: c.snapshot?.roomName || (r ? roomName(String(r.roomId)) : c.snapshot?.roomId ? roomName(String(c.snapshot.roomId)) : ""),
+      checkIn: c.snapshot?.checkIn || r?.checkIn,
+      checkOut: c.snapshot?.checkOut || r?.checkOut,
+      nights: c.snapshot?.nights ?? r?.nights
+    });
+    const lines2 = [];
+    Object.keys(registry).forEach((id) => {
+      const c = registry[id];
+      const r = byId.get(id);
+      if (!c || (r ? !isReal(r) : !c.snapshot)) return;
+      const paid = c.paymentState === "acquittee" || c.paymentState === void 0 && r?.paymentStatus === "paid";
+      lines2.push({
+        number: c.invoiceNumber || "FA-PROVISOIRE",
+        date: c.invoiceDate || r?.checkIn,
+        ...stayLine(c, r),
+        // Les acomptes déjà facturés sont comptés à leur propre ligne : la facture finale ne porte que le solde
+        total: round212((c.totalAmount !== void 0 ? c.totalAmount : r?.totalAmount || 0) - (c.depositsDeducted || []).reduce((n, d) => n + (d.amount || 0), 0)),
+        status: paid ? "R\xE9gl\xE9e" : "\xC0 r\xE9gler",
+        paid,
+        credit: false
+      });
+      (c.partialCredits || []).forEach((p) => {
+        lines2.push({ number: p.number, date: p.date, ...stayLine(c, r), total: -round212(p.amount || 0), status: `Avoir partiel sur ${c.invoiceNumber || ""}`, paid: false, credit: true });
+      });
+    });
+    deposits.forEach((d) => {
+      const r = d.reservationId ? byId.get(d.reservationId) : void 0;
+      const paid = d.paymentState === "acquittee";
+      lines2.push({ number: d.invoiceNumber || "", date: d.invoiceDate, ...stayLine(d, r), total: round212(d.totalAmount || 0), status: paid ? "Acompte r\xE9gl\xE9" : "Acompte \xE0 r\xE9gler", paid, credit: false });
+    });
+    cancelled.forEach((x) => {
+      const r = x.reservationId ? byId.get(x.reservationId) : void 0;
+      const stay = stayLine(x.invoice, r);
+      const amount = round212(x.creditNote.amount || 0);
+      lines2.push({ number: x.invoice.invoiceNumber || "", date: x.invoice.invoiceDate, ...stay, total: round212(x.invoice.totalAmount ?? amount), status: `Annul\xE9e par ${x.creditNote.number}`, paid: false, credit: false });
+      lines2.push({ number: x.creditNote.number, date: x.creditNote.date, ...stay, total: -amount, status: `Avoir sur ${x.invoice.invoiceNumber || ""}`, paid: false, credit: true });
+    });
+    const shown = lines2.filter((l) => inPeriod(l.date, period)).sort((a, b) => Number(a.credit) - Number(b.credit) || a.number.localeCompare(b.number, void 0, { numeric: true }));
+    const invoices = shown.filter((l) => !l.credit).length;
+    const credits = shown.length - invoices;
+    const total = round212(shown.reduce((n, l) => n + l.total, 0));
+    const paidTotal = round212(shown.filter((l) => l.paid).reduce((n, l) => n + l.total, 0));
+    const count = `${invoices} facture${invoices > 1 ? "s" : ""}` + (credits ? `, ${credits} avoir${credits > 1 ? "s" : ""}` : "");
+    return [
+      ["N\xB0 de facture", "Date de facture", "Client", "H\xE9bergement", "Arriv\xE9e", "D\xE9part", "Nuits", "Montant (\u20AC)", "Mention TVA", "R\xE8glement"],
+      ...shown.map((l) => [l.number, l.date ?? null, l.name, l.room, l.checkIn ?? null, l.checkOut ?? null, l.nights ?? null, l.total, vatMention, l.status]),
+      [`Total (${count})`, null, null, null, null, null, null, total, null, `dont r\xE9gl\xE9 : ${paidTotal}`]
+    ];
+  }
+  function touristTaxRows(reservations, period, roomName) {
+    const stays = reservations.filter((r) => isReal(r) && r.reservationStatus !== "cancelled" && inPeriod(r.checkOut, period) && (r.touristTaxAmount || 0) > 0).sort((a, b) => a.checkOut.localeCompare(b.checkOut));
+    const statusOf4 = (r) => r.touristTaxStatus || (isOtaSource(r.bookingSource, r) ? "prise_en_charge" : "a_declarer");
+    const byStatus = /* @__PURE__ */ new Map();
+    stays.forEach((r) => {
+      const s = TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer;
+      byStatus.set(s, round212((byStatus.get(s) || 0) + (r.touristTaxAmount || 0)));
+    });
+    const mine = round212(stays.filter((r) => statusOf4(r) === "a_declarer").reduce((n, r) => n + (r.touristTaxAmount || 0), 0));
+    return [
+      ["Arriv\xE9e", "D\xE9part", "Nuits", "H\xE9bergement", "Client", "Adultes", "Enfants", "Taxe (\u20AC)", "Statut", "\xC0 v\xE9rifier"],
+      ...stays.map((r) => [
+        r.checkIn,
+        r.checkOut,
+        r.nights,
+        roomName(String(r.roomId)),
+        r.guestName,
+        r.adultsCount,
+        r.childrenCount,
+        round212(r.touristTaxAmount || 0),
+        TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer,
+        r.touristTaxNeedsVerification ? "Oui" : ""
+      ]),
+      [`Total (${stays.length} s\xE9jour${stays.length > 1 ? "s" : ""})`, null, null, null, null, null, null, round212(stays.reduce((n, r) => n + (r.touristTaxAmount || 0), 0)), null, null],
+      ...[...byStatus.entries()].map(([s, v]) => [`dont ${s}`, null, null, null, null, null, null, v, null, null]),
+      ["\xC0 D\xC9CLARER ET REVERSER PAR VOUS (hors plateformes)", null, null, null, null, null, null, mine, null, null]
+    ];
+  }
+  var inPeriod, round212, isReal, TAX_STATUS;
+  var init_accounting = __esm({
+    "src/core/export/accounting.ts"() {
+      "use strict";
+      init_pricing();
+      inPeriod = (date, p) => !!date && date >= p.from && date <= p.to;
+      round212 = (n) => Math.round(n * 100) / 100;
+      isReal = (r) => !r.isBlocked && !/ferm|bloq/i.test(r.guestName || "");
+      TAX_STATUS = {
+        prise_en_charge: "Collect\xE9e et revers\xE9e par la plateforme",
+        a_declarer: "\xC0 d\xE9clarer et reverser par l'\xE9tablissement",
+        non_prise_en_compte: "Non prise en compte (exon\xE9ration ou autre)"
+      };
+    }
+  });
+
+  // src/components/AccountingExports.tsx
+  var import_react156, import_jsx_runtime155, MONTHS6, AccountingExports;
+  var init_AccountingExports = __esm({
+    "src/components/AccountingExports.tsx"() {
+      "use strict";
+      import_react156 = __require("react");
+      init_lucide_react();
+      init_bookingUtils();
+      init_settingsStore();
+      init_csv();
+      init_invoices();
+      init_accounting();
+      import_jsx_runtime155 = __require("react/jsx-runtime");
+      MONTHS6 = ["Toute l'ann\xE9e", "Janvier", "F\xE9vrier", "Mars", "Avril", "Mai", "Juin", "Juillet", "Ao\xFBt", "Septembre", "Octobre", "Novembre", "D\xE9cembre"];
+      AccountingExports = ({ reservations, registry, cancelled = [], onToast = () => {
+      } }) => {
+        const thisYear = (/* @__PURE__ */ new Date()).getFullYear();
+        const [year, setYear] = (0, import_react156.useState)(thisYear);
+        const [month, setMonth] = (0, import_react156.useState)(0);
+        const years = (0, import_react156.useMemo)(() => {
+          const found = /* @__PURE__ */ new Set([thisYear]);
+          reservations.forEach((r) => {
+            const y = parseInt((r.checkOut || "").slice(0, 4), 10);
+            if (y > 2e3) found.add(y);
+          });
+          return [...found].sort((a, b) => b - a);
+        }, [reservations, thisYear]);
+        const period = periodOf(year, month);
+        const name = (id) => roomFor(id).name;
+        const exportJournal = () => {
+          const rows = invoiceJournalRows(reservations, registry, period, name, getSettings().establishment.vatMention, cancelled, Object.values(readDeposits()));
+          downloadCsv(`journal-factures_${period.label}.csv`, rows, ";");
+          onToast(rows.length > 2 ? `Journal des factures de ${period.label} t\xE9l\xE9charg\xE9.` : `Aucune facture \xE9dit\xE9e sur ${period.label} : le fichier ne contient que les titres.`);
+        };
+        const exportTax = () => {
+          const rows = touristTaxRows(reservations, period, name);
+          downloadCsv(`taxe-de-sejour_${period.label}.csv`, rows, ";");
+          onToast(rows.length > 4 ? `Taxe de s\xE9jour de ${period.label} t\xE9l\xE9charg\xE9e.` : `Aucune taxe de s\xE9jour sur ${period.label} : le fichier ne contient que les titres.`);
+        };
+        const select = "text-xs border border-neutral-300 rounded-lg px-2.5 py-1.5 bg-white";
+        return /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("div", { className: "bg-white rounded-2xl p-4 sm:p-5 border border-neutral-200/90 shadow-2xs space-y-3", "data-accounting-exports": true, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("div", { className: "flex items-start gap-2.5", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("div", { className: "p-2 bg-emerald-50 text-emerald-800 rounded-xl", children: /* @__PURE__ */ (0, import_jsx_runtime155.jsx)(FileSpreadsheet, { className: "w-4 h-4" }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("div", { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("h3", { className: "text-sm font-bold text-neutral-900", children: "Exports pour votre comptable" }),
+              /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("p", { className: "text-[11px] text-neutral-500", children: "Fichiers CSV que votre tableur (Excel, LibreOffice) ouvre directement. Choisissez la p\xE9riode, puis le fichier voulu." })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("div", { className: "flex flex-wrap items-center gap-2", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("select", { value: year, onChange: (e) => setYear(parseInt(e.target.value, 10)), className: select, "aria-label": "Ann\xE9e", children: years.map((y) => /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("option", { value: y, children: y }, y)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("select", { value: month, onChange: (e) => setMonth(parseInt(e.target.value, 10)), className: select, "aria-label": "Mois", children: MONTHS6.map((m, i) => /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("option", { value: i, children: m }, m)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("button", { type: "button", onClick: exportJournal, className: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg cursor-pointer", "data-export-journal": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime155.jsx)(Download, { className: "w-3.5 h-3.5" }),
+              " Journal des factures"
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime155.jsxs)("button", { type: "button", onClick: exportTax, className: "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg cursor-pointer", "data-export-tax": true, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime155.jsx)(Download, { className: "w-3.5 h-3.5" }),
+              " Taxe de s\xE9jour"
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime155.jsx)("p", { className: "text-[10px] text-neutral-500", children: "Le journal liste les factures \xE9dit\xE9es dans la p\xE9riode (date de facture). La taxe de s\xE9jour liste les s\xE9jours qui se terminent dans la p\xE9riode ; elle est indicative : la d\xE9claration se fait aupr\xE8s de votre commune." })
+        ] });
+      };
+    }
+  });
+
+  // src/core/invoiceTrash.ts
+  var REGISTRY_KEY3, TRASH_KEY2, readJson4, listTrashedInvoices, restoreInvoice;
+  var init_invoiceTrash = __esm({
+    "src/core/invoiceTrash.ts"() {
+      "use strict";
+      init_storage();
+      REGISTRY_KEY3 = "domaine_sylvaria_invoices_registry_v1";
+      TRASH_KEY2 = "domaine_sylvaria_invoices_trash_v1";
+      readJson4 = (key, fallback) => {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : fallback;
+        } catch {
+          return fallback;
+        }
+      };
+      listTrashedInvoices = () => readJson4(TRASH_KEY2, []);
+      restoreInvoice = (reservationId) => {
+        const registry = readJson4(REGISTRY_KEY3, {});
+        if (!writeAllowed(REGISTRY_KEY3)) return registry;
+        const trash = listTrashedInvoices();
+        const found = trash.find((t) => t.reservationId === reservationId);
+        if (found && !registry[reservationId]) {
+          registry[reservationId] = found.config;
+          localStorage.setItem(REGISTRY_KEY3, JSON.stringify(registry));
+        }
+        localStorage.setItem(TRASH_KEY2, JSON.stringify(trash.filter((t) => t.reservationId !== reservationId)));
+        return registry;
       };
     }
   });
@@ -74180,7 +74250,8 @@ ${text}` : text });
         onSave,
         onToast = () => {
         },
-        onCreditNote
+        onCreditNote,
+        onDeposit
       }) => {
         if (!isOpen) return null;
         const getInitialAddress = () => {
@@ -74224,6 +74295,9 @@ ${text}` : text });
         const [problem, setProblem] = (0, import_react158.useState)(null);
         const [cancelOpen, setCancelOpen] = (0, import_react158.useState)(false);
         const [partialOpen, setPartialOpen] = (0, import_react158.useState)(false);
+        const [depositOpen, setDepositOpen] = (0, import_react158.useState)(false);
+        const [depositAmount, setDepositAmount] = (0, import_react158.useState)("");
+        const [depositPaid, setDepositPaid] = (0, import_react158.useState)(true);
         const [partialAmount, setPartialAmount] = (0, import_react158.useState)("");
         const [partialReason, setPartialReason] = (0, import_react158.useState)("");
         const [cancelReason, setCancelReason] = (0, import_react158.useState)("");
@@ -74353,6 +74427,18 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
           onToast(`Avoir partiel ${res2.entry.creditNote.number} cr\xE9\xE9 sur la facture ${res2.invoice.invoiceNumber}.`);
           onClose();
           onCreditNote?.(res2.entry);
+        };
+        const handleDeposit = () => {
+          const amount = parseFloat(depositAmount.replace(",", "."));
+          const res2 = createDeposit(reservation.id, amount, { ...draftFields(), paymentState: depositPaid ? "acquittee" : "a_regler", totalAmount: amount }, buildSnapshot(reservation, roomName), seller);
+          if (res2.ok === false) {
+            setProblem({ error: res2.error, missing: res2.missing });
+            return;
+          }
+          pushToReservation();
+          onToast(`Facture d'acompte ${res2.deposit.invoiceNumber} cr\xE9\xE9e.`);
+          onClose();
+          onDeposit?.(res2.deposit);
         };
         const paymentChanged = locked && (paymentType !== validated.paymentType || paymentState !== validated.paymentState);
         return /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("div", { className: "fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200", children: /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "bg-white rounded-2xl shadow-2xl border border-neutral-300 max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden my-auto", children: [
@@ -74601,6 +74687,52 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
               ] }),
               problem.missing && /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("ul", { className: "list-disc pl-5", children: problem.missing.map((m) => /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("li", { children: m }, m)) })
             ] }),
+            !locked && depositsOf(reservation.id).length > 0 && /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { "data-invoice-deposits": true, className: "bg-sky-50 border border-sky-200 rounded-xl p-3 space-y-1", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "font-bold text-sky-900", children: [
+                "Acomptes factur\xE9s sur ce s\xE9jour (d\xE9duits de la facture finale : ",
+                formatCurrency(depositedAmount(reservation.id)),
+                ")"
+              ] }),
+              depositsOf(reservation.id).map((d) => /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "flex items-center justify-between gap-2", "data-deposit-row": true, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("span", { children: [
+                  d.invoiceNumber,
+                  " \xB7 ",
+                  formatCurrency(d.totalAmount),
+                  " \xB7 ",
+                  d.paymentState === "acquittee" ? "r\xE9gl\xE9" : "\xE0 r\xE9gler",
+                  d.consumedBy ? ` \xB7 d\xE9duit de ${d.consumedBy}` : ""
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("button", { type: "button", "data-deposit-view": true, onClick: () => {
+                  onClose();
+                  onDeposit?.(d);
+                }, className: "px-2 py-1 font-semibold text-sy-325032 bg-emerald-50 border border-emerald-200 rounded-lg cursor-pointer", children: "Voir" })
+              ] }, d.invoiceNumber))
+            ] }),
+            locked && (validated?.depositsDeducted?.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { "data-invoice-deducted": true, className: "bg-sky-50 border border-sky-200 rounded-xl p-3", children: [
+              "Acomptes d\xE9duits : ",
+              validated.depositsDeducted.map((d) => `${d.number} (${formatCurrency(d.amount)})`).join(", "),
+              ". Reste \xE0 payer : ",
+              formatCurrency(calculatedTotal - deductedAmount(validated)),
+              "."
+            ] }),
+            !locked && depositOpen && /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { "data-invoice-deposit": true, className: "bg-sky-50 border border-sky-300 rounded-xl p-4 space-y-2.5", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("div", { className: "font-bold text-sky-900 text-sm", children: "Facture d'acompte" }),
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("p", { className: "text-sky-900", children: [
+                "\xC9mise tout de suite, avec son num\xE9ro de facture d\xE9finitif. Le montant est TTC. Elle sera d\xE9duite automatiquement du solde de la facture finale. Il reste ",
+                formatCurrency(Math.max(0, calculatedTotal - depositedAmount(reservation.id))),
+                " \xE0 facturer au maximum. Cette op\xE9ration ne s'annule pas : une erreur se corrige par un avoir."
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("label", { className: "block font-semibold text-sky-900", children: "Montant de l'acompte (\u20AC TTC)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("input", { type: "text", inputMode: "decimal", "data-invoice-deposit-amount": true, value: depositAmount, onChange: (e) => setDepositAmount(e.target.value), className: "w-full px-3 py-2 bg-white border border-sky-300 rounded-lg" }),
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("label", { className: "flex items-center gap-2 font-semibold text-sky-900", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("input", { type: "checkbox", "data-invoice-deposit-paid": true, checked: depositPaid, onChange: (e) => setDepositPaid(e.target.checked) }),
+                " Acompte d\xE9j\xE0 re\xE7u (facture acquitt\xE9e)"
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "flex justify-end gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("button", { type: "button", onClick: () => setDepositOpen(false), className: "px-3 py-2 font-semibold text-neutral-600 hover:bg-neutral-200 rounded-xl cursor-pointer", children: "Annuler" }),
+                /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("button", { type: "button", "data-invoice-deposit-confirm": true, disabled: !(parseFloat(depositAmount.replace(",", ".")) > 0), onClick: handleDeposit, className: "px-4 py-2 font-bold text-white bg-sky-700 hover:bg-sky-800 rounded-xl cursor-pointer disabled:opacity-50 disabled:cursor-default", children: "Cr\xE9er la facture d'acompte" })
+              ] })
+            ] }),
             locked && (validated?.partialCredits?.length ?? 0) > 0 && /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { "data-invoice-partials": true, className: "bg-neutral-50 border border-neutral-200 rounded-xl p-3 space-y-1", children: [
               /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "font-bold text-neutral-800", children: [
                 "Avoirs partiels sur cette facture (d\xE9j\xE0 cr\xE9dit\xE9 : ",
@@ -74755,6 +74887,7 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
                     ]
                   }
                 ),
+                !depositOpen && /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("button", { type: "button", "data-invoice-deposit-open": true, onClick: () => setDepositOpen(true), className: "px-3 py-2 text-xs font-semibold text-sky-800 bg-sky-50 hover:bg-sky-100 border border-sky-200 rounded-xl cursor-pointer", children: "Facture d'acompte" }),
                 /* @__PURE__ */ (0, import_jsx_runtime157.jsx)("button", { type: "button", onClick: onClose, className: "px-3 py-2 font-semibold text-neutral-600 hover:bg-neutral-200 rounded-xl transition-colors cursor-pointer", children: "Annuler" }),
                 /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)(
                   "button",
@@ -74834,7 +74967,8 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
         reservation: liveReservation,
         allReservations = [],
         cancelled,
-        creditView = false
+        creditView = false,
+        deposit
       }) => {
         const settings = useSettings();
         const terms = readTerms(settings);
@@ -74844,8 +74978,8 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
         const { printing, print } = usePrint();
         const invoiceRef = (0, import_react159.useRef)(null);
         if (!isOpen) return null;
-        const registered = cancelled ? null : readRegistry2()[liveReservation.id];
-        const validated = cancelled ? cancelled.invoice : isValidated(registered) ? registered : null;
+        const registered = cancelled || deposit ? null : readRegistry2()[liveReservation.id];
+        const validated = cancelled ? cancelled.invoice : deposit ? deposit : isValidated(registered) ? registered : null;
         const isDraft = !validated;
         const isCredit = !!cancelled && creditView;
         const reservation = stayOf(validated || void 0, liveReservation);
@@ -74884,10 +75018,12 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
           totalAmount: reservation.totalAmount || 0
         };
         const invoiceNumber = isCredit ? cancelled.creditNote.number : validated ? validated.invoiceNumber : "BROUILLON";
-        const docLabel = isCredit ? "Avoir" : "Facture";
+        const docLabel = isCredit ? "Avoir" : deposit ? "Facture d'acompte" : "Facture";
         const todayFormatted = formatDateFr(isCredit ? cancelled.creditNote.date : config.invoiceDate || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
         const sign = isCredit ? -1 : 1;
-        const factor = isCredit && cancelled.invoice.totalAmount ? Math.min(1, (cancelled.creditNote.amount || 0) / cancelled.invoice.totalAmount) : 1;
+        const factor = isCredit && cancelled.invoice.totalAmount ? Math.min(1, (cancelled.creditNote.amount || 0) / cancelled.invoice.totalAmount) : deposit ? Math.min(1, (deposit.totalAmount || 0) / (deposit.stayTotal || deposit.totalAmount || 1)) : 1;
+        const deductions = deposit || isCredit ? [] : validated ? validated.depositsDeducted || [] : depositsOf(liveReservation.id, true).map((d) => ({ number: d.invoiceNumber, date: d.invoiceDate, amount: d.totalAmount }));
+        const deductedTotal = deductions.reduce((n, d) => n + (d.amount || 0), 0);
         const k = sign * factor;
         const roomAmount = k * (reservation.roomAmount || 0);
         const mealsAmount = k * (reservation.mealsAmount || 0);
@@ -74927,11 +75063,14 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
                   /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("h3", { className: "font-serif font-bold text-sm sm:text-base text-white leading-tight", children: isCredit ? /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)(import_jsx_runtime158.Fragment, { children: [
                     "Avoir \u2022 ",
                     invoiceNumber
+                  ] }) : deposit ? /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)(import_jsx_runtime158.Fragment, { children: [
+                    "Facture d'acompte \u2022 ",
+                    invoiceNumber
                   ] }) : isDraft ? /* @__PURE__ */ (0, import_jsx_runtime158.jsx)(import_jsx_runtime158.Fragment, { children: "Aper\xE7u de la facture \u2022 brouillon" }) : /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)(import_jsx_runtime158.Fragment, { children: [
                     "Facture \u2022 ",
                     invoiceNumber
                   ] }) }),
-                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("p", { className: "text-[11px] text-neutral-300", children: isCredit ? cancelled.creditNote.partial ? `Avoir partiel sur la facture ${cancelled.invoice.invoiceNumber}` : `Annule la facture ${cancelled.invoice.invoiceNumber}` : cancelled ? `Facture annul\xE9e par l'avoir ${cancelled.creditNote.number}` : isDraft ? "Sans num\xE9ro : \xE0 valider dans Facturation" : `Facture valid\xE9e pour ${config.guestName || reservation.guestName}` })
+                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("p", { className: "text-[11px] text-neutral-300", children: deposit ? "Acompte sur le s\xE9jour : le solde sera factur\xE9 \xE0 l'issue du s\xE9jour" : isCredit ? cancelled.creditNote.partial ? `Avoir partiel sur la facture ${cancelled.invoice.invoiceNumber}` : `Annule la facture ${cancelled.invoice.invoiceNumber}` : cancelled ? `Facture annul\xE9e par l'avoir ${cancelled.creditNote.number}` : isDraft ? "Sans num\xE9ro : \xE0 valider dans Facturation" : `Facture valid\xE9e pour ${config.guestName || reservation.guestName}` })
                 ] })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("div", { className: "flex items-center gap-2", children: [
@@ -75029,6 +75168,12 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
                 ] })
               ] }),
               isDraft && /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("div", { "data-invoice-draft-banner": true, className: "mb-3 border-2 border-dashed border-amber-500 bg-amber-50 text-amber-900 text-center font-sans font-bold text-xs py-1.5 rounded-lg uppercase tracking-wider", children: "Brouillon \u2013 document sans valeur de facture (pas encore de num\xE9ro)" }),
+              deposit && /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("div", { "data-invoice-deposit-banner": true, className: "mb-3 border-2 border-sky-500 bg-sky-50 text-sky-900 text-center font-sans font-bold text-xs py-1.5 rounded-lg uppercase tracking-wider", children: [
+                "Facture d'acompte \u2013 s\xE9jour du ",
+                formatDateFr(reservation.checkIn),
+                " au ",
+                formatDateFr(reservation.checkOut)
+              ] }),
               cancelled && !isCredit && /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("div", { "data-invoice-cancelled-banner": true, className: "mb-3 border-2 border-rose-500 bg-rose-50 text-rose-900 text-center font-sans font-bold text-xs py-1.5 rounded-lg uppercase tracking-wider", children: [
                 "Facture annul\xE9e par l'avoir n\xB0 ",
                 cancelled.creditNote.number,
@@ -75198,9 +75343,19 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
                     /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-right text-slate-700 italic", children: vatShort })
                   ] })
                 ] }),
+                deductions.map((d) => /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tr", { "data-invoice-deduction": true, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("td", { className: "p-1.5 text-slate-600 font-medium", children: [
+                    "Acompte d\xE9j\xE0 factur\xE9 (facture ",
+                    d.number,
+                    " du ",
+                    formatDateFr(d.date),
+                    ") :"
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-1.5 text-right font-mono text-slate-900", children: formatCurrency(-d.amount) })
+                ] }, d.number)),
                 /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("tr", { className: "border-t-2 border-b-2 border-sy-2d5a27 bg-slate-100", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-2 text-base font-bold text-sy-2d5a27 font-serif", children: isCredit ? "Total de l'avoir :" : "Net \xE0 Payer :" }),
-                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-2 text-right text-base font-bold font-mono text-sy-2d5a27 tabular-nums", children: formatCurrency(totalAmount) })
+                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-2 text-base font-bold text-sy-2d5a27 font-serif", children: isCredit ? "Total de l'avoir :" : deposit ? "Acompte \xE0 payer :" : "Net \xE0 Payer :" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime158.jsx)("td", { className: "p-2 text-right text-base font-bold font-mono text-sy-2d5a27 tabular-nums", children: formatCurrency(totalAmount - deductedTotal) })
                 ] })
               ] }) }) }),
               /* @__PURE__ */ (0, import_jsx_runtime158.jsxs)("div", { className: "text-[10px] text-slate-500 leading-relaxed border-t border-slate-300 pt-3 space-y-1 font-sans", children: [
@@ -80202,6 +80357,7 @@ ${annex}
     const [editingReservation, setEditingReservation] = (0, import_react166.useState)(null);
     const [viewingReservation, setViewingReservation] = (0, import_react166.useState)(null);
     const [invoiceConfigReservation, setInvoiceConfigReservation] = (0, import_react166.useState)(null);
+    const [depositView, setDepositView] = (0, import_react166.useState)(null);
     const [invoiceArchiveView, setInvoiceArchiveView] = (0, import_react166.useState)(null);
     const [invoiceViewReservation, setInvoiceViewReservation] = (0, import_react166.useState)(null);
     const [modalDefaultRoom, setModalDefaultRoom] = (0, import_react166.useState)(() => firstRoomId(getSettings()));
@@ -81275,9 +81431,11 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
           },
           onSave: handleSaveReservation,
           onToast: showToast,
-          onCreditNote: (cancelled) => setInvoiceArchiveView({ entry: cancelled, credit: true })
+          onCreditNote: (cancelled) => setInvoiceArchiveView({ entry: cancelled, credit: true }),
+          onDeposit: (d) => setDepositView(d)
         }
       ),
+      depositView && depositView.snapshot && /* @__PURE__ */ (0, import_jsx_runtime166.jsx)(InvoiceModal, { isOpen: true, onClose: () => setDepositView(null), reservation: snapshotAsReservation(depositView.snapshot), deposit: depositView }),
       invoiceArchiveView && invoiceArchiveView.entry.invoice.snapshot && /* @__PURE__ */ (0, import_jsx_runtime166.jsx)(
         InvoiceModal,
         {
