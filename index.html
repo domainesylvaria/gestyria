@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v302</title>
-  <meta name="application-name" content="Gestyria v302" />
+  <title>Gestyria v303</title>
+  <meta name="application-name" content="Gestyria v303" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -1329,7 +1329,7 @@ var DomaineAppBundle = (() => {
         realStorage = s;
       };
       getRealStorage = () => realStorage || window.localStorage;
-      scopedName = (base) => activeId === FIRST_ID ? base : `${base}__${activeId}`;
+      scopedName = (base2) => activeId === FIRST_ID ? base2 : `${base2}__${activeId}`;
     }
   });
 
@@ -1633,16 +1633,16 @@ var DomaineAppBundle = (() => {
   function normalizeSection(raw, fallback) {
     if (!raw || typeof raw !== "object") return null;
     const r = raw;
-    const base = fallback || section("custom", "Rubrique", "public");
-    const id = asText(r.id) || base.id;
+    const base2 = fallback || section("custom", "Rubrique", "public");
+    const id = asText(r.id) || base2.id;
     if (!id) return null;
     const menu = normalizeMenu(r.menu);
     return {
-      ...base,
+      ...base2,
       ...r,
       menu,
       id,
-      kind: r.kind || base.kind,
+      kind: r.kind || base2.kind,
       // Les repas ont leur propre rubrique : l'ancien titre d'origine devient « Services »
       title: id === "services" && asText(r.title) === "Repas et services" ? "Services" : asText(r.title),
       enabled: r.enabled !== false,
@@ -1650,8 +1650,8 @@ var DomaineAppBundle = (() => {
       text: asText(r.text),
       items: Array.isArray(r.items) ? r.items.map(normalizeItem).filter(Boolean) : [],
       photos: Array.isArray(r.photos) ? r.photos.filter((p) => typeof p === "string") : [],
-      fields: { ...base.fields, ...r.fields && typeof r.fields === "object" ? r.fields : {} },
-      options: { ...base.options, ...r.options && typeof r.options === "object" ? r.options : {} }
+      fields: { ...base2.fields, ...r.fields && typeof r.fields === "object" ? r.fields : {} },
+      options: { ...base2.options, ...r.options && typeof r.options === "object" ? r.options : {} }
     };
   }
   function normalizePublication(raw) {
@@ -2948,9 +2948,9 @@ var DomaineAppBundle = (() => {
   }
   function retentionUntil(doc, admin) {
     const cat = admin.categories.find((c) => c.id === doc.categoryId);
-    const base = isoOk(doc.issueDate) ? doc.issueDate : isoOk(doc.expiryDate) ? doc.expiryDate : "";
-    if (!cat || !cat.retentionYears || !base) return "";
-    const [y, m, d] = base.split("-").map(Number);
+    const base2 = isoOk(doc.issueDate) ? doc.issueDate : isoOk(doc.expiryDate) ? doc.expiryDate : "";
+    if (!cat || !cat.retentionYears || !base2) return "";
+    const [y, m, d] = base2.split("-").map(Number);
     return new Date(Date.UTC(y + cat.retentionYears, m - 1, d)).toISOString().slice(0, 10);
   }
   function newDoc(categoryId) {
@@ -2991,9 +2991,9 @@ var DomaineAppBundle = (() => {
     };
   }
   function duplicateDoc(d) {
-    const base = newDoc(d.categoryId);
+    const base2 = newDoc(d.categoryId);
     return {
-      ...base,
+      ...base2,
       title: `${d.title} (copie)`,
       provider: d.provider,
       keywords: d.keywords,
@@ -4455,16 +4455,16 @@ footer{background:#111}
   function normalizePage(raw) {
     if (!isObj(raw)) return null;
     const kind = PAGE_META.map((m) => m.kind).concat("custom").includes(str(raw.kind)) ? raw.kind : "custom";
-    const base = newPage(kind, str(raw.title) || "Page");
-    const options = { ...base.options };
+    const base2 = newPage(kind, str(raw.title) || "Page");
+    const options = { ...base2.options };
     if (isObj(raw.options)) Object.keys(raw.options).forEach((k) => options[k] = bool(raw.options[k], options[k] ?? true));
     return {
-      id: str(raw.id) || base.id,
+      id: str(raw.id) || base2.id,
       kind,
-      enabled: bool(raw.enabled, base.enabled),
-      title: str(raw.title, base.title),
-      navLabel: str(raw.navLabel, base.navLabel),
-      slug: slugify(str(raw.slug, base.slug)) || base.slug,
+      enabled: bool(raw.enabled, base2.enabled),
+      title: str(raw.title, base2.title),
+      navLabel: str(raw.navLabel, base2.navLabel),
+      slug: slugify(str(raw.slug, base2.slug)) || base2.slug,
       intro: str(raw.intro),
       heroPhoto: str(raw.heroPhoto),
       metaDescription: str(raw.metaDescription),
@@ -4494,8 +4494,8 @@ footer{background:#111}
     };
   }
   function normalizeSite(raw) {
-    const base = createDefaultSite();
-    if (!isObj(raw)) return base;
+    const base2 = createDefaultSite();
+    if (!isObj(raw)) return base2;
     const links = isObj(raw.links) ? raw.links : {};
     const rawPages = Array.isArray(raw.pages) ? raw.pages : [];
     const oldRates = rawPages.map(normalizePageLoose).find((p) => p && p.kind === "rates");
@@ -4507,9 +4507,9 @@ footer{background:#111}
       if (!booking.heroPhoto) booking.heroPhoto = oldRates.heroPhoto;
       if (booking.title === "R\xE9server") booking.title = "Tarifs et r\xE9servation";
     }
-    if (pages.length === 0) pages.push(...base.pages);
+    if (pages.length === 0) pages.push(...base2.pages);
     else {
-      base.pages.forEach((d) => {
+      base2.pages.forEach((d) => {
         if (!pages.some((p) => p.kind === d.kind)) pages.push({ ...d, enabled: false });
       });
     }
@@ -4764,19 +4764,19 @@ footer{background:#111}
 
   // src/core/modules/registry.ts
   function orderedModules(settings, tabOrder) {
-    const base = [];
+    const base2 = [];
     const add = (m) => {
-      if (m && !base.includes(m)) base.push(m);
+      if (m && !base2.includes(m)) base2.push(m);
     };
     tabOrder.forEach((t) => add(getModuleForTab(t)));
     MODULES.forEach(add);
     const saved = settings.preferences?.moduleOrder;
-    if (!Array.isArray(saved) || saved.length === 0) return base;
+    if (!Array.isArray(saved) || saved.length === 0) return base2;
     const rank = (m) => {
       const i = saved.indexOf(m.id);
-      return i < 0 ? 1e3 + base.indexOf(m) : i;
+      return i < 0 ? 1e3 + base2.indexOf(m) : i;
     };
-    return [...base].sort((a, b) => rank(a) - rank(b));
+    return [...base2].sort((a, b) => rank(a) - rank(b));
   }
   function getModuleConfigStatus(def, settings) {
     try {
@@ -6073,11 +6073,11 @@ footer{background:#111}
     };
   }
   function createBlankSettings(name) {
-    const base = createDefaultSettings();
+    const base2 = createDefaultSettings();
     return {
-      ...base,
+      ...base2,
       establishment: {
-        ...base.establishment,
+        ...base2.establishment,
         name,
         subtitle: "",
         legalStatus: "",
@@ -8603,6 +8603,391 @@ footer{background:#111}
     }
   });
 
+  // src/core/invoicing/vat.ts
+  function vatBreakdown(lines2, rates, exempt = 0) {
+    const enabled = vatEnabled(rates);
+    const byRate = /* @__PURE__ */ new Map();
+    for (const l of lines2) {
+      const rate = enabled ? cleanRate(rates?.[l.service]) : 0;
+      byRate.set(rate, round24((byRate.get(rate) || 0) + (l.ttc || 0)));
+    }
+    const groups = [...byRate.entries()].sort((a, b) => a[0] - b[0]).map(([rate, ttc]) => {
+      const ht = rate > 0 ? round24(ttc / (1 + rate / 100)) : ttc;
+      return { rate, ht, vat: round24(ttc - ht), ttc };
+    });
+    const totalHt = round24(groups.reduce((s, g) => s + g.ht, 0));
+    const totalVat = round24(groups.reduce((s, g) => s + g.vat, 0));
+    const ex = round24(exempt || 0);
+    return { enabled, groups, totalHt, totalVat, exempt: ex, totalTtc: round24(groups.reduce((s, g) => s + g.ttc, 0) + ex) };
+  }
+  var VAT_SERVICES, round24, cleanRate, vatEnabled;
+  var init_vat = __esm({
+    "src/core/invoicing/vat.ts"() {
+      "use strict";
+      VAT_SERVICES = [
+        { id: "room", label: "H\xE9bergement" },
+        { id: "meals", label: "Repas et petits-d\xE9jeuners" },
+        { id: "drinks", label: "Boissons" },
+        { id: "dogCare", label: "Garde d'animaux" },
+        { id: "other", label: "Prestations annexes" }
+      ];
+      round24 = (n) => Math.round(n * 100) / 100;
+      cleanRate = (v) => {
+        const n = typeof v === "number" ? v : parseFloat(String(v ?? "").replace(",", "."));
+        return isFinite(n) && n > 0 && n < 100 ? round24(n) : 0;
+      };
+      vatEnabled = (rates) => !!rates && VAT_SERVICES.some((s) => cleanRate(rates[s.id]) > 0);
+    }
+  });
+
+  // src/core/invoicing/invoices.ts
+  function buildSnapshot(r, roomName) {
+    const num7 = (n) => typeof n === "number" && isFinite(n) ? n : 0;
+    return {
+      id: r.id,
+      roomId: String(r.roomId),
+      roomName,
+      guestName: r.guestName || "",
+      checkIn: r.checkIn || "",
+      checkOut: r.checkOut || "",
+      nights: num7(r.nights),
+      guestsCount: num7(r.guestsCount),
+      adultsCount: num7(r.adultsCount),
+      childrenCount: num7(r.childrenCount),
+      roomAmount: num7(r.roomAmount),
+      mealsAmount: num7(r.mealsAmount),
+      drinksAmount: num7(r.drinksAmount),
+      dogCareAmount: num7(r.dogCareAmount),
+      otherAmount: num7(r.otherAmount),
+      otherDescription: r.otherDescription || "",
+      touristTaxAmount: num7(r.touristTaxAmount),
+      totalAmount: num7(r.totalAmount)
+    };
+  }
+  function sellerOf(est) {
+    const s = (v) => typeof v === "string" ? v : "";
+    const src = est.vatRates && typeof est.vatRates === "object" ? est.vatRates : {};
+    const vatRates = {};
+    for (const sv of VAT_SERVICES) {
+      const r = cleanRate(src[sv.id]);
+      if (r > 0) vatRates[sv.id] = r;
+    }
+    return {
+      ...Object.keys(vatRates).length ? { vatRates } : {},
+      name: s(est.name),
+      address: s(est.address),
+      postalCode: s(est.postalCode),
+      city: s(est.city),
+      country: s(est.country),
+      phone: s(est.phone),
+      email: s(est.email),
+      website: s(est.website),
+      siret: s(est.siret),
+      legalStatus: s(est.legalStatus),
+      vatMention: s(est.vatMention)
+    };
+  }
+  function stayOf(invoice, reservation) {
+    return invoice?.snapshot ? { ...reservation, ...invoice.snapshot, roomId: reservation.roomId ?? invoice.snapshot.roomId } : reservation;
+  }
+  function sequenceOf(number, prefix, year) {
+    const m = String(number || "").trim().match(new RegExp(`^${prefix}-(\\d{4})-(\\d+)$`, "i"));
+    return m && m[1] === year ? parseInt(m[2], 10) || 0 : 0;
+  }
+  function nextNumber(prefix, year, used, floor = 0) {
+    const max = used.reduce((n, u) => Math.max(n, sequenceOf(u, prefix, year)), floor);
+    return `${prefix}-${year}-${String(max + 1).padStart(4, "0")}`;
+  }
+  function usedCreditNumbers() {
+    return [
+      ...Object.keys(readCancelled()),
+      ...Object.values(readCancelled()).flatMap((c) => (c?.invoice?.partialCredits || []).map((p) => p.number)),
+      ...Object.values(readRegistry2()).flatMap((c) => (c?.partialCredits || []).map((p) => p.number))
+    ];
+  }
+  function usedInvoiceNumbers() {
+    const trash = readJson(TRASH_KEY, []);
+    return [
+      ...Object.values(readRegistry2()).map((c) => c?.invoiceNumber),
+      ...Object.values(readCancelled()).map((c) => c?.invoice?.invoiceNumber),
+      ...Object.keys(readDeposits()),
+      ...Array.isArray(trash) ? trash.map((t) => t?.config?.invoiceNumber) : []
+    ].filter((n) => !!n);
+  }
+  function lastInvoiceDate(year) {
+    const dates = [
+      ...Object.values(readRegistry2()).filter((c) => sequenceOf(c?.invoiceNumber, "FA", year) > 0).map((c) => c.invoiceDate),
+      ...Object.values(readCancelled()).filter((c) => sequenceOf(c?.invoice?.invoiceNumber, "FA", year) > 0).map((c) => c.invoice.invoiceDate),
+      ...Object.values(readDeposits()).filter((c) => sequenceOf(c?.invoiceNumber, "FA", year) > 0).map((c) => c.invoiceDate)
+    ].filter(Boolean);
+    return dates.sort().pop() || "";
+  }
+  function checkMentions(seller, invoice, stay) {
+    const has = (s) => !!(s || "").trim();
+    const blocking = [];
+    const warnings = [];
+    if (!has(seller.name)) blocking.push("Nom de l'\xE9tablissement (Param\xE9trage > \xC9tablissement)");
+    if (!has(seller.address) || !has(seller.city)) blocking.push("Adresse et ville de l'\xE9tablissement (Param\xE9trage > \xC9tablissement)");
+    if (!has(seller.siret)) blocking.push("Num\xE9ro SIRET (Param\xE9trage > \xC9tablissement)");
+    if (!has(seller.vatMention)) blocking.push("Mention de TVA (Param\xE9trage > \xC9tablissement)");
+    if (!has(invoice.invoiceDate)) blocking.push("Date d'\xE9mission de la facture");
+    if (!has(invoice.guestName)) blocking.push("Nom du client");
+    if (!has(stay.checkIn) || !has(stay.checkOut)) blocking.push("Dates du s\xE9jour (fiche de r\xE9servation)");
+    if (!((invoice.totalAmount || 0) > 0)) blocking.push("Montant du s\xE9jour (fiche de r\xE9servation) : il est \xE0 z\xE9ro");
+    if (!has(invoice.guestAddress)) warnings.push("Adresse du client : \xE0 renseigner si vous la connaissez (obligatoire pour un client professionnel)");
+    return { blocking, warnings };
+  }
+  function saveDraft(reservationId, draft) {
+    if (!writeAllowed(REGISTRY_KEY2)) return false;
+    const drafts = readDrafts();
+    drafts[reservationId] = { ...draft, savedAt: (/* @__PURE__ */ new Date()).toISOString() };
+    writeJson(DRAFTS_KEY, drafts);
+    notify4();
+    return true;
+  }
+  function deleteDraft(reservationId) {
+    const drafts = readDrafts();
+    if (!(reservationId in drafts)) return;
+    delete drafts[reservationId];
+    writeJson(DRAFTS_KEY, drafts);
+    notify4();
+  }
+  function validateInvoice(reservationId, draft, snapshot, seller) {
+    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : la facture ne peut pas \xEAtre valid\xE9e." };
+    const registry = readRegistry2();
+    if (isValidated(registry[reservationId])) return { ok: false, error: `Ce s\xE9jour a d\xE9j\xE0 la facture ${registry[reservationId].invoiceNumber}.` };
+    const date = draft.invoiceDate || today();
+    const check = checkMentions(seller, { ...draft, invoiceDate: date }, snapshot);
+    if (check.blocking.length) return { ok: false, error: "Des mentions obligatoires manquent.", missing: check.blocking };
+    const year = date.slice(0, 4);
+    const last = lastInvoiceDate(year);
+    if (last && date < last) {
+      return { ok: false, error: `La date d'\xE9mission ne peut pas \xEAtre ant\xE9rieure \xE0 celle de la derni\xE8re facture (${last.split("-").reverse().join("/")}) : la num\xE9rotation suit l'ordre des dates.` };
+    }
+    const invoice = {
+      ...draft,
+      invoiceDate: date,
+      totalAmount: round25(draft.totalAmount),
+      invoiceNumber: nextNumber("FA", year, usedInvoiceNumbers(), counterOf(year)),
+      status: "validated",
+      validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      snapshot,
+      seller
+    };
+    const free = depositsOf(reservationId, true);
+    if (free.length) {
+      invoice.depositsDeducted = free.map((d) => ({ number: d.invoiceNumber, date: d.invoiceDate, amount: round25(d.totalAmount) }));
+      const all2 = readDeposits();
+      free.forEach((d) => {
+        all2[d.invoiceNumber] = { ...all2[d.invoiceNumber], consumedBy: invoice.invoiceNumber };
+      });
+      writeJson(DEPOSITS_KEY, all2);
+    }
+    registry[reservationId] = invoice;
+    writeJson(REGISTRY_KEY2, registry);
+    localStorage.setItem(COUNTER_PREFIX + year, String(sequenceOf(invoice.invoiceNumber, "FA", year)));
+    const drafts = readDrafts();
+    if (reservationId in drafts) {
+      delete drafts[reservationId];
+      writeJson(DRAFTS_KEY, drafts);
+    }
+    notify4();
+    return { ok: true, invoice };
+  }
+  function updatePayment(reservationId, paymentType, paymentState) {
+    if (!writeAllowed(REGISTRY_KEY2)) return null;
+    const registry = readRegistry2();
+    const current3 = registry[reservationId];
+    if (!isValidated(current3)) return null;
+    registry[reservationId] = { ...current3, paymentType, paymentState };
+    writeJson(REGISTRY_KEY2, registry);
+    notify4();
+    return registry[reservationId];
+  }
+  function createPartialCredit(reservationId, amount, reason, date = today()) {
+    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : l'avoir ne peut pas \xEAtre cr\xE9\xE9." };
+    const registry = readRegistry2();
+    const invoice = registry[reservationId];
+    if (!isValidated(invoice)) return { ok: false, error: "Aucune facture valid\xE9e pour ce s\xE9jour." };
+    if (!reason.trim()) return { ok: false, error: "Indiquez le motif de l'avoir : il figure sur le document." };
+    const value = round25(amount);
+    if (!(value > 0)) return { ok: false, error: "Le montant de l'avoir doit \xEAtre sup\xE9rieur \xE0 z\xE9ro." };
+    const remaining = round25((invoice.totalAmount || 0) - creditedAmount(invoice) - deductedAmount(invoice));
+    if (value > remaining) return { ok: false, error: `Le montant d\xE9passe ce qui reste \xE0 cr\xE9diter sur cette facture (${remaining.toFixed(2).replace(".", ",")} \u20AC).` };
+    if (invoice.invoiceDate && date < invoice.invoiceDate) return { ok: false, error: "L'avoir ne peut pas \xEAtre dat\xE9 avant la facture." };
+    const creditNote = { number: nextNumber("AV", date.slice(0, 4), usedCreditNumbers()), date, reason: reason.trim(), amount: value, partial: true };
+    const updated = { ...invoice, partialCredits: [...invoice.partialCredits || [], creditNote] };
+    registry[reservationId] = updated;
+    writeJson(REGISTRY_KEY2, registry);
+    notify4();
+    return { ok: true, invoice: updated, entry: { reservationId, invoice: updated, creditNote, cancelledAt: (/* @__PURE__ */ new Date()).toISOString() } };
+  }
+  function createDeposit(reservationId, amount, draft, snapshot, seller) {
+    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : la facture d'acompte ne peut pas \xEAtre cr\xE9\xE9e." };
+    if (isValidated(readRegistry2()[reservationId])) return { ok: false, error: "Ce s\xE9jour a d\xE9j\xE0 sa facture finale : un acompte ne peut plus \xEAtre factur\xE9." };
+    const value = round25(amount);
+    if (!(value > 0)) return { ok: false, error: "Le montant de l'acompte doit \xEAtre sup\xE9rieur \xE0 z\xE9ro." };
+    const remaining = round25((snapshot.totalAmount || 0) - depositedAmount(reservationId));
+    if (value > remaining) return { ok: false, error: `L'acompte d\xE9passe ce qui reste \xE0 facturer sur le s\xE9jour (${remaining.toFixed(2).replace(".", ",")} \u20AC).` };
+    const date = draft.invoiceDate || today();
+    const check = checkMentions(seller, { ...draft, invoiceDate: date, totalAmount: value }, snapshot);
+    if (check.blocking.length) return { ok: false, error: "Des mentions obligatoires manquent.", missing: check.blocking };
+    const year = date.slice(0, 4);
+    const last = lastInvoiceDate(year);
+    if (last && date < last) return { ok: false, error: `La date d'\xE9mission ne peut pas \xEAtre ant\xE9rieure \xE0 celle de la derni\xE8re facture (${last.split("-").reverse().join("/")}).` };
+    const number = nextNumber("FA", year, usedInvoiceNumbers(), counterOf(year));
+    const deposit = {
+      ...draft,
+      invoiceDate: date,
+      totalAmount: value,
+      invoiceNumber: number,
+      status: "validated",
+      validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      snapshot,
+      seller,
+      kind: "deposit",
+      reservationId,
+      stayTotal: round25(snapshot.totalAmount || 0)
+    };
+    const all2 = readDeposits();
+    all2[number] = deposit;
+    writeJson(DEPOSITS_KEY, all2);
+    localStorage.setItem(COUNTER_PREFIX + year, String(sequenceOf(number, "FA", year)));
+    notify4();
+    return { ok: true, deposit };
+  }
+  function cancelWithCreditNote(reservationId, reason, date = today(), fallback) {
+    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : la facture ne peut pas \xEAtre annul\xE9e." };
+    const registry = readRegistry2();
+    const invoice = registry[reservationId];
+    if (!isValidated(invoice)) return { ok: false, error: "Aucune facture valid\xE9e pour ce s\xE9jour." };
+    if (!reason.trim()) return { ok: false, error: "Indiquez le motif de l'annulation : il figure sur l'avoir." };
+    if (invoice.invoiceDate && date < invoice.invoiceDate) return { ok: false, error: "L'avoir ne peut pas \xEAtre dat\xE9 avant la facture qu'il annule." };
+    const deducted2 = deductedAmount(invoice);
+    const remaining = round25((invoice.totalAmount || 0) - creditedAmount(invoice) - deducted2);
+    if (remaining < 0 || remaining === 0 && !(deducted2 > 0)) return { ok: false, error: "Cette facture est d\xE9j\xE0 enti\xE8rement cr\xE9dit\xE9e." };
+    const year = date.slice(0, 4);
+    const cancelledMap = readCancelled();
+    const creditNote = {
+      number: nextNumber("AV", year, usedCreditNumbers()),
+      date,
+      reason: reason.trim(),
+      amount: remaining
+      // Le reste dû : l'avoir d'annulation tient compte des avoirs partiels déjà émis
+    };
+    const frozen = { ...invoice, snapshot: invoice.snapshot || fallback?.snapshot, seller: invoice.seller || fallback?.seller };
+    const cancelled = { reservationId, invoice: frozen, creditNote, cancelledAt: (/* @__PURE__ */ new Date()).toISOString() };
+    cancelledMap[creditNote.number] = cancelled;
+    writeJson(CANCELLED_KEY, cancelledMap);
+    const deposits = readDeposits();
+    let released = false;
+    Object.keys(deposits).forEach((n) => {
+      if (deposits[n].consumedBy === invoice.invoiceNumber) {
+        const { consumedBy, ...rest } = deposits[n];
+        deposits[n] = rest;
+        released = true;
+      }
+    });
+    if (released) writeJson(DEPOSITS_KEY, deposits);
+    delete registry[reservationId];
+    writeJson(REGISTRY_KEY2, registry);
+    notify4();
+    return { ok: true, cancelled };
+  }
+  var REGISTRY_KEY2, DRAFTS_KEY, CANCELLED_KEY, DEPOSITS_KEY, TRASH_KEY, COUNTER_PREFIX, INVOICES_EVENT, readJson, writeJson, notify4, today, round25, readRegistry2, readDrafts, readDeposits, depositsOf, depositedAmount, deductedAmount, readCancelled, listCancelled, isValidated, snapshotAsReservation, creditedAmount, counterOf, peekInvoiceNumber;
+  var init_invoices = __esm({
+    "src/core/invoicing/invoices.ts"() {
+      "use strict";
+      init_storage();
+      init_vat();
+      REGISTRY_KEY2 = "domaine_sylvaria_invoices_registry_v1";
+      DRAFTS_KEY = "domaine_sylvaria_invoices_drafts_v1";
+      CANCELLED_KEY = "domaine_sylvaria_invoices_cancelled_v1";
+      DEPOSITS_KEY = "domaine_sylvaria_invoices_deposits_v1";
+      TRASH_KEY = "domaine_sylvaria_invoices_trash_v1";
+      COUNTER_PREFIX = "domaine_sylvaria_invoice_counter_";
+      INVOICES_EVENT = "domaine_sylvaria_trigger_sync";
+      readJson = (key, fallback) => {
+        try {
+          const raw = localStorage.getItem(key);
+          const parsed = raw ? JSON.parse(raw) : null;
+          return parsed && typeof parsed === "object" ? parsed : fallback;
+        } catch {
+          return fallback;
+        }
+      };
+      writeJson = (key, value) => localStorage.setItem(key, JSON.stringify(value));
+      notify4 = () => {
+        try {
+          window.dispatchEvent(new CustomEvent(INVOICES_EVENT));
+        } catch {
+        }
+      };
+      today = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      round25 = (n) => Math.round(n * 100) / 100;
+      readRegistry2 = () => readJson(REGISTRY_KEY2, {});
+      readDrafts = () => readJson(DRAFTS_KEY, {});
+      readDeposits = () => readJson(DEPOSITS_KEY, {});
+      depositsOf = (reservationId, freeOnly = false) => Object.values(readDeposits()).filter((d) => d?.reservationId === reservationId && (!freeOnly || !d.consumedBy)).sort((a, b) => a.invoiceNumber.localeCompare(b.invoiceNumber, void 0, { numeric: true }));
+      depositedAmount = (reservationId) => round25(depositsOf(reservationId, true).reduce((n, d) => n + (d.totalAmount || 0), 0));
+      deductedAmount = (invoice) => round25((invoice?.depositsDeducted || []).reduce((n, d) => n + (d.amount || 0), 0));
+      readCancelled = () => readJson(CANCELLED_KEY, {});
+      listCancelled = () => Object.values(readCancelled()).sort((a, b) => b.creditNote.number.localeCompare(a.creditNote.number, void 0, { numeric: true }));
+      isValidated = (c) => !!c && typeof c === "object" && !!c.invoiceNumber;
+      snapshotAsReservation = (snapshot) => ({ ...snapshot });
+      creditedAmount = (invoice) => round25((invoice?.partialCredits || []).reduce((n, c) => n + (c.amount || 0), 0));
+      counterOf = (year) => {
+        const n = parseInt(localStorage.getItem(COUNTER_PREFIX + year) || "0", 10);
+        return isNaN(n) || n < 0 ? 0 : n;
+      };
+      peekInvoiceNumber = (date) => {
+        const year = (date || today()).slice(0, 4);
+        return nextNumber("FA", year, usedInvoiceNumbers(), counterOf(year));
+      };
+    }
+  });
+
+  // src/core/invoicing/invoiceRows.ts
+  function extraInvoiceRows() {
+    const rows = [];
+    const registry = readRegistry2();
+    Object.values(readDeposits()).forEach((d) => {
+      rows.push(base(d, d.invoiceNumber, d.invoiceDate, d.paymentState === "acquittee" ? "Acompte acquitt\xE9" : "Acompte \xE0 r\xE9gler", d.totalAmount || 0));
+    });
+    Object.values(registry).forEach((c) => {
+      (c?.partialCredits || []).forEach((p) => rows.push(base(c, p.number, p.date, `Avoir partiel sur ${c.invoiceNumber}`, -(p.amount || 0))));
+    });
+    Object.values(readCancelled()).forEach((x) => {
+      const inv = x.invoice;
+      rows.push(base(inv, inv.invoiceNumber, inv.invoiceDate, `Annul\xE9e par ${x.creditNote.number}`, (inv.totalAmount || 0) - deducted(inv)));
+      (inv.partialCredits || []).forEach((p) => rows.push(base(inv, p.number, p.date, `Avoir partiel sur ${inv.invoiceNumber}`, -(p.amount || 0))));
+      rows.push(base(inv, x.creditNote.number, x.creditNote.date, `Avoir sur ${inv.invoiceNumber}`, -(x.creditNote.amount || 0)));
+    });
+    return rows.sort((a, b) => String(a[0]).localeCompare(String(b[0]), void 0, { numeric: true }));
+  }
+  var round26, deducted, invoiceNetAmount, base;
+  var init_invoiceRows = __esm({
+    "src/core/invoicing/invoiceRows.ts"() {
+      "use strict";
+      init_invoices();
+      round26 = (n) => Math.round(n * 100) / 100;
+      deducted = (c) => round26((c?.depositsDeducted || []).reduce((n, d) => n + (d.amount || 0), 0));
+      invoiceNetAmount = (c, fallback) => round26((c?.totalAmount !== void 0 ? c.totalAmount : fallback) - deducted(c));
+      base = (c, number, date, status2, amount) => [
+        number,
+        date || "",
+        c.guestName || "",
+        c.guestResidence || "",
+        "Oui",
+        "Oui",
+        "Oui",
+        c.paymentType || "",
+        status2,
+        round26(amount)
+      ];
+    }
+  });
+
   // src/modules/menage/store.ts
   function requestHousekeepingPage(page) {
     pendingPage = page;
@@ -8788,12 +9173,12 @@ footer{background:#111}
   function startSessionTasks(initial, saver) {
     sessionSaver = saver;
     tasks = { ...initial };
-    notify4();
+    notify5();
   }
   function replaceSessionTasks(next) {
     if (!sessionSaver) return;
     tasks = { ...next, ...sessionPending };
-    notify4();
+    notify5();
   }
   function requeueSessionTasks(changed) {
     sessionPending = { ...changed, ...sessionPending };
@@ -8818,7 +9203,7 @@ footer{background:#111}
     if (value) localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(TASKS_STORAGE_KEY);
     tasks = readTasks();
-    notify4();
+    notify5();
   }
   function flushTasksSync() {
     if (sessionSaver) {
@@ -8837,7 +9222,7 @@ footer{background:#111}
     if (!writeAllowed(TASKS_STORAGE_KEY)) return;
     tasks = next;
     safeSetItem(TASKS_STORAGE_KEY, JSON.stringify(next));
-    notify4();
+    notify5();
     if (syncTimer) clearTimeout(syncTimer);
     syncTimer = setTimeout(() => {
       syncTimer = null;
@@ -8851,7 +9236,7 @@ footer{background:#111}
     if (sessionSaver) {
       tasks = { ...tasks, [task.id]: task };
       sessionPending = { ...sessionPending, [task.id]: task };
-      notify4();
+      notify5();
       if (sessionTimer) clearTimeout(sessionTimer);
       sessionTimer = setTimeout(flushSession, 2e3);
       return;
@@ -8874,7 +9259,7 @@ footer{background:#111}
   function useStoredTasks() {
     return (0, import_react3.useSyncExternalStore)(subscribe3, getStoredTasks, getStoredTasks);
   }
-  var import_react3, TASKS_STORAGE_KEY, pendingPage, item, tasks, listeners5, notify4, sessionSaver, sessionPending, sessionTimer, syncTimer, subscribe3;
+  var import_react3, TASKS_STORAGE_KEY, pendingPage, item, tasks, listeners5, notify5, sessionSaver, sessionPending, sessionTimer, syncTimer, subscribe3;
   var init_store = __esm({
     "src/modules/menage/store.ts"() {
       "use strict";
@@ -8887,7 +9272,7 @@ footer{background:#111}
       item = (id, label2, category) => ({ id, label: label2, category });
       tasks = readTasks();
       listeners5 = /* @__PURE__ */ new Set();
-      notify4 = () => listeners5.forEach((l) => l());
+      notify5 = () => listeners5.forEach((l) => l());
       sessionSaver = null;
       sessionPending = {};
       sessionTimer = null;
@@ -8895,7 +9280,7 @@ footer{background:#111}
         window.addEventListener("storage", (e) => {
           if (e.key !== TASKS_STORAGE_KEY || sessionSaver) return;
           tasks = readTasks();
-          notify4();
+          notify5();
         });
       } catch {
       }
@@ -8915,7 +9300,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "302";
+      APP_VERSION = "303";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -12534,31 +12919,31 @@ footer{background:#111}
       return { base: url, cle: "" };
     }
   }
-  function bridgeVersion(base, refresh = false) {
-    if (!refresh && versions.has(base)) return versions.get(base);
-    const p = fetch(`${base}${base.includes("?") ? "&" : "?"}action=ping&_ts=${Date.now()}`, { method: "GET" }).then(async (res2) => {
+  function bridgeVersion(base2, refresh = false) {
+    if (!refresh && versions.has(base2)) return versions.get(base2);
+    const p = fetch(`${base2}${base2.includes("?") ? "&" : "?"}action=ping&_ts=${Date.now()}`, { method: "GET" }).then(async (res2) => {
       if (!res2.ok) return 0;
       const data = JSON.parse(await res2.text());
       return data && data.status === "success" && typeof data.version === "number" ? data.version : 0;
     }).catch(() => 0);
-    versions.set(base, p);
+    versions.set(base2, p);
     p.then((v) => {
-      if (v === 0) versions.delete(base);
+      if (v === 0) versions.delete(base2);
     });
     return p;
   }
   async function connectorRead(url, params, acces, fetchImpl = fetch) {
-    const { base, cle } = splitKey(url);
-    if ((cle || acces) && await bridgeVersion(base) >= READ_BRIDGE_MIN_VERSION) {
+    const { base: base2, cle } = splitKey(url);
+    if ((cle || acces) && await bridgeVersion(base2) >= READ_BRIDGE_MIN_VERSION) {
       const body = { action: "read", params };
       if (cle) body.cle = cle;
       if (acces) body.acces = acces;
-      return fetchImpl(base, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
+      return fetchImpl(base2, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) });
     }
     const query = new URLSearchParams(params);
     if (acces) query.set("acces", acces);
     if (cle) query.set("cle", cle);
-    return fetchImpl(`${base}${base.includes("?") ? "&" : "?"}${query.toString()}`, { method: "GET", headers: { Accept: "application/json" } });
+    return fetchImpl(`${base2}${base2.includes("?") ? "&" : "?"}${query.toString()}`, { method: "GET", headers: { Accept: "application/json" } });
   }
   var READ_BRIDGE_MIN_VERSION, versions;
   var init_readBridge = __esm({
@@ -12580,7 +12965,7 @@ footer{background:#111}
     const s = sanitizeAppsScriptUrl(stored);
     return s.error || !s.url ? null : { url: s.url };
   }
-  async function readJson(res2) {
+  async function readJson2(res2) {
     if (!res2.ok) throw new Error(`Connecteur Google injoignable (erreur ${res2.status}).`);
     const text = await res2.text();
     try {
@@ -12593,7 +12978,7 @@ footer{background:#111}
     if (!target) throw new Error(NO_CONNECTOR_MESSAGE);
     const query = { ...params, _ts: String(Date.now()) };
     const res2 = await connectorRead(target.url, query, target.acces);
-    return readJson(res2);
+    return readJson2(res2);
   }
   function connectorInfo(target = currentTarget(), refresh = false) {
     if (!target) return Promise.reject(new Error(NO_CONNECTOR_MESSAGE));
@@ -12639,14 +13024,14 @@ footer{background:#111}
   async function connectorPost(body, target = currentTarget()) {
     if (!target) throw new Error(NO_CONNECTOR_MESSAGE);
     await requireV10(target);
-    const { base, cle } = splitKey(target.url);
+    const { base: base2, cle } = splitKey(target.url);
     const payload = { ...body, ...target.acces ? { acces: target.acces } : {}, ...cle ? { cle } : {} };
-    const res2 = await fetch(base, {
+    const res2 = await fetch(base2, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload)
     });
-    const data = await readJson(res2);
+    const data = await readJson2(res2);
     if (!data || data.status !== "success") throw new Error(data?.message || "Le connecteur Google a refus\xE9 la demande.");
     return data;
   }
@@ -13030,14 +13415,14 @@ footer{background:#111}
   }
   function updateTask(task, patch, historyText) {
     const now = nowIso();
-    const base = toStoredTask(task);
+    const base2 = toStoredTask(task);
     const entry = currentActor ? { at: now, text: historyText || "", by: currentActor } : { at: now, text: historyText || "" };
     const next = {
-      ...base,
+      ...base2,
       ...patch,
-      createdAt: base.createdAt || now,
+      createdAt: base2.createdAt || now,
       updatedAt: now,
-      history: historyText ? [...base.history || [], entry].slice(-100) : base.history || []
+      history: historyText ? [...base2.history || [], entry].slice(-100) : base2.history || []
     };
     saveTask(next);
     return next;
@@ -13347,12 +13732,12 @@ footer{background:#111}
       photos = readPhotos();
     }
     loaded = true;
-    notify5();
+    notify6();
   }
   function persistPhotos(next) {
     if (useIdb) {
       photos = next;
-      notify5();
+      notify6();
       idbSet(next).catch(() => {
         logEvent("error", "Les photos n'ont pas pu \xEAtre enregistr\xE9es dans la base de l'appareil.");
       });
@@ -13360,7 +13745,7 @@ footer{background:#111}
     }
     setItemOrThrow(PHOTOS_STORAGE_KEY, JSON.stringify(next));
     photos = next;
-    notify5();
+    notify6();
   }
   function getBookPhotos() {
     return photos;
@@ -13406,14 +13791,14 @@ footer{background:#111}
   function writePhotosFromSync(value) {
     if (useIdb) {
       photos = value || {};
-      notify5();
+      notify6();
       idbSet(photos).catch(() => logEvent("error", "Les photos re\xE7ues n'ont pas pu \xEAtre enregistr\xE9es dans la base de l'appareil."));
       return;
     }
     if (value) localStorage.setItem(PHOTOS_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(PHOTOS_STORAGE_KEY);
     photos = readPhotos();
-    notify5();
+    notify6();
   }
   function photosForBackup() {
     return useIdb && loaded && Object.keys(photos).length > 0 ? JSON.stringify(photos) : void 0;
@@ -13437,7 +13822,7 @@ footer{background:#111}
     if (changed > 0) persistPhotos(next);
     return { beforeKb, afterKb: photosWeightKb(next), changed };
   }
-  var import_react7, PHOTOS_STORAGE_KEY, BOOK_PHOTO_TARGET_BYTES, DISH_PHOTO_TARGET_BYTES, MAX_BOOK_PHOTOS, IDB_NAME, IDB_STORE, IDB_KEY, useIdb, loaded, photos, listeners6, notify5, arePhotosLoaded, photosReady;
+  var import_react7, PHOTOS_STORAGE_KEY, BOOK_PHOTO_TARGET_BYTES, DISH_PHOTO_TARGET_BYTES, MAX_BOOK_PHOTOS, IDB_NAME, IDB_STORE, IDB_KEY, useIdb, loaded, photos, listeners6, notify6, arePhotosLoaded, photosReady;
   var init_store3 = __esm({
     "src/modules/livret/store.ts"() {
       "use strict";
@@ -13461,14 +13846,14 @@ footer{background:#111}
       loaded = !useIdb;
       photos = useIdb ? {} : readPhotos();
       listeners6 = /* @__PURE__ */ new Set();
-      notify5 = () => listeners6.forEach((l) => l());
+      notify6 = () => listeners6.forEach((l) => l());
       arePhotosLoaded = () => loaded;
       photosReady = useIdb ? loadFromIdb() : Promise.resolve();
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== PHOTOS_STORAGE_KEY || useIdb) return;
           photos = readPhotos();
-          notify5();
+          notify6();
         });
       } catch {
       }
@@ -13539,7 +13924,7 @@ footer{background:#111}
   function persist2(next) {
     setItemOrThrow(EXPENSES_STORAGE_KEY, JSON.stringify(next));
     expenses = next;
-    notify6();
+    notify7();
     triggerSync();
   }
   function getExpenses() {
@@ -13626,9 +14011,9 @@ footer{background:#111}
     if (value) localStorage.setItem(EXPENSES_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(EXPENSES_STORAGE_KEY);
     expenses = readExpenses();
-    notify6();
+    notify7();
   }
-  var import_react8, EXPENSES_STORAGE_KEY, pendingView, expenses, listeners7, notify6, ASSETS_STORAGE_KEY, assets, assetListeners, notifyAssets;
+  var import_react8, EXPENSES_STORAGE_KEY, pendingView, expenses, listeners7, notify7, ASSETS_STORAGE_KEY, assets, assetListeners, notifyAssets;
   var init_store4 = __esm({
     "src/modules/rentabilite/store.ts"() {
       "use strict";
@@ -13642,12 +14027,12 @@ footer{background:#111}
       pendingView = null;
       expenses = readExpenses();
       listeners7 = /* @__PURE__ */ new Set();
-      notify6 = () => listeners7.forEach((l) => l());
+      notify7 = () => listeners7.forEach((l) => l());
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== EXPENSES_STORAGE_KEY) return;
           expenses = readExpenses();
-          notify6();
+          notify7();
         });
       } catch {
       }
@@ -13713,7 +14098,7 @@ footer{background:#111}
   function persist3(next) {
     setItemOrThrow(META_STORAGE_KEY, JSON.stringify(next));
     metas = next;
-    notify7();
+    notify8();
     triggerSync2();
   }
   function getMetas() {
@@ -13772,9 +14157,9 @@ footer{background:#111}
     if (value) localStorage.setItem(META_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(META_STORAGE_KEY);
     metas = readMeta();
-    notify7();
+    notify8();
   }
-  var import_react9, META_STORAGE_KEY, pendingView2, metas, listeners8, notify7;
+  var import_react9, META_STORAGE_KEY, pendingView2, metas, listeners8, notify8;
   var init_store5 = __esm({
     "src/modules/avis/store.ts"() {
       "use strict";
@@ -13787,12 +14172,12 @@ footer{background:#111}
       pendingView2 = null;
       metas = readMeta();
       listeners8 = /* @__PURE__ */ new Set();
-      notify7 = () => listeners8.forEach((l) => l());
+      notify8 = () => listeners8.forEach((l) => l());
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== META_STORAGE_KEY) return;
           metas = readMeta();
-          notify7();
+          notify8();
         });
       } catch {
       }
@@ -13846,7 +14231,7 @@ footer{background:#111}
   function persist4(next) {
     setItemOrThrow(DOCS_STORAGE_KEY, JSON.stringify(next));
     docs = next;
-    notify8();
+    notify9();
     triggerSync3();
   }
   function getDocs() {
@@ -13890,9 +14275,9 @@ footer{background:#111}
     if (value) localStorage.setItem(DOCS_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(DOCS_STORAGE_KEY);
     docs = readDocs();
-    notify8();
+    notify9();
   }
-  var import_react10, DOCS_STORAGE_KEY, pendingView3, docs, listeners9, notify8;
+  var import_react10, DOCS_STORAGE_KEY, pendingView3, docs, listeners9, notify9;
   var init_store6 = __esm({
     "src/modules/admin/store.ts"() {
       "use strict";
@@ -13905,12 +14290,12 @@ footer{background:#111}
       pendingView3 = null;
       docs = readDocs();
       listeners9 = /* @__PURE__ */ new Set();
-      notify8 = () => listeners9.forEach((l) => l());
+      notify9 = () => listeners9.forEach((l) => l());
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== DOCS_STORAGE_KEY) return;
           docs = readDocs();
-          notify8();
+          notify9();
         });
       } catch {
       }
@@ -13955,7 +14340,7 @@ footer{background:#111}
   function persist5(next) {
     setItemOrThrow(RECORDS_STORAGE_KEY, JSON.stringify(next));
     records = next;
-    notify9();
+    notify10();
     triggerSync4();
   }
   function getRecords() {
@@ -14011,7 +14396,7 @@ footer{background:#111}
     if (value) localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(RECORDS_STORAGE_KEY);
     records = readRecords();
-    notify9();
+    notify10();
   }
   function requestEstablishmentView(view) {
     pendingView4 = view;
@@ -14025,7 +14410,7 @@ footer{background:#111}
     pendingView4 = null;
     return v;
   }
-  var import_react11, RECORDS_STORAGE_KEY, actor, getSiteActor, records, listeners10, notify9, equipmentList, taskList, poolList, poolEntryList, safetyList, guideList, stockItemList, stockMoveList, linenList, wasteList, lossList, incidentList, pendingView4;
+  var import_react11, RECORDS_STORAGE_KEY, actor, getSiteActor, records, listeners10, notify10, equipmentList, taskList, poolList, poolEntryList, safetyList, guideList, stockItemList, stockMoveList, linenList, wasteList, lossList, incidentList, pendingView4;
   var init_store7 = __esm({
     "src/modules/etablissement/store.ts"() {
       "use strict";
@@ -14039,12 +14424,12 @@ footer{background:#111}
       getSiteActor = () => actor;
       records = readRecords();
       listeners10 = /* @__PURE__ */ new Set();
-      notify9 = () => listeners10.forEach((l) => l());
+      notify10 = () => listeners10.forEach((l) => l());
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== RECORDS_STORAGE_KEY) return;
           records = readRecords();
-          notify9();
+          notify10();
         });
       } catch {
       }
@@ -14477,7 +14862,7 @@ footer{background:#111}
   function persist6(next) {
     setItemOrThrow(HYGIENE_STORAGE_KEY, JSON.stringify(next));
     records2 = next;
-    notify10();
+    notify11();
     triggerSync5();
   }
   function useHygieneRecords() {
@@ -14546,7 +14931,7 @@ footer{background:#111}
     if (value) localStorage.setItem(HYGIENE_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(HYGIENE_STORAGE_KEY);
     records2 = readRecords2();
-    notify10();
+    notify11();
   }
   function requestHygieneView(view) {
     pendingView5 = view;
@@ -14560,7 +14945,7 @@ footer{background:#111}
     pendingView5 = null;
     return v;
   }
-  var import_react12, HYGIENE_STORAGE_KEY, getHygiene, records2, listeners11, notify10, getHygieneRecords, only, thermoList, tempList, cleanOpList, cleanLogList, receiptList, lotList, incidentList2, dishList, ingredientList, placeList, stockItemList2, stockCheckList, pendingView5;
+  var import_react12, HYGIENE_STORAGE_KEY, getHygiene, records2, listeners11, notify11, getHygieneRecords, only, thermoList, tempList, cleanOpList, cleanLogList, receiptList, lotList, incidentList2, dishList, ingredientList, placeList, stockItemList2, stockCheckList, pendingView5;
   var init_store8 = __esm({
     "src/modules/hygiene/store.ts"() {
       "use strict";
@@ -14575,12 +14960,12 @@ footer{background:#111}
       getHygiene = (settings = getSettings()) => readHygiene(settings);
       records2 = readRecords2();
       listeners11 = /* @__PURE__ */ new Set();
-      notify10 = () => listeners11.forEach((l) => l());
+      notify11 = () => listeners11.forEach((l) => l());
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== HYGIENE_STORAGE_KEY) return;
           records2 = readRecords2();
-          notify10();
+          notify11();
         });
       } catch {
       }
@@ -14874,7 +15259,7 @@ footer{background:#111}
     const next = { ...docs2, [saved.id]: saved };
     setItemOrThrow(DOCS_STORAGE_KEY2, JSON.stringify(next));
     docs2 = next;
-    notify11();
+    notify12();
     triggerSync6();
     return saved;
   }
@@ -14885,9 +15270,9 @@ footer{background:#111}
     if (value) localStorage.setItem(DOCS_STORAGE_KEY2, JSON.stringify(value));
     else localStorage.removeItem(DOCS_STORAGE_KEY2);
     docs2 = read();
-    notify11();
+    notify12();
   }
-  var import_react13, DOCS_STORAGE_KEY2, docs2, listeners12, notify11, getDocs2, docList, setDocArchived;
+  var import_react13, DOCS_STORAGE_KEY2, docs2, listeners12, notify12, getDocs2, docList, setDocArchived;
   var init_store9 = __esm({
     "src/modules/docgen/store.ts"() {
       "use strict";
@@ -14898,12 +15283,12 @@ footer{background:#111}
       DOCS_STORAGE_KEY2 = "domaine_sylvaria_documents_v1";
       docs2 = read();
       listeners12 = /* @__PURE__ */ new Set();
-      notify11 = () => listeners12.forEach((l) => l());
+      notify12 = () => listeners12.forEach((l) => l());
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== DOCS_STORAGE_KEY2) return;
           docs2 = read();
-          notify11();
+          notify12();
         });
       } catch {
       }
@@ -15608,7 +15993,7 @@ footer{background:#111}
     const next = { ...records3, [key]: saved };
     setItemOrThrow(COMPLIANCE_STORAGE_KEY, JSON.stringify(next));
     records3 = next;
-    notify12();
+    notify13();
     triggerSync7();
     return saved;
   }
@@ -15625,9 +16010,9 @@ footer{background:#111}
     if (value) localStorage.setItem(COMPLIANCE_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(COMPLIANCE_STORAGE_KEY);
     records3 = read2();
-    notify12();
+    notify13();
   }
-  var import_react14, COMPLIANCE_STORAGE_KEY, records3, listeners13, notify12, getCompliance;
+  var import_react14, COMPLIANCE_STORAGE_KEY, records3, listeners13, notify13, getCompliance;
   var init_store10 = __esm({
     "src/modules/reglementation/store.ts"() {
       "use strict";
@@ -15639,12 +16024,12 @@ footer{background:#111}
       COMPLIANCE_STORAGE_KEY = "domaine_sylvaria_compliance_v1";
       records3 = read2();
       listeners13 = /* @__PURE__ */ new Set();
-      notify12 = () => listeners13.forEach((l) => l());
+      notify13 = () => listeners13.forEach((l) => l());
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== COMPLIANCE_STORAGE_KEY) return;
           records3 = read2();
-          notify12();
+          notify13();
         });
       } catch {
       }
@@ -15839,9 +16224,9 @@ footer{background:#111}
     if (value) localStorage.setItem(UTILITIES_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(UTILITIES_STORAGE_KEY);
     records4 = read3();
-    notify13();
+    notify14();
   }
-  var import_react15, UTILITIES_STORAGE_KEY, records4, listeners14, notify13, getUtilities, persist7, newId4;
+  var import_react15, UTILITIES_STORAGE_KEY, records4, listeners14, notify14, getUtilities, persist7, newId4;
   var init_store11 = __esm({
     "src/modules/energie/store.ts"() {
       "use strict";
@@ -15852,12 +16237,12 @@ footer{background:#111}
       UTILITIES_STORAGE_KEY = "domaine_sylvaria_utilities_v1";
       records4 = read3();
       listeners14 = /* @__PURE__ */ new Set();
-      notify13 = () => listeners14.forEach((l) => l());
+      notify14 = () => listeners14.forEach((l) => l());
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== UTILITIES_STORAGE_KEY) return;
           records4 = read3();
-          notify13();
+          notify14();
         });
       } catch {
       }
@@ -15865,7 +16250,7 @@ footer{background:#111}
       persist7 = (next) => {
         setItemOrThrow(UTILITIES_STORAGE_KEY, JSON.stringify(next));
         records4 = next;
-        notify13();
+        notify14();
         triggerSync8();
       };
       newId4 = (prefix) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -15923,9 +16308,9 @@ footer{background:#111}
     if (value) localStorage.setItem(SHIFTS_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(SHIFTS_STORAGE_KEY);
     shifts = read4();
-    notify14();
+    notify15();
   }
-  var import_react16, SHIFTS_STORAGE_KEY, shifts, listeners15, notify14, getShifts, persist8, newShiftId;
+  var import_react16, SHIFTS_STORAGE_KEY, shifts, listeners15, notify15, getShifts, persist8, newShiftId;
   var init_shiftStore = __esm({
     "src/modules/personnel/shiftStore.ts"() {
       "use strict";
@@ -15934,12 +16319,12 @@ footer{background:#111}
       SHIFTS_STORAGE_KEY = "domaine_sylvaria_shifts_v1";
       shifts = read4();
       listeners15 = /* @__PURE__ */ new Set();
-      notify14 = () => listeners15.forEach((l) => l());
+      notify15 = () => listeners15.forEach((l) => l());
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== SHIFTS_STORAGE_KEY) return;
           shifts = read4();
-          notify14();
+          notify15();
         });
       } catch {
       }
@@ -15947,7 +16332,7 @@ footer{background:#111}
       persist8 = (next) => {
         setItemOrThrow(SHIFTS_STORAGE_KEY, JSON.stringify(next));
         shifts = next;
-        notify14();
+        notify15();
         triggerSync9();
       };
       newShiftId = () => `shf_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -16087,14 +16472,14 @@ footer{background:#111}
     const lines2 = members.map((m) => {
       const t = totals(map, m.id, from, to);
       const rate = typeof m.hourlyRate === "number" && m.hourlyRate > 0 ? m.hourlyRate : null;
-      return { id: m.id, name: m.name, occasional: !!m.occasional, minutes: t.minutes, workDays: t.workDays, rate, amount: rate === null ? null : round24(t.minutes / 60 * rate) };
+      return { id: m.id, name: m.name, occasional: !!m.occasional, minutes: t.minutes, workDays: t.workDays, rate, amount: rate === null ? null : round27(t.minutes / 60 * rate) };
     }).filter((l) => l.minutes > 0);
     return {
       from,
       to,
       lines: lines2,
       minutes: lines2.reduce((n, l) => n + l.minutes, 0),
-      amount: round24(lines2.reduce((n, l) => n + (l.amount || 0), 0)),
+      amount: round27(lines2.reduce((n, l) => n + (l.amount || 0), 0)),
       withoutRate: lines2.filter((l) => l.rate === null).length
     };
   }
@@ -16110,11 +16495,11 @@ footer{background:#111}
     return [
       [`Bilan des heures du ${b.from.split("-").reverse().join("/")} au ${b.to.split("-").reverse().join("/")} (indicatif : \xE0 rapprocher des bulletins de paie ou des d\xE9clarations)`],
       ["Personne", "Contrat", "Heures travaill\xE9es", "Jours travaill\xE9s", "Co\xFBt horaire (\u20AC)", "Montant \xE0 r\xE9gler (\u20AC)"],
-      ...b.lines.map((l) => [l.name, l.occasional ? "Occasionnel" : "R\xE9gulier", round24(l.minutes / 60), l.workDays, l.rate, l.amount]),
-      ["Total", null, round24(b.minutes / 60), null, null, b.amount]
+      ...b.lines.map((l) => [l.name, l.occasional ? "Occasionnel" : "R\xE9gulier", round27(l.minutes / 60), l.workDays, l.rate, l.amount]),
+      ["Total", null, round27(b.minutes / 60), null, null, b.amount]
     ];
   }
-  var KIND_LABEL, TASK_LABEL, DEFAULT_POSTS, FIXED_POST_IDS, taskName, MAX_DAY_MINUTES, MAX_WEEK_MINUTES, MIN_REST_MINUTES, DAY3, dayNumber3, isoOf2, addDays2, weekDates, hasTimes, hoursText, shiftsOf, weekTotals, overtimeMinutes, frDay, round24;
+  var KIND_LABEL, TASK_LABEL, DEFAULT_POSTS, FIXED_POST_IDS, taskName, MAX_DAY_MINUTES, MAX_WEEK_MINUTES, MIN_REST_MINUTES, DAY3, dayNumber3, isoOf2, addDays2, weekDates, hasTimes, hoursText, shiftsOf, weekTotals, overtimeMinutes, frDay, round27;
   var init_shifts = __esm({
     "src/modules/personnel/shifts.ts"() {
       "use strict";
@@ -16141,7 +16526,7 @@ footer{background:#111}
       weekTotals = (map, memberId, monday) => totals(map, memberId, monday, addDays2(monday, 6));
       overtimeMinutes = (workedMinutes, weeklyHours) => weeklyHours && weeklyHours > 0 ? Math.max(0, workedMinutes - Math.round(weeklyHours * 60)) : 0;
       frDay = (iso) => iso.split("-").reverse().slice(0, 2).join("/");
-      round24 = (n) => Math.round(n * 100) / 100;
+      round27 = (n) => Math.round(n * 100) / 100;
     }
   });
 
@@ -16317,7 +16702,7 @@ footer{background:#111}
     const next = { ...staff, [saved.id]: saved };
     setItemOrThrow(STAFF_STORAGE_KEY, JSON.stringify(next));
     staff = next;
-    notify15();
+    notify16();
     triggerSync10();
     return saved;
   }
@@ -16336,9 +16721,9 @@ footer{background:#111}
     if (value) localStorage.setItem(STAFF_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(STAFF_STORAGE_KEY);
     staff = read5();
-    notify15();
+    notify16();
   }
-  var import_react17, STAFF_STORAGE_KEY, staff, listeners16, notify15, getStaff, pendingMember, peekStaffMember, staffList;
+  var import_react17, STAFF_STORAGE_KEY, staff, listeners16, notify16, getStaff, pendingMember, peekStaffMember, staffList;
   var init_store12 = __esm({
     "src/modules/personnel/store.ts"() {
       "use strict";
@@ -16350,12 +16735,12 @@ footer{background:#111}
       STAFF_STORAGE_KEY = "domaine_sylvaria_staff_v1";
       staff = read5();
       listeners16 = /* @__PURE__ */ new Set();
-      notify15 = () => listeners16.forEach((l) => l());
+      notify16 = () => listeners16.forEach((l) => l());
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== STAFF_STORAGE_KEY) return;
           staff = read5();
-          notify15();
+          notify16();
         });
       } catch {
       }
@@ -16418,7 +16803,7 @@ footer{background:#111}
   function persist9(next) {
     setItemOrThrow(LIBRARY_STORAGE_KEY, JSON.stringify(next));
     library = next;
-    notify16();
+    notify17();
     try {
       window.dispatchEvent(new CustomEvent("domaine_sylvaria_trigger_sync"));
     } catch {
@@ -16455,9 +16840,9 @@ footer{background:#111}
     if (value) localStorage.setItem(LIBRARY_STORAGE_KEY, JSON.stringify(value));
     else localStorage.removeItem(LIBRARY_STORAGE_KEY);
     library = read6();
-    notify16();
+    notify17();
   }
-  var import_react18, SITE_CONTENT_KEY, siteListeners, siteVersion, notifySite, getSite, LIBRARY_STORAGE_KEY, library, listeners17, notify16, getLibrary, libraryList;
+  var import_react18, SITE_CONTENT_KEY, siteListeners, siteVersion, notifySite, getSite, LIBRARY_STORAGE_KEY, library, listeners17, notify17, getLibrary, libraryList;
   var init_store13 = __esm({
     "src/modules/siteweb/store.ts"() {
       "use strict";
@@ -16485,12 +16870,12 @@ footer{background:#111}
       LIBRARY_STORAGE_KEY = "domaine_sylvaria_site_library_v1";
       library = read6();
       listeners17 = /* @__PURE__ */ new Set();
-      notify16 = () => listeners17.forEach((l) => l());
+      notify17 = () => listeners17.forEach((l) => l());
       try {
         window.addEventListener("storage", (e) => {
           if (e.key !== LIBRARY_STORAGE_KEY) return;
           library = read6();
-          notify16();
+          notify17();
         });
       } catch {
       }
@@ -18445,7 +18830,7 @@ ${body}
       if (numA !== numB) return numA - numB;
       return (a.checkIn || "").localeCompare(b.checkIn || "");
     });
-    const invoiceRows = sortedValidResForExcel.map((r, idx) => {
+    const invoiceRowsBase = sortedValidResForExcel.map((r, idx) => {
       const invoiceYear = (r.checkIn || (/* @__PURE__ */ new Date()).toISOString()).slice(0, 4);
       const defaultNum = `FA-${invoiceYear}-${String(idx + 1).padStart(4, "0")}`;
       const cfg = savedInvoiceConfigs[r.id] || {};
@@ -18458,7 +18843,7 @@ ${body}
       const showA = cfg.showAutre !== void 0 ? cfg.showAutre ? "Oui" : "Non" : "Oui";
       const payType = cfg.paymentType || r.roomPaymentMethod || "Virement / Wero";
       const payState = cfg.paymentState === "acquittee" ? "Facture Acquitt\xE9e" : "Montant \xE0 r\xE9gler";
-      const amount = cfg.totalAmount !== void 0 ? cfg.totalAmount : r.totalAmount || 0;
+      const amount = invoiceNetAmount(cfg, r.totalAmount || 0);
       return [
         invNum,
         invDate,
@@ -18472,6 +18857,7 @@ ${body}
         amount
       ];
     });
+    const invoiceRows = [...invoiceRowsBase, ...extraInvoiceRows()];
     const clearRequests = [
       fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/R\xE9servations_D\xE9taill\xE9es!A1:ZZ5000:clear`, {
         method: "POST",
@@ -19036,7 +19422,7 @@ ${body}
       if (numA !== numB) return numA - numB;
       return (a.checkIn || "").localeCompare(b.checkIn || "");
     });
-    const invoiceRows = sortedValidResForExcel.map((r, idx) => {
+    const invoiceRowsBase = sortedValidResForExcel.map((r, idx) => {
       const invoiceYear = (r.checkIn || (/* @__PURE__ */ new Date()).toISOString()).slice(0, 4);
       const defaultNum = `FA-${invoiceYear}-${String(idx + 1).padStart(4, "0")}`;
       const cfg = savedInvoiceConfigs[r.id] || {};
@@ -19049,7 +19435,7 @@ ${body}
       const showA = cfg.showAutre !== void 0 ? cfg.showAutre ? "Oui" : "Non" : "Oui";
       const payType = cfg.paymentType || r.roomPaymentMethod || "Virement / Wero";
       const payState = cfg.paymentState === "acquittee" ? "Facture Acquitt\xE9e" : "Montant \xE0 r\xE9gler";
-      const amount = cfg.totalAmount !== void 0 ? cfg.totalAmount : r.totalAmount || 0;
+      const amount = invoiceNetAmount(cfg, r.totalAmount || 0);
       return [
         invNum,
         invDate,
@@ -19063,6 +19449,7 @@ ${body}
         amount
       ];
     });
+    const invoiceRows = [...invoiceRowsBase, ...extraInvoiceRows()];
     let contactEditsMap = {};
     try {
       const storedEdits = localStorage.getItem("domaine_sylvaria_contact_edits_v1");
@@ -23619,6 +24006,7 @@ function beds24Bookings_() {
     "src/services/googleSheetsService.ts"() {
       "use strict";
       init_bookingUtils();
+      init_invoiceRows();
       init_settingsStore();
       init_syncedStores();
       init_agenda();
@@ -23961,7 +24349,7 @@ function beds24Bookings_() {
       const showA = cfg.showAutre !== void 0 ? cfg.showAutre ? "Oui" : "Non" : "Oui";
       const payType = cfg.paymentType || r.roomPaymentMethod || "Virement / Wero";
       const payState = cfg.paymentState === "acquittee" ? "Facture Acquitt\xE9e" : "Montant \xE0 r\xE9gler";
-      const amount = cfg.totalAmount !== void 0 ? cfg.totalAmount : r.totalAmount || 0;
+      const amount = invoiceNetAmount(cfg, r.totalAmount || 0);
       invoiceRows.push([
         invNum,
         invDate,
@@ -23975,6 +24363,7 @@ function beds24Bookings_() {
         amount
       ]);
     });
+    extraInvoiceRows().forEach((row) => invoiceRows.push(row));
     const wsInvoices = XLSX.utils.aoa_to_sheet(invoiceRows);
     wsInvoices["!cols"] = [
       { wch: 18 },
@@ -24220,6 +24609,7 @@ function beds24Bookings_() {
     "src/services/excelExportService.ts"() {
       "use strict";
       XLSX = __toESM(__require("xlsx"), 1);
+      init_invoiceRows();
       init_bookingUtils();
       init_kind();
     }
@@ -25694,19 +26084,19 @@ function beds24Bookings_() {
     const m = l - c / 2;
     return [r1, g1, b1].map((v) => Math.round(Math.min(1, Math.max(0, v + m)) * 255));
   }
-  function shiftProportional(value, base, next) {
-    if (next >= base) return base >= 1 ? value : value + (1 - value) * ((next - base) / (1 - base));
-    return base <= 0 ? value : value * (next / base);
+  function shiftProportional(value, base2, next) {
+    if (next >= base2) return base2 >= 1 ? value : value + (1 - value) * ((next - base2) / (1 - base2));
+    return base2 <= 0 ? value : value * (next / base2);
   }
-  function deriveShade(original, base, next) {
-    if (next.s < 0.02) return { h: 0, s: 0, l: clamp01(original.l + (next.l - base.l) * proximity(original, base)) };
-    const weight = proximity(original, base);
-    const s = clamp01(original.s + (shiftProportional(original.s, base.s, next.s) - original.s) * weight);
-    const l = clamp01(original.l + (next.l - base.l) * weight);
+  function deriveShade(original, base2, next) {
+    if (next.s < 0.02) return { h: 0, s: 0, l: clamp01(original.l + (next.l - base2.l) * proximity(original, base2)) };
+    const weight = proximity(original, base2);
+    const s = clamp01(original.s + (shiftProportional(original.s, base2.s, next.s) - original.s) * weight);
+    const l = clamp01(original.l + (next.l - base2.l) * weight);
     return { h: next.h, s, l };
   }
-  function proximity(original, base) {
-    return clamp01(1 - Math.abs(original.l - base.l) / 0.5);
+  function proximity(original, base2) {
+    return clamp01(1 - Math.abs(original.l - base2.l) / 0.5);
   }
   function buildPalette(color, mode = {}) {
     const next = normalizeHex(color) || DEFAULT_THEME_COLOR;
@@ -25720,12 +26110,12 @@ function beds24Bookings_() {
     });
     return palette;
   }
-  function deriveDarkShade(original, base, next, tintHue) {
+  function deriveDarkShade(original, base2, next, tintHue) {
     if (original.l >= 0.75) {
       return { h: tintHue ?? next.h, s: 0.3, l: 0.1 + (1 - original.l) * 0.55 };
     }
-    const shade = deriveShade(original, base, next);
-    return { h: shade.h, s: shade.s, l: clamp01(next.l + (base.l - original.l) * 0.9) };
+    const shade = deriveShade(original, base2, next);
+    return { h: shade.h, s: shade.s, l: clamp01(next.l + (base2.l - original.l) * 0.9) };
   }
   function applyThemeColor(color, mode = {}) {
     try {
@@ -25954,11 +26344,11 @@ function beds24Bookings_() {
     return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("select", { value, onChange: (e) => onChange(e.target.value), className: `${inputClass} cursor-pointer`, children: options.map((o) => /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("option", { value: o.value, children: o.label }, o.value)) });
   }
   function makeStableId(name, existingIds) {
-    const base = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30) || "element";
-    let id = base;
+    const base2 = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30) || "element";
+    let id = base2;
     let i = 2;
     while (existingIds.includes(id)) {
-      id = `${base}_${i++}`;
+      id = `${base2}_${i++}`;
     }
     return id;
   }
@@ -26496,43 +26886,6 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
           ] })
         ] });
       };
-    }
-  });
-
-  // src/core/invoicing/vat.ts
-  function vatBreakdown(lines2, rates, exempt = 0) {
-    const enabled = vatEnabled(rates);
-    const byRate = /* @__PURE__ */ new Map();
-    for (const l of lines2) {
-      const rate = enabled ? cleanRate(rates?.[l.service]) : 0;
-      byRate.set(rate, round25((byRate.get(rate) || 0) + (l.ttc || 0)));
-    }
-    const groups = [...byRate.entries()].sort((a, b) => a[0] - b[0]).map(([rate, ttc]) => {
-      const ht = rate > 0 ? round25(ttc / (1 + rate / 100)) : ttc;
-      return { rate, ht, vat: round25(ttc - ht), ttc };
-    });
-    const totalHt = round25(groups.reduce((s, g) => s + g.ht, 0));
-    const totalVat = round25(groups.reduce((s, g) => s + g.vat, 0));
-    const ex = round25(exempt || 0);
-    return { enabled, groups, totalHt, totalVat, exempt: ex, totalTtc: round25(groups.reduce((s, g) => s + g.ttc, 0) + ex) };
-  }
-  var VAT_SERVICES, round25, cleanRate, vatEnabled;
-  var init_vat = __esm({
-    "src/core/invoicing/vat.ts"() {
-      "use strict";
-      VAT_SERVICES = [
-        { id: "room", label: "H\xE9bergement" },
-        { id: "meals", label: "Repas et petits-d\xE9jeuners" },
-        { id: "drinks", label: "Boissons" },
-        { id: "dogCare", label: "Garde d'animaux" },
-        { id: "other", label: "Prestations annexes" }
-      ];
-      round25 = (n) => Math.round(n * 100) / 100;
-      cleanRate = (v) => {
-        const n = typeof v === "number" ? v : parseFloat(String(v ?? "").replace(",", "."));
-        return isFinite(n) && n > 0 && n < 100 ? round25(n) : 0;
-      };
-      vatEnabled = (rates) => !!rates && VAT_SERVICES.some((s) => cleanRate(rates[s.id]) > 0);
     }
   });
 
@@ -28697,17 +29050,17 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
     return stays.map((stay) => {
       const roomId = roomOf(stay.listing);
       const platform = stay.platform || platformId;
-      const base = { stay, roomId, detail: "" };
-      if (!stay.checkIn || !stay.checkOut || stay.checkOut <= stay.checkIn) return { ...base, action: "invalid" };
-      if (stay.state === "request") return { ...base, action: "requestIgnored" };
-      if (!roomId) return { ...base, action: "noRoom" };
+      const base2 = { stay, roomId, detail: "" };
+      if (!stay.checkIn || !stay.checkOut || stay.checkOut <= stay.checkIn) return { ...base2, action: "invalid" };
+      if (stay.state === "request") return { ...base2, action: "requestIgnored" };
+      if (!roomId) return { ...base2, action: "noRoom" };
       const sameRoom = reservations.filter((r) => r.roomId === roomId);
       const byRef = stay.ref ? reservations.find((r) => r.platformRef === stay.ref && r.bookingSource === platform && live(r)) : void 0;
       const sameDates = sameRoom.filter((r) => !isReservationBlocked(r) && live(r) && r.checkIn === stay.checkIn && r.checkOut === stay.checkOut);
       const target = byRef || sameDates.find((r) => r.bookingSource === platform) || sameDates[0];
       if (stay.state === "cancelled") {
-        if (target && !target.icalCancelled) return { ...base, action: "markCancelled", target, detail: `${target.guestName}` };
-        return { ...base, action: "cancelledIgnored", target };
+        if (target && !target.icalCancelled) return { ...base2, action: "markCancelled", target, detail: `${target.guestName}` };
+        return { ...base2, action: "cancelledIgnored", target };
       }
       if (target) {
         const patch = fillPatch(target, stay);
@@ -28717,13 +29070,13 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
           patch.nights = stay.nights;
         }
         const keys = Object.keys(patch).filter((k) => k !== "platformRef");
-        if (keys.length === 0) return { ...base, action: "uptodate", target, patch };
+        if (keys.length === 0) return { ...base2, action: "uptodate", target, patch };
         const labels = Array.from(new Set(keys.map((k) => PATCH_LABELS[k]).filter(Boolean)));
-        return { ...base, action: "complete", target, patch, detail: labels.join(", ") };
+        return { ...base2, action: "complete", target, patch, detail: labels.join(", ") };
       }
       const clash = sameRoom.find((r) => live(r) && !r.icalCancelled && r.checkIn < stay.checkOut && stay.checkIn < r.checkOut);
-      if (clash) return { ...base, action: "conflict", detail: `${clash.guestName || "R\xE9servation"} (${clash.checkIn} \u2192 ${clash.checkOut})` };
-      return { ...base, action: "create" };
+      if (clash) return { ...base2, action: "conflict", detail: `${clash.guestName || "R\xE9servation"} (${clash.checkIn} \u2192 ${clash.checkOut})` };
+      return { ...base2, action: "create" };
     });
   }
   function slug(s) {
@@ -29184,7 +29537,7 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
   });
 
   // src/modules/beds24/content.ts
-  function readJson2(key, fallback) {
+  function readJson3(key, fallback) {
     try {
       const parsed = JSON.parse(localStorage.getItem(key) || "null");
       return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? { ...fallback, ...parsed } : fallback;
@@ -29193,7 +29546,7 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
     }
   }
   function getBeds24() {
-    const s = readJson2(BEDS24_KEY, DEFAULT_BEDS24);
+    const s = readJson3(BEDS24_KEY, DEFAULT_BEDS24);
     return { enabled: s.enabled === true, rooms: s.rooms && typeof s.rooms === "object" ? s.rooms : {} };
   }
   function saveBeds24(patch) {
@@ -29207,7 +29560,7 @@ Pour confirmer, saisissez le nom exact de l'\xE9tablissement :`);
     return next;
   }
   function getBeds24State() {
-    return readJson2(BEDS24_STATE_KEY, EMPTY_STATE);
+    return readJson3(BEDS24_STATE_KEY, EMPTY_STATE);
   }
   function saveBeds24State(patch) {
     try {
@@ -31076,12 +31429,12 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
       return qd.length >= 6 && [r.guestPhone, r.guestPhone2].some((p) => digits(p || "").includes(qd));
     });
   }
-  function retentionCutoff(years, now = today()) {
+  function retentionCutoff(years, now = today2()) {
     const d = /* @__PURE__ */ new Date(`${now}T00:00:00Z`);
     d.setUTCFullYear(d.getUTCFullYear() - years);
     return d.toISOString().slice(0, 10);
   }
-  function expiredStays(reservations, years, now = today()) {
+  function expiredStays(reservations, years, now = today2()) {
     if (!(years > 0)) return [];
     const cutoff = retentionCutoff(years, now);
     return reservations.filter((r) => !!r.checkOut && r.checkOut < cutoff && hasPersonalData(r));
@@ -31263,7 +31616,7 @@ Ajoutez-le \xE0 l'\xE9cran d'accueil de votre t\xE9l\xE9phone. Ne le transmettez
 <table><thead><tr><th>Traitement</th><th>Finalit\xE9</th><th>Donn\xE9es</th><th>Base l\xE9gale</th><th>Conservation</th><th>Destinataires</th></tr></thead><tbody>${rows}</tbody></table>
 ${policy}</body></html>`;
   }
-  var PRIVACY_KEY, ANON_NAME, CONTACT_EDITS_KEY, DEFAULT_PRIVACY, isAnonymized, fold, digits, today;
+  var PRIVACY_KEY, ANON_NAME, CONTACT_EDITS_KEY, DEFAULT_PRIVACY, isAnonymized, fold, digits, today2;
   var init_privacy = __esm({
     "src/core/privacy/privacy.ts"() {
       "use strict";
@@ -31275,7 +31628,7 @@ ${policy}</body></html>`;
       isAnonymized = (r) => r.guestName === ANON_NAME;
       fold = (s) => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
       digits = (s) => (s || "").replace(/\D/g, "");
-      today = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      today2 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     }
   });
 
@@ -32668,11 +33021,11 @@ Cette op\xE9ration est d\xE9finitive.`
           onClose();
         };
         const change = (patch, historyText) => {
-          const base = draftRef.current;
-          const next = { ...base, ...patch };
+          const base2 = draftRef.current;
+          const next = { ...base2, ...patch };
           draftRef.current = next;
           setDraft(next);
-          if (!isNew) updateTask(base, patch, historyText);
+          if (!isNew) updateTask(base2, patch, historyText);
         };
         const setStatus2 = (statusId) => {
           if (isNew) {
@@ -34215,23 +34568,23 @@ Cette op\xE9ration est d\xE9finitive.`
       });
     }
     const portions = Math.max(1, d.productQuantity || 1);
-    const unitCost = round26(total / portions);
-    const labor = d.laborMinutes !== void 0 ? round26(d.laborMinutes / 60 * cost.laborRate / portions) : d.moCost || 0;
-    const material = d.materialMinutes !== void 0 ? round26(d.materialMinutes / 60 * cost.materialRate / portions) : d.matCost || 0;
-    const revient = round26(unitCost + labor + material);
+    const unitCost = round28(total / portions);
+    const labor = d.laborMinutes !== void 0 ? round28(d.laborMinutes / 60 * cost.laborRate / portions) : d.moCost || 0;
+    const material = d.materialMinutes !== void 0 ? round28(d.materialMinutes / 60 * cost.materialRate / portions) : d.matCost || 0;
+    const revient = round28(unitCost + labor + material);
     const price = d.sellingPrice || 0;
     return {
       hasLines,
-      total: round26(total),
+      total: round28(total),
       portions,
       unitCost,
       labor,
       material,
       revient,
-      suggestMin: cost.marginMin === null ? null : round26(revient * (1 + cost.marginMin / 100)),
-      suggestMax: cost.marginMax === null ? null : round26(revient * (1 + cost.marginMax / 100)),
-      marginBrut: round26(price - unitCost),
-      marginNet: round26(price - unitCost - labor - material),
+      suggestMin: cost.marginMin === null ? null : round28(revient * (1 + cost.marginMin / 100)),
+      suggestMax: cost.marginMax === null ? null : round28(revient * (1 + cost.marginMax / 100)),
+      marginBrut: round28(price - unitCost),
+      marginNet: round28(price - unitCost - labor - material),
       missing
     };
   }
@@ -34330,7 +34683,7 @@ Cette op\xE9ration est d\xE9finitive.`
     };
     return sorted.length ? [at(""), ...sorted.map(at)] : [];
   }
-  var DEFAULT_SHOPS, num4, round26, round4, normName, priceOf, unitsFor, defaultLineUnit, LINE_UNIT_LABEL, isComputed, kindOf, KIND_LABEL2, DISH_CATEGORIES, categoriesFor, usedBy, REF_SHOPS, referenceMissing, uniq, ingredientTypes, subCategoriesFor, sameMap;
+  var DEFAULT_SHOPS, num4, round28, round4, normName, priceOf, unitsFor, defaultLineUnit, LINE_UNIT_LABEL, isComputed, kindOf, KIND_LABEL2, DISH_CATEGORIES, categoriesFor, usedBy, REF_SHOPS, referenceMissing, uniq, ingredientTypes, subCategoriesFor, sameMap;
   var init_content18 = __esm({
     "src/modules/cuisine/content.ts"() {
       "use strict";
@@ -34341,7 +34694,7 @@ Cette op\xE9ration est d\xE9finitive.`
         { id: "leclerc", name: "Leclerc" }
       ];
       num4 = (v) => typeof v === "number" && isFinite(v) ? v : null;
-      round26 = (n) => Math.round(n * 100) / 100;
+      round28 = (n) => Math.round(n * 100) / 100;
       round4 = (n) => Math.round(n * 1e4) / 1e4;
       normName = (s) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/œ/g, "oe").replace(/[^a-z0-9]+/g, " ").trim();
       priceOf = (ing, cost) => priceInfo(ing, cost).price;
@@ -35180,9 +35533,9 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
           legacy && /* @__PURE__ */ (0, import_jsx_runtime37.jsxs)("div", { className: "p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 flex flex-wrap items-center justify-between gap-2", "data-legacy-breakfast": true, children: [
             /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("span", { children: "Votre ancienne grille du petit-d\xE9jeuner contient des quantit\xE9s par personne. Vous pouvez en faire une formule." }),
             /* @__PURE__ */ (0, import_jsx_runtime37.jsx)("button", { type: "button", className: btn, onClick: () => {
-              const base = newDishItem("breakfast");
+              const base2 = newDishItem("breakfast");
               const lines2 = ingredients.flatMap((i) => (i.quantityUsed || 0) > 0 || (i.weightGrams || 0) > 0 ? [i] : []).map((i) => i.unit === "u" ? { ingredientId: i.id, qty: i.quantityUsed, unit: "u" } : i.unit === "kg" ? { ingredientId: i.id, qty: i.weightGrams, unit: "g" } : { ingredientId: i.id, qty: Math.round(i.weightGrams / 10 * 100) / 100, unit: "cl" }).filter((l) => l.qty > 0);
-              saveDishes([...items, withComputed({ ...base, name: "Petit-d\xE9jeuner standard", lines: lines2 }, ingredients, cost)]);
+              saveDishes([...items, withComputed({ ...base2, name: "Petit-d\xE9jeuner standard", lines: lines2 }, ingredients, cost)]);
               reload();
               onToast("Formule cr\xE9\xE9e depuis l'ancienne grille : compl\xE9tez le prix de vente.");
             }, children: "Cr\xE9er la formule \xAB Petit-d\xE9jeuner standard \xBB" })
@@ -35289,9 +35642,9 @@ Les ingr\xE9dients d\xE9j\xE0 pr\xE9sents gardent leur nom, leur unit\xE9 et leu
     return token;
   }
   function stayLink(token, publicId, mode) {
-    const base = bookLink(publicId, null, getStoredAppsScriptUrl());
-    if (!base || !token) return null;
-    return `${base}&r=${encodeURIComponent(token)}${mode === "meals" ? "&vue=repas" : ""}`;
+    const base2 = bookLink(publicId, null, getStoredAppsScriptUrl());
+    if (!base2 || !token) return null;
+    return `${base2}&r=${encodeURIComponent(token)}${mode === "meals" ? "&vue=repas" : ""}`;
   }
   async function requireV13() {
     const info = await connectorInfo(void 0, true);
@@ -36598,7 +36951,7 @@ ${establishmentName}`;
     const rows = dishes.map((d) => {
       const known = d.price > 0 && d.revient > 0;
       const q = qty.get(d.id) || 0;
-      const margin = known ? round27(d.price - d.revient) : null;
+      const margin = known ? round29(d.price - d.revient) : null;
       return {
         id: d.id,
         name: d.name,
@@ -36606,10 +36959,10 @@ ${establishmentName}`;
         price: d.price,
         revient: d.revient,
         margin,
-        marginPct: known ? round27((d.price - d.revient) / d.price * 100) : null,
+        marginPct: known ? round29((d.price - d.revient) / d.price * 100) : null,
         qty: q,
-        revenue: d.price > 0 ? round27(q * d.price) : null,
-        totalMargin: margin === null ? null : round27(q * margin),
+        revenue: d.price > 0 ? round29(q * d.price) : null,
+        totalMargin: margin === null ? null : round29(q * margin),
         klass: ""
       };
     });
@@ -36627,9 +36980,9 @@ ${establishmentName}`;
       });
     }
     rows.sort((a, b) => b.qty - a.qty || (b.margin ?? -1e9) - (a.margin ?? -1e9) || a.name.localeCompare(b.name, "fr"));
-    return { rows, orders: used, unmatched: Array.from(unmatched, ([name, q]) => ({ name, qty: q })).sort((a, b) => b.qty - a.qty), classified, avgQty: round27(avgQty), avgMargin: round27(avgMargin) };
+    return { rows, orders: used, unmatched: Array.from(unmatched, ([name, q]) => ({ name, qty: q })).sort((a, b) => b.qty - a.qty), classified, avgQty: round29(avgQty), avgMargin: round29(avgMargin) };
   }
-  var CLASS_LABEL, round27, counts;
+  var CLASS_LABEL, round29, counts;
   var init_analysis = __esm({
     "src/modules/repas/analysis.ts"() {
       "use strict";
@@ -36639,7 +36992,7 @@ ${establishmentName}`;
         puzzle: { label: "Rentable, peu command\xE9", advice: "Bonne marge mais peu command\xE9 : mieux le pr\xE9senter ou le sugg\xE9rer." },
         weak: { label: "\xC0 revoir", advice: "Peu command\xE9 et peu rentable : \xE0 repenser ou retirer." }
       };
-      round27 = (n) => Math.round(n * 100) / 100;
+      round29 = (n) => Math.round(n * 100) / 100;
       counts = (status2) => status2 === "confirmed" || status2 === "done";
     }
   });
@@ -36879,9 +37232,9 @@ ${establishmentName}`;
     const needs = [...acc.entries()].map(([id, v]) => {
       const ing = ingredients.find((i) => i.id === id);
       const qty = round32(v.qty);
-      const prices = cost.shops.map((s) => ({ shopId: s.id, shopName: s.name, price: ing.prices?.[s.id] })).filter((p) => typeof p.price === "number" && isFinite(p.price) && p.price >= 0).map((p) => ({ ...p, total: round28(p.price * qty) })).sort((a, b) => a.total - b.total);
+      const prices = cost.shops.map((s) => ({ shopId: s.id, shopName: s.name, price: ing.prices?.[s.id] })).filter((p) => typeof p.price === "number" && isFinite(p.price) && p.price >= 0).map((p) => ({ ...p, total: round210(p.price * qty) })).sort((a, b) => a.total - b.total);
       const best = prices[0] || null;
-      const estimate = best ? best.total : ing.unitPrice > 0 ? round28(ing.unitPrice * qty) : null;
+      const estimate = best ? best.total : ing.unitPrice > 0 ? round210(ing.unitPrice * qty) : null;
       return { ingredientId: id, name: ing.name, unit: ing.unit, qty, dishes: [...v.dishes].sort(), prices, best, estimate };
     });
     needs.sort((a, b) => (a.best?.shopName || "\uFFFF").localeCompare(b.best?.shopName || "\uFFFF", "fr") || a.name.localeCompare(b.name, "fr"));
@@ -36889,7 +37242,7 @@ ${establishmentName}`;
       needs,
       unknown,
       orders: used.length,
-      total: round28(needs.reduce((n, x) => n + (x.estimate || 0), 0)),
+      total: round210(needs.reduce((n, x) => n + (x.estimate || 0), 0)),
       withoutPrice: needs.filter((x) => x.estimate === null).length
     };
   }
@@ -36906,19 +37259,19 @@ ${establishmentName}`;
     lines2.push("", `Total estim\xE9 : ${String(result.total).replace(".", ",")} \u20AC`);
     return lines2.join("\n");
   }
-  var round32, round28, UNIT_LABEL2;
+  var round32, round210, UNIT_LABEL2;
   var init_shopping = __esm({
     "src/modules/repas/shopping.ts"() {
       "use strict";
       init_content2();
       round32 = (n) => Math.round(n * 1e3) / 1e3;
-      round28 = (n) => Math.round(n * 100) / 100;
+      round210 = (n) => Math.round(n * 100) / 100;
       UNIT_LABEL2 = { u: "pi\xE8ce(s)", kg: "kg", l: "l" };
     }
   });
 
   // src/modules/repas/ShoppingPanel.tsx
-  var import_react58, import_jsx_runtime44, eur2, today2, ShoppingPanel;
+  var import_react58, import_jsx_runtime44, eur2, today3, ShoppingPanel;
   var init_ShoppingPanel = __esm({
     "src/modules/repas/ShoppingPanel.tsx"() {
       "use strict";
@@ -36938,12 +37291,12 @@ ${establishmentName}`;
       init_shopping();
       import_jsx_runtime44 = __require("react/jsx-runtime");
       eur2 = (n) => n === null ? "prix inconnu" : `${n.toFixed(2).replace(".", ",")} \u20AC`;
-      today2 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      today3 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
       ShoppingPanel = ({ content, onToast }) => {
         const settings = useSettings();
         const { orders } = useMealOrders(true);
-        const [from, setFrom] = (0, import_react58.useState)(today2());
-        const [to, setTo] = (0, import_react58.useState)(() => addDaysIso(today2(), 7));
+        const [from, setFrom] = (0, import_react58.useState)(today3());
+        const [to, setTo] = (0, import_react58.useState)(() => addDaysIso(today3(), 7));
         const result = (0, import_react58.useMemo)(
           () => shoppingNeeds(orders, content, getStoredMealItems(), getStoredBreakfastIngredients(), readCost(settings), from, to),
           [orders, content, settings, from, to]
@@ -36960,11 +37313,11 @@ ${establishmentName}`;
           }
         }, [settings]);
         const text = () => {
-          const base = shoppingText(result, from, to);
-          return stock.length ? `${base}
+          const base2 = shoppingText(result, from, to);
+          return stock.length ? `${base2}
 
 STOCKS \xC0 COMPL\xC9TER
-${stock.map((s) => `- ${s.name}${s.place ? ` (${s.place})` : ""} : ${String(s.gap).replace(".", ",")}${s.unit ? ` ${s.unit}` : ""}`).join("\n")}` : base;
+${stock.map((s) => `- ${s.name}${s.place ? ` (${s.place})` : ""} : ${String(s.gap).replace(".", ",")}${s.unit ? ` ${s.unit}` : ""}`).join("\n")}` : base2;
         };
         const groups = (0, import_react58.useMemo)(() => {
           const m = /* @__PURE__ */ new Map();
@@ -36989,7 +37342,7 @@ ${stock.map((s) => `- ${s.name}${s.place ? ` (${s.place})` : ""} : ${String(s.ga
                   /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(Copy, { className: "w-3.5 h-3.5" }),
                   " Copier"
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("button", { type: "button", disabled: empty, "data-shopping-download": true, onClick: () => download(`liste-de-courses_${from || today2()}.txt`, text(), "text/plain;charset=utf-8"), className: "flex items-center gap-1 px-2.5 py-2 text-[11px] font-semibold rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer disabled:opacity-40", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)("button", { type: "button", disabled: empty, "data-shopping-download": true, onClick: () => download(`liste-de-courses_${from || today3()}.txt`, text(), "text/plain;charset=utf-8"), className: "flex items-center gap-1 px-2.5 py-2 text-[11px] font-semibold rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 cursor-pointer disabled:opacity-40", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime44.jsx)(Download, { className: "w-3.5 h-3.5" }),
                   " T\xE9l\xE9charger"
                 ] })
@@ -39344,9 +39697,9 @@ ${opts.wifi ? `<p><strong>Wi-Fi :</strong> ${esc(opts.wifi)}</p>` : ""}
           if (!connectorUrl) return;
           setTesting(true);
           try {
-            const base = baseConnectorUrl(connectorUrl);
-            const pub = await testPublishedBook(base, sp.publicId, "");
-            const guests = await testPublishedBook(base, sp.publicId, sp.guestCode);
+            const base2 = baseConnectorUrl(connectorUrl);
+            const pub = await testPublishedBook(base2, sp.publicId, "");
+            const guests = await testPublishedBook(base2, sp.publicId, sp.guestCode);
             onToast(
               guests.guestRefused ? `Lien public en ligne (${pub.book.sections.length} rubrique(s)), mais le connecteur ne conna\xEEt pas encore le lien voyageurs : cliquez sur \xAB 2. Enregistrer \xBB puis r\xE9essayez.` : `Livret en ligne : ${pub.book.sections.length} rubrique(s) pour tout le monde, ${guests.book.sections.length} avec le lien voyageurs.`
             );
@@ -40690,9 +41043,9 @@ ${m.message}
     return days2 > 0 && days2 < 365 ? assetPerYear(asset) / days2 : null;
   }
   function remainingToDepreciate(asset, onDate) {
-    const base = Math.max(0, (asset.amount || 0) - (asset.residual || 0));
-    if (onDate < asset.purchaseDate) return base;
-    return Math.max(0, base - depreciationInPeriod(asset, asset.purchaseDate, onDate));
+    const base2 = Math.max(0, (asset.amount || 0) - (asset.residual || 0));
+    if (onDate < asset.purchaseDate) return base2;
+    return Math.max(0, base2 - depreciationInPeriod(asset, asset.purchaseDate, onDate));
   }
   function depreciationSchedule(asset) {
     if (!(asset.years > 0) || !asset.purchaseDate) return [];
@@ -40706,15 +41059,15 @@ ${m.message}
     return out;
   }
   function depreciationInPeriod(asset, from, to) {
-    const base = Math.max(0, (asset.amount || 0) - (asset.residual || 0));
-    if (!(asset.years > 0) || !asset.purchaseDate || base <= 0) return 0;
+    const base2 = Math.max(0, (asset.amount || 0) - (asset.residual || 0));
+    if (!(asset.years > 0) || !asset.purchaseDate || base2 <= 0) return 0;
     const day2 = 864e5;
     const start = Date.parse(`${asset.purchaseDate}T00:00:00Z`);
     const totalDays = assetLifeDays(asset);
     if (isNaN(start)) return 0;
     const end = start + totalDays * day2;
     const overlap = Math.max(0, Math.min(end, Date.parse(`${to}T00:00:00Z`) + day2) - Math.max(start, Date.parse(`${from}T00:00:00Z`))) / day2;
-    return base * overlap / totalDays;
+    return base2 * overlap / totalDays;
   }
   function computeStats(reservations, expenses2, period, settings, prof, registry = readInvoiceRegistry(), assets2 = {}) {
     const lodgingIds = new Set(settings.accommodations.map((a) => a.id));
@@ -40770,15 +41123,15 @@ ${m.message}
       months.push({
         label: `${MONTH_NAMES_FR[m.month].slice(0, 4)}. ${String(m.year).slice(2)}`,
         revenue: recap.totalRevenue,
-        expenses: round29(expenseByMonth.get(`${m.year}-${pad2(m.month + 1)}`) || 0),
+        expenses: round211(expenseByMonth.get(`${m.year}-${pad2(m.month + 1)}`) || 0),
         occupancy: avail > 0 ? sold / avail * 100 : null
       });
     });
     stays = countedStays.size;
     const roomLines = Array.from(rooms.values()).filter((l) => l.revenue > 0 || l.nights > 0 || activeLodgingIds.has(l.roomId)).map((l) => ({
       ...l,
-      revenue: round29(l.revenue),
-      roomRevenue: round29(l.roomRevenue),
+      revenue: round211(l.revenue),
+      roomRevenue: round211(l.roomRevenue),
       occupancy: l.isLodging && l.availableNights > 0 ? l.nights / l.availableNights * 100 : null,
       adr: l.isLodging && l.nights > 0 ? l.roomRevenue / l.nights : null,
       revpar: l.isLodging && l.availableNights > 0 ? l.roomRevenue / l.availableNights : null
@@ -40839,28 +41192,28 @@ ${m.message}
       return {
         bucket,
         label: bucket === "" ? "Non r\xE9percut\xE9 dans la fiche de r\xE9servation" : field4 ? field4.label : "Poste supprim\xE9",
-        expenses: round29(v.expenses),
-        depreciation: round29(v.depreciation),
-        total: round29(total),
+        expenses: round211(v.expenses),
+        depreciation: round211(v.depreciation),
+        total: round211(total),
         perNight: bucket !== "" && nightsSold > 0 ? total / nightsSold : null,
         current: field4 ? field4.perNight : null,
         known: !!field4
       };
     }).sort((a, b) => a.bucket === "" ? 1 : b.bucket === "" ? -1 : b.total - a.total);
     const marginDeductions = (prof.deductSocialCharges ? socialCharges : 0) + (prof.deductStayCosts ? stayCosts : 0) + (prof.deductDepreciation ? depreciation : 0) + expensesTotal;
-    const margin = round29(revenue - marginDeductions);
+    const margin = round211(revenue - marginDeductions);
     return {
       period,
-      revenue: round29(revenue),
-      roomRevenue: round29(roomRevenue),
-      mealsRevenue: round29(mealsRevenue),
-      drinksRevenue: round29(drinksRevenue),
-      dogCareRevenue: round29(dogCareRevenue),
-      otherRevenue: round29(Math.max(0, revenue - roomRevenue - mealsRevenue - drinksRevenue - dogCareRevenue)),
-      commissions: round29(commissions),
-      touristTax: round29(touristTax),
-      collected: round29(collected),
-      toCollect: round29(Math.max(0, revenue - collected)),
+      revenue: round211(revenue),
+      roomRevenue: round211(roomRevenue),
+      mealsRevenue: round211(mealsRevenue),
+      drinksRevenue: round211(drinksRevenue),
+      dogCareRevenue: round211(dogCareRevenue),
+      otherRevenue: round211(Math.max(0, revenue - roomRevenue - mealsRevenue - drinksRevenue - dogCareRevenue)),
+      commissions: round211(commissions),
+      touristTax: round211(touristTax),
+      collected: round211(collected),
+      toCollect: round211(Math.max(0, revenue - collected)),
       stays,
       nightsSold,
       availableNights,
@@ -40868,18 +41221,18 @@ ${m.message}
       adr: nightsSold > 0 ? lodgingRoomRevenue / nightsSold : null,
       revpar: noCapacity ? null : lodgingRoomRevenue / availableNights,
       invoicesCount,
-      invoicesTotal: round29(invoicesTotal),
-      invoicesPaid: round29(invoicesPaid),
-      expensesTotal: round29(expensesTotal),
-      expensesPaid: round29(expensesPaid),
-      expensesExcluded: round29(expensesPaid - expensesTotal),
+      invoicesTotal: round211(invoicesTotal),
+      invoicesPaid: round211(invoicesPaid),
+      expensesTotal: round211(expensesTotal),
+      expensesPaid: round211(expensesPaid),
+      expensesExcluded: round211(expensesPaid - expensesTotal),
       expensesCount: periodExpenses.length,
-      expensesFixed: round29(expensesFixed),
-      expensesVariable: round29(expensesVariable),
-      byCategory: Array.from(byCat.values()).map((l) => ({ ...l, amount: round29(l.amount) })).sort((a, b) => b.amount - a.amount),
-      socialCharges: round29(socialCharges),
-      stayCosts: round29(stayCosts),
-      depreciation: round29(depreciation),
+      expensesFixed: round211(expensesFixed),
+      expensesVariable: round211(expensesVariable),
+      byCategory: Array.from(byCat.values()).map((l) => ({ ...l, amount: round211(l.amount) })).sort((a, b) => b.amount - a.amount),
+      socialCharges: round211(socialCharges),
+      stayCosts: round211(stayCosts),
+      depreciation: round211(depreciation),
       costing,
       margin,
       marginPercent: revenue > 0 ? margin / revenue * 100 : null,
@@ -40900,12 +41253,12 @@ ${m.message}
     return monthRevenue && monthRevenue > 0 ? monthRevenue : yearRevenue && yearRevenue > 0 ? yearRevenue / 12 : 0;
   }
   function yearObjective(objectives) {
-    if (objectives.monthly?.some((v) => v > 0)) return round29(Array.from({ length: 12 }, (_, m) => monthObjective(objectives, m)).reduce((s, v) => s + v, 0));
+    if (objectives.monthly?.some((v) => v > 0)) return round211(Array.from({ length: 12 }, (_, m) => monthObjective(objectives, m)).reduce((s, v) => s + v, 0));
     return objectives.yearRevenue && objectives.yearRevenue > 0 ? objectives.yearRevenue : 0;
   }
   function revenueTarget(prof, period) {
     const total = period.months.reduce((s, m) => s + monthObjective(prof.objectives, m.month), 0);
-    return total > 0 ? round29(total) : null;
+    return total > 0 ? round211(total) : null;
   }
   function spreadObjective(year, weights) {
     const total = weights.reduce((s, w2) => s + Math.max(0, w2), 0);
@@ -40916,7 +41269,7 @@ ${m.message}
     values[biggest] += diff;
     return values;
   }
-  var pad2, round29, monthLabel;
+  var pad2, round211, monthLabel;
   var init_compute = __esm({
     "src/modules/rentabilite/compute.ts"() {
       "use strict";
@@ -40924,7 +41277,7 @@ ${m.message}
       init_costFields();
       init_content3();
       pad2 = (n) => String(n).padStart(2, "0");
-      round29 = (n) => Math.round(n * 100) / 100;
+      round211 = (n) => Math.round(n * 100) / 100;
       monthLabel = (m) => `${MONTH_NAMES_FR[m.month]} ${m.year}`;
     }
   });
@@ -41038,10 +41391,10 @@ ${m.message}
         const kind = statusOf3(hk, t.statusId).kind;
         const list3 = hk.checklists.find((c) => c.id === t.checklistId);
         const done = isDone(hk, t);
-        const base = { month, room: t.zoneId, taskStatus: t.statusId, assignee: t.assigneeId || "", taskMoment: t.moment || "other" };
+        const base2 = { month, room: t.zoneId, taskStatus: t.statusId, assignee: t.assigneeId || "", taskMoment: t.moment || "other" };
         rows.push({
           ds: "task",
-          ...base,
+          ...base2,
           v: {
             count: 1,
             done: done ? 1 : 0,
@@ -41665,9 +42018,9 @@ ${m.message}
           saveProfitability(settings, { ...prof, widgets: widgets2 }, message);
         };
         const widgets = prof.widgets;
-        const startNew = (base) => {
+        const startNew = (base2) => {
           setIsNew(true);
-          setDraft({ id: newId8(), ...base || w("", "bar", ["res_revenue"], "month", "thisYear") });
+          setDraft({ id: newId8(), ...base2 || w("", "bar", ["res_revenue"], "month", "thisYear") });
         };
         const saveDraft2 = () => {
           if (!draft) return;
@@ -41878,7 +42231,7 @@ ${m.message}
   });
 
   // src/modules/rentabilite/AssetsPanel.tsx
-  var import_react66, import_jsx_runtime54, today3, CostCards, AssetsPanel;
+  var import_react66, import_jsx_runtime54, today4, CostCards, AssetsPanel;
   var init_AssetsPanel = __esm({
     "src/modules/rentabilite/AssetsPanel.tsx"() {
       "use strict";
@@ -41890,7 +42243,7 @@ ${m.message}
       init_compute();
       init_store4();
       import_jsx_runtime54 = __require("react/jsx-runtime");
-      today3 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+      today4 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
       CostCards = ({ stats, period, onToast }) => {
         const lines2 = stats.costing.filter((c) => c.bucket !== "" && c.known);
         const unassigned = stats.costing.find((c) => c.bucket === "");
@@ -42035,16 +42388,16 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
           })()
         }));
         const totalPeriod = rows.reduce((s, r) => s + r.inPeriod, 0);
-        const totalRemaining = list3.reduce((s, a) => s + remainingToDepreciate(a, today3()), 0);
+        const totalRemaining = list3.reduce((s, a) => s + remainingToDepreciate(a, today4()), 0);
         const yearlyTotals = (0, import_react66.useMemo)(() => {
           const byYear = /* @__PURE__ */ new Map();
           list3.forEach((a) => depreciationSchedule(a).forEach((s) => byYear.set(s.year, (byYear.get(s.year) || 0) + s.amount)));
           const years = [...byYear.keys()].sort((a, b) => a - b);
-          const base = list3.reduce((s, a) => s + Math.max(0, (a.amount || 0) - (a.residual || 0)), 0);
+          const base2 = list3.reduce((s, a) => s + Math.max(0, (a.amount || 0) - (a.residual || 0)), 0);
           let cumul = 0;
           return years.map((year) => {
             cumul += byYear.get(year) || 0;
-            return { year, amount: byYear.get(year) || 0, remaining: Math.max(0, base - cumul) };
+            return { year, amount: byYear.get(year) || 0, remaining: Math.max(0, base2 - cumul) };
           });
         }, [list3]);
         const startNew = () => {
@@ -42054,7 +42407,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
             id: newAssetId(),
             label: "",
             categoryId: c?.id || "",
-            purchaseDate: today3(),
+            purchaseDate: today4(),
             amount: 0,
             residual: 0,
             years: c?.years || 5,
@@ -42161,7 +42514,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
                       "\u2192 ",
                       bucketLabel(a.bucket)
                     ] }),
-                    endDate < today3() && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { className: "px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-neutral-200 text-neutral-600", children: "Amorti" })
+                    endDate < today4() && /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("span", { className: "px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-neutral-200 text-neutral-600", children: "Amorti" })
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("p", { className: "text-[11px] text-neutral-500", children: [
                     "Achet\xE9 le ",
@@ -42180,7 +42533,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
                   ] }),
                   /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)("p", { className: "text-[11px] text-neutral-600", children: [
                     "Reste \xE0 amortir : ",
-                    /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("b", { className: "font-mono", children: formatCurrency(remainingToDepreciate(a, today3())) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime54.jsx)("b", { className: "font-mono", children: formatCurrency(remainingToDepreciate(a, today4())) }),
                     " \xB7 fin de l'amortissement le ",
                     formatDateFr(endDate),
                     costPerUsageDay(a) !== null && /* @__PURE__ */ (0, import_jsx_runtime54.jsxs)(import_jsx_runtime54.Fragment, { children: [
@@ -42880,7 +43233,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
   });
 
   // src/modules/rentabilite/ExpensesPanel.tsx
-  var import_react69, import_jsx_runtime58, today4, ShareQuestion, ExpensesPanel;
+  var import_react69, import_jsx_runtime58, today5, ShareQuestion, ExpensesPanel;
   var init_ExpensesPanel = __esm({
     "src/modules/rentabilite/ExpensesPanel.tsx"() {
       "use strict";
@@ -42896,7 +43249,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
       init_content3();
       init_ShareRule();
       import_jsx_runtime58 = __require("react/jsx-runtime");
-      today4 = () => {
+      today5 = () => {
         const d = /* @__PURE__ */ new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       };
@@ -42943,7 +43296,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
           setIsNew(true);
           setDraft({
             id: newExpenseId(),
-            date: today4() >= period.from && today4() <= period.to ? today4() : period.to,
+            date: today5() >= period.from && today5() <= period.to ? today5() : period.to,
             amount: 0,
             categoryId: category?.id || "",
             label: "",
@@ -43286,14 +43639,14 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
     const refPrice = {};
     roomIds.forEach((id) => {
       const prices = year.filter((r) => String(r.roomId) === id).map((r) => nightlyPrice(r, rules[id])).filter((p) => p !== null);
-      refPrice[id] = prices.length >= 3 ? round210(median(prices)) : null;
+      refPrice[id] = prices.length >= 3 ? round212(median(prices)) : null;
     });
     const all2 = year.map((r) => nightlyPrice(r, rules[String(r.roomId)])).filter((p) => p !== null);
     const seasonal = (list3) => {
       const out = { high: null, mid: null, low: null };
       ["high", "mid", "low"].forEach((s) => {
         const prices = list3.filter((r) => monthSeason(monthIndex(r.checkIn)) === s).map((r) => nightlyPrice(r, rules[String(r.roomId)])).filter((p) => p !== null);
-        out[s] = prices.length >= 3 ? round210(median(prices)) : null;
+        out[s] = prices.length >= 3 ? round212(median(prices)) : null;
       });
       return out;
     };
@@ -43306,7 +43659,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
       weekday,
       meanMonth,
       refPrice,
-      overallRef: all2.length >= 3 ? round210(median(all2)) : null,
+      overallRef: all2.length >= 3 ? round212(median(all2)) : null,
       refSeason,
       overallSeason: seasonal(stays),
       enough: stays.length >= 10 && days2 >= 180 && known.length >= 4
@@ -43315,7 +43668,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
   function marketPrice(comparables, date, roomId) {
     const prices = comparables.filter((c) => date >= c.from && date <= c.to && (!roomId || !c.roomId || c.roomId === roomId)).map((c) => c.price);
     const m = median(prices);
-    return m === null ? null : round210(m);
+    return m === null ? null : round212(m);
   }
   function pace(reservations, roomIds, today7) {
     const rooms = new Set(roomIds);
@@ -43512,7 +43865,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
       ...rows.map((r) => [roomName(r.roomId), r.from, r.to, r.nights, r.suggested, r.current, r.gapPct, r.level === "up" ? "Augmenter" : r.level === "down" ? "Baisser" : "Garder", r.reasons.join(" ; ")])
     ];
   }
-  var DAY5, dayNumber4, isoOf4, weekdayOf2, monthIndex, round5, median, GENERIC_MONTH, GENERIC_WEEKDAY, real2, SEASON_LABEL, round210, addDaysIso2, MONTHS2, WEEKDAYS;
+  var DAY5, dayNumber4, isoOf4, weekdayOf2, monthIndex, round5, median, GENERIC_MONTH, GENERIC_WEEKDAY, real2, SEASON_LABEL, round212, addDaysIso2, MONTHS2, WEEKDAYS;
   var init_content19 = __esm({
     "src/modules/conseils/content.ts"() {
       "use strict";
@@ -43533,7 +43886,7 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
       GENERIC_WEEKDAY = [0.9, 0.9, 0.9, 0.95, 1.1, 1.15, 0.95];
       real2 = (r) => !r.isBlocked && r.reservationStatus !== "cancelled" && !/ferm|bloq/i.test(r.guestName || "");
       SEASON_LABEL = { high: "haute saison", mid: "saison interm\xE9diaire", low: "basse saison" };
-      round210 = (n) => Math.round(n * 100) / 100;
+      round212 = (n) => Math.round(n * 100) / 100;
       addDaysIso2 = (iso, n) => isoOf4(dayNumber4(iso) + n);
       MONTHS2 = ["janvier", "f\xE9vrier", "mars", "avril", "mai", "juin", "juillet", "ao\xFBt", "septembre", "octobre", "novembre", "d\xE9cembre"];
       WEEKDAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
@@ -43609,9 +43962,9 @@ Les r\xE9servations d\xE9j\xE0 enregistr\xE9es ne changent pas.`)) return;
         const addCategory = () => {
           const name = newCategory.trim();
           if (!name) return;
-          const base = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 24) || "categorie";
-          let id = base;
-          for (let i = 2; draft.categories.some((c) => c.id === id); i++) id = `${base}_${i}`;
+          const base2 = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 24) || "categorie";
+          let id = base2;
+          for (let i = 2; draft.categories.some((c) => c.id === id); i++) id = `${base2}_${i}`;
           set({ categories: [...draft.categories, { id, name, kind: "variable", active: true }] });
           setNewCategory("");
         };
@@ -44983,12 +45336,12 @@ Cordialement`
         const [search, setSearch] = (0, import_react75.useState)("");
         const today7 = todayIso2();
         const admin = (0, import_react75.useMemo)(() => {
-          const base = createDefaultAdmin();
+          const base2 = createDefaultAdmin();
           return {
-            ...base,
+            ...base2,
             categories: payload.categories.map((c) => ({ id: c.id, name: c.name, needsExpiry: c.needsExpiry, retentionYears: 0, active: true })),
-            reminderDays: Array.isArray(payload.reminderDays) ? payload.reminderDays : base.reminderDays,
-            statusLabels: { ...base.statusLabels, ...payload.statusLabels || {} }
+            reminderDays: Array.isArray(payload.reminderDays) ? payload.reminderDays : base2.reminderDays,
+            statusLabels: { ...base2.statusLabels, ...payload.statusLabels || {} }
           };
         }, [payload]);
         const rows = (0, import_react75.useMemo)(
@@ -45062,7 +45415,7 @@ Cordialement`
   });
 
   // src/modules/repas/StaffMeals.tsx
-  var import_react76, import_jsx_runtime67, STATUS_LOOK2, today5, dayLabel2, covers, StaffMeals;
+  var import_react76, import_jsx_runtime67, STATUS_LOOK2, today6, dayLabel2, covers, StaffMeals;
   var init_StaffMeals = __esm({
     "src/modules/repas/StaffMeals.tsx"() {
       "use strict";
@@ -45077,7 +45430,7 @@ Cordialement`
         refused: "bg-red-100 text-red-800",
         cancelled: "bg-neutral-100 text-neutral-500"
       };
-      today5 = () => {
+      today6 = () => {
         const d = /* @__PURE__ */ new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
       };
@@ -45109,13 +45462,13 @@ Cordialement`
           ] });
         }
         return /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("div", { className: "space-y-5", children: days2.map(([date, list3]) => {
-          const isToday = date === today5();
+          const isToday = date === today6();
           const moments = Array.from(new Set(list3.map((o) => o.momentName || o.momentId)));
           return /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("section", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("h2", { className: `font-serif font-bold text-base capitalize mb-2 ${date < today5() ? "text-neutral-400" : "text-neutral-900"}`, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime67.jsxs)("h2", { className: `font-serif font-bold text-base capitalize mb-2 ${date < today6() ? "text-neutral-400" : "text-neutral-900"}`, children: [
               dayLabel2(date),
               isToday && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("span", { className: "ml-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-sy-325032 text-white align-middle", children: "Aujourd'hui" }),
-              date < today5() && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("span", { className: "ml-2 text-[11px] font-normal text-neutral-400", children: "pass\xE9" })
+              date < today6() && /* @__PURE__ */ (0, import_jsx_runtime67.jsx)("span", { className: "ml-2 text-[11px] font-normal text-neutral-400", children: "pass\xE9" })
             ] }),
             moments.map((moment2) => {
               const group = list3.filter((o) => (o.momentName || o.momentId) === moment2);
@@ -45884,10 +46237,10 @@ Cordialement`
     return name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 30) || "element";
   }
   function freeId(name, used) {
-    const base = slug4(name);
-    let id = base;
+    const base2 = slug4(name);
+    let id = base2;
     let i = 2;
-    while (used.has(id)) id = `${base}_${i++}`;
+    while (used.has(id)) id = `${base2}_${i++}`;
     used.add(id);
     return id;
   }
@@ -45910,15 +46263,15 @@ Cordialement`
       services: s.services.filter((x) => x.active).map((x) => ({ id: x.id, name: x.name, price: num7(x.price), unit: x.unit }))
     };
   }
-  function buildSetupSettings(base, a) {
+  function buildSetupSettings(base2, a) {
     const used = /* @__PURE__ */ new Set();
-    [...base.accommodations, ...base.resources, ...base.services].forEach((x) => used.add(x.id));
+    [...base2.accommodations, ...base2.resources, ...base2.services].forEach((x) => used.add(x.id));
     const keptIds = /* @__PURE__ */ new Set();
     [...a.rooms, ...a.spaces, ...a.services].forEach((r) => r.id && r.name.trim() && keptIds.add(r.id));
-    [...base.accommodations, ...base.resources, ...base.services].forEach((x) => !keptIds.has(x.id) && used.delete(x.id));
+    [...base2.accommodations, ...base2.resources, ...base2.services].forEach((x) => !keptIds.has(x.id) && used.delete(x.id));
     const idFor = (row) => row.id || freeId(row.name, used);
     const accommodations = a.rooms.filter((r) => r.name.trim()).map((r, i) => {
-      const old = base.accommodations.find((x) => x.id === r.id);
+      const old = base2.accommodations.find((x) => x.id === r.id);
       const guests = Math.max(1, Math.round(parseAmount2(r.guests, old?.maxGuests ?? 2)));
       const price = parseAmount2(r.price, old?.basePrice ?? 0);
       const patch = { name: r.name.trim(), maxGuests: guests, basePrice: price, order: i + 1 };
@@ -45945,7 +46298,7 @@ Cordialement`
       };
     });
     const resources = a.spaces.filter((r) => r.name.trim()).map((r, i) => {
-      const old = base.resources.find((x) => x.id === r.id);
+      const old = base2.resources.find((x) => x.id === r.id);
       const capacity = Math.max(1, Math.round(parseAmount2(r.guests, old?.capacity ?? 4)));
       const price = parseAmount2(r.price, old?.price ?? 0);
       const patch = { name: r.name.trim(), capacity, price, order: i + 1 };
@@ -45967,7 +46320,7 @@ Cordialement`
       };
     });
     const services = a.services.filter((r) => r.name.trim()).map((r, i) => {
-      const old = base.services.find((x) => x.id === r.id);
+      const old = base2.services.find((x) => x.id === r.id);
       const patch = { name: r.name.trim(), price: parseAmount2(r.price, old?.price ?? 0), unit: r.unit, order: i + 1 };
       if (old) return { ...old, ...patch };
       return {
@@ -45985,10 +46338,10 @@ Cordialement`
         ...patch
       };
     });
-    const e = base.establishment;
+    const e = base2.establishment;
     const text = (v, fallback) => v.trim() ? v.trim() : fallback;
     return {
-      ...base,
+      ...base2,
       establishment: {
         ...e,
         name: text(a.name, e.name),
@@ -46006,8 +46359,8 @@ Cordialement`
       services
     };
   }
-  function buildSetupSettingsWithProfile(base, a, today7 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)) {
-    return applyProfile(buildSetupSettings(base, a), a.profile, today7);
+  function buildSetupSettingsWithProfile(base2, a, today7 = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)) {
+    return applyProfile(buildSetupSettings(base2, a), a.profile, today7);
   }
   function isFreshInstall(opts) {
     let done = false;
@@ -62533,7 +62886,7 @@ Cliquer pour modifier le tarif` : void 0,
     const wanted = (r) => !opts.result || opts.result === "all" || r === opts.result;
     const match = (...parts) => !q || parts.join(" ").toLowerCase().includes(q);
     const period = periodText(from, to);
-    const base = "Donn\xE9es enregistr\xE9es dans l'application uniquement, annulations comprises (colonne \xAB Fiche \xBB). Un contr\xF4le non renseign\xE9 n'est jamais compt\xE9 comme conforme. Registre de suivi : il ne remplace pas le plan de ma\xEEtrise sanitaire.";
+    const base2 = "Donn\xE9es enregistr\xE9es dans l'application uniquement, annulations comprises (colonne \xAB Fiche \xBB). Un contr\xF4le non renseign\xE9 n'est jamais compt\xE9 comme conforme. Registre de suivi : il ne remplace pas le plan de ma\xEEtrise sanitaire.";
     const equip = (eid) => thermoList(records5).find((t) => t.id === eid)?.name || "";
     if (id === "entries") return entriesReport(records5, from, to, opts.text || "");
     if (id === "stock") {
@@ -62543,7 +62896,7 @@ Cliquer pour modifier le tarif` : void 0,
       return {
         title: "Stock par lieu de stockage",
         period: "\xC9tat au dernier comptage",
-        note: `${rows2.filter((i) => !i.archived).length} article(s), ${short2} sous le maximum. \xAB Non compt\xE9 \xBB = aucune quantit\xE9 enregistr\xE9e : ce n'est pas un stock vide. ${base}`,
+        note: `${rows2.filter((i) => !i.archived).length} article(s), ${short2} sous le maximum. \xAB Non compt\xE9 \xBB = aucune quantit\xE9 enregistr\xE9e : ce n'est pas un stock vide. ${base2}`,
         head: ["Lieu", "Article", "Unit\xE9", "Quantit\xE9 maximale", "Derni\xE8re quantit\xE9 compt\xE9e", "Manque", "Dernier comptage", "Compt\xE9 par", "Fiche"],
         rows: rows2.map((i) => [places.find((p) => p.id === i.placeId)?.name || NR, stockItemName(i), nr(i.unit), i.max === null ? NR : i.max, i.qty === null ? "Non compt\xE9" : i.qty, stockGap(i) === null ? NR : stockGap(i), i.countedAt ? frDate(i.countedAt.slice(0, 10)) : NR, nr(i.countedBy), sheet(i.archived)])
       };
@@ -62554,7 +62907,7 @@ Cliquer pour modifier le tarif` : void 0,
       return {
         title: "V\xE9rifications de stock",
         period,
-        note: `${checks.length} v\xE9rification(s). ${base}`,
+        note: `${checks.length} v\xE9rification(s). ${base2}`,
         head: ["Date", "Heure", "Lieu", "Article", "Unit\xE9", "Maximum", "Quantit\xE9 avant", "Quantit\xE9 compt\xE9e", "\xC9cart avec le maximum", "V\xE9rifi\xE9 par", "Commentaire", "Fiche"],
         rows: checks.flatMap((c) => c.entries.map((e) => [frDate(c.date), c.time, places.find((p) => p.id === c.placeId)?.name || NR, e.label, nr(e.unit), e.max === null ? NR : e.max, e.before === null ? NR : e.before, e.counted, e.max === null ? NR : e.counted - e.max, nr(c.by), c.comment, sheet(c.archived)]))
       };
@@ -62564,7 +62917,7 @@ Cliquer pour modifier le tarif` : void 0,
       return {
         title: "Registre des temp\xE9ratures",
         period,
-        note: `${tally(rows2.filter((r) => !r.archived).map((r) => r.result))} ${base}`,
+        note: `${tally(rows2.filter((r) => !r.archived).map((r) => r.result))} ${base2}`,
         head: ["Date", "Heure", "Type de contr\xF4le", "\xC9quipement", "Produit", "Temp\xE9rature (\xB0C)", "Seuil de r\xE9f\xE9rence", "R\xE9sultat", "Commentaire", "Action corrective", "Relev\xE9 par", "Fiche"],
         rows: rows2.map((r) => [frDate(r.date), r.time, CONTROL_LABEL[r.controlType], nr(equip(r.equipmentId) || ""), nr(r.subject), temp(r.value), thresholdText(r.min, r.max), RESULT_LABEL[r.result], r.comment, r.action, nr(r.by), sheet(r.archived)])
       };
@@ -62574,7 +62927,7 @@ Cliquer pour modifier le tarif` : void 0,
       return {
         title: "Registre de nettoyage et de d\xE9sinfection",
         period,
-        note: `${tally(logs.filter((r) => !r.archived).map((r) => r.result))} ${base}`,
+        note: `${tally(logs.filter((r) => !r.archived).map((r) => r.result))} ${base2}`,
         head: ["Date", "Heure", "Zone ou \xE9quipement", "Op\xE9ration", "Produit utilis\xE9", "R\xE9alis\xE9 par", "R\xE9sultat", "Commentaire", "Action corrective", "Op\xE9ration r\xE9currente", "Fiche"],
         rows: logs.map((r) => [frDate(r.date), r.time, r.zone, r.operation, nr(r.product), nr(r.by), RESULT_LABEL[r.result], r.comment, r.action, r.opId ? cleanOpList(records5).find((o) => o.id === r.opId)?.zone || "Oui" : "Non", sheet(r.archived)])
       };
@@ -62584,7 +62937,7 @@ Cliquer pour modifier le tarif` : void 0,
       return {
         title: "Registre de r\xE9ception des marchandises",
         period,
-        note: `${tally(rows2.filter((r) => !r.archived).map((r) => r.result))} ${base}`,
+        note: `${tally(rows2.filter((r) => !r.archived).map((r) => r.result))} ${base2}`,
         head: ["Date", "Heure", "Fournisseur", "Produits", "Lot", "Date limite", "Emballages", "Temp\xE9rature (\xB0C)", "Seuil de r\xE9f\xE9rence", "R\xE9sultat", "D\xE9cision", "Motif", "Action corrective", "Commentaire", "Re\xE7u par", "Fiche"],
         rows: rows2.map((r) => [frDate(r.date), r.time, r.supplier, r.products, nr(r.lot), r.dlc ? frDate(r.dlc) : NR, PACKAGING_LABEL[r.packaging], r.temp === null ? NR : r.temp, thresholdText(r.min, r.max), RESULT_LABEL[r.result], DECISION_LABEL[r.decision], r.reason, r.action, r.comment, nr(r.by), sheet(r.archived)])
       };
@@ -62594,7 +62947,7 @@ Cliquer pour modifier le tarif` : void 0,
       return {
         title: "Tra\xE7abilit\xE9 des aliments",
         period,
-        note: `${rows2.length} fiche(s). Les dates limites sont celles saisies par l'utilisateur ; les allerg\xE8nes \xAB non renseign\xE9s \xBB ne signifient pas \xAB aucun allerg\xE8ne \xBB. ${base}`,
+        note: `${rows2.length} fiche(s). Les dates limites sont celles saisies par l'utilisateur ; les allerg\xE8nes \xAB non renseign\xE9s \xBB ne signifient pas \xAB aucun allerg\xE8ne \xBB. ${base2}`,
         head: ["Produit", "Fournisseur", "Lot", "R\xE9ception", "Ouverture", "Pr\xE9paration", "Date limite", "Stockage", "Statut", "Allerg\xE8nes", "Commentaires", "Fiche"],
         rows: rows2.map((l) => [
           l.product,
@@ -62616,7 +62969,7 @@ Cliquer pour modifier le tarif` : void 0,
     return {
       title: "Incidents et actions correctives",
       period,
-      note: `${rows.filter((i) => !i.archived && i.status !== "closed").length} non cl\xF4tur\xE9(s) sur ${rows.length}. Un incident n'est clos que par une cl\xF4ture enregistr\xE9e. ${base}`,
+      note: `${rows.filter((i) => !i.archived && i.status !== "closed").length} non cl\xF4tur\xE9(s) sur ${rows.length}. Un incident n'est clos que par une cl\xF4ture enregistr\xE9e. ${base2}`,
       head: ["R\xE9f\xE9rence", "Date", "Heure", "Type", "Concerne", "Description", "Mesure imm\xE9diate", "Action corrective", "Responsable", "Date limite", "Statut", "Date de cl\xF4ture", "Commentaire de cl\xF4ture", "Fiche"],
       rows: rows.map((i) => [i.ref, frDate(i.date), i.time, i.type, nr(i.subject), i.description, i.immediate, nr(i.corrective), nr(i.responsible), i.dueDate ? frDate(i.dueDate) : "", INCIDENT_STATUS_LABEL2[i.status], i.closedDate ? frDate(i.closedDate) : "", i.closingComment, sheet(i.archived)])
     };
@@ -64464,11 +64817,11 @@ Cliquer pour modifier le tarif` : void 0,
   });
 
   // src/modules/hygiene/labelData.ts
-  function labelFromLot(lot, base) {
+  function labelFromLot(lot, base2) {
     const allergenNames = lot.allergensKnown ? lot.allergens.map((id) => ALLERGENS.find((a) => a.id === id)?.label || id) : [];
     const mention = lot.openedDate ? "Ouvert le" : lot.preparedDate ? "Pr\xE9par\xE9 le" : "Re\xE7u le";
-    const date = lot.openedDate || lot.preparedDate || lot.receivedDate || base.date;
-    return { ...base, product: lot.product, mention, date, dlc: lot.dlc, lotRef: lot.lotRef, storage: lot.storage, allergens: allergenNames.join(", ") };
+    const date = lot.openedDate || lot.preparedDate || lot.receivedDate || base2.date;
+    return { ...base2, product: lot.product, mention, date, dlc: lot.dlc, lotRef: lot.lotRef, storage: lot.storage, allergens: allergenNames.join(", ") };
   }
   var LABEL_MENTIONS, emptyLabel, dlcFromDays, clampCopies;
   var init_labelData = __esm({
@@ -67516,10 +67869,10 @@ if(C.preview){
     const taken = /* @__PURE__ */ new Set();
     const fileOf = {};
     pages.forEach((p, i) => {
-      let base = p.kind === "home" || i === 0 && !pages.some((x) => x.kind === "home") ? "index" : p.slug || "page";
-      if (base === "index" && taken.has("index")) base = p.slug || "page";
-      let name = base;
-      for (let n = 2; taken.has(name); n++) name = `${base}-${n}`;
+      let base2 = p.kind === "home" || i === 0 && !pages.some((x) => x.kind === "home") ? "index" : p.slug || "page";
+      if (base2 === "index" && taken.has("index")) base2 = p.slug || "page";
+      let name = base2;
+      for (let n = 2; taken.has(name); n++) name = `${base2}-${n}`;
       taken.add(name);
       fileOf[p.id] = name;
     });
@@ -67604,8 +67957,8 @@ if(C.preview){
         return `${label2}ouvert ${esc3(when2)}`;
       });
       if (lines2.length === 0 && settings.opening.defaultOpen) return "";
-      const base = settings.opening.defaultOpen ? "" : "<p>En dehors des p\xE9riodes ci-dessous, nous sommes ferm\xE9s.</p>";
-      return `<h2>Ouverture</h2>${base}<ul class="clean">${lines2.map((l) => `<li>${l}</li>`).join("")}</ul>`;
+      const base2 = settings.opening.defaultOpen ? "" : "<p>En dehors des p\xE9riodes ci-dessous, nous sommes ferm\xE9s.</p>";
+      return `<h2>Ouverture</h2>${base2}<ul class="clean">${lines2.map((l) => `<li>${l}</li>`).join("")}</ul>`;
     };
     const longStayHtml = (compact = false) => {
       const discounts = settings.pricing.longStayDiscounts.filter((d) => d.minNights > 0 && d.percent > 0).sort((a, b) => a.minNights - b.minNights);
@@ -67910,19 +68263,19 @@ ${who}<div class="row"><div><label for="r-nat">Nationalit\xE9</label><input id="
       if (ctx.logo && !site.logoPhoto && site.logoInHeader) {
         files.push({ path: logoUrl, data: dataUrlBytes(ctx.logo) });
       }
-      const base = siteUrl(site);
-      if (base) {
+      const base2 = siteUrl(site);
+      if (base2) {
         files.push({
           path: "sitemap.xml",
           text: `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${pages.map((p) => `  <url><loc>${esc3(base + (fileOf[p.id] === "index" ? "" : fileOf[p.id] + ".html"))}</loc></url>`).join("\n")}
+${pages.map((p) => `  <url><loc>${esc3(base2 + (fileOf[p.id] === "index" ? "" : fileOf[p.id] + ".html"))}</loc></url>`).join("\n")}
 </urlset>
 `
         });
         files.push({ path: "robots.txt", text: `User-agent: *
 Allow: /
-Sitemap: ${base}sitemap.xml
+Sitemap: ${base2}sitemap.xml
 ` });
         files.push({ path: "CNAME", text: site.domain + "\n" });
       } else {
@@ -73159,313 +73512,6 @@ ${text}` : text });
     }
   });
 
-  // src/core/invoicing/invoices.ts
-  function buildSnapshot(r, roomName) {
-    const num7 = (n) => typeof n === "number" && isFinite(n) ? n : 0;
-    return {
-      id: r.id,
-      roomId: String(r.roomId),
-      roomName,
-      guestName: r.guestName || "",
-      checkIn: r.checkIn || "",
-      checkOut: r.checkOut || "",
-      nights: num7(r.nights),
-      guestsCount: num7(r.guestsCount),
-      adultsCount: num7(r.adultsCount),
-      childrenCount: num7(r.childrenCount),
-      roomAmount: num7(r.roomAmount),
-      mealsAmount: num7(r.mealsAmount),
-      drinksAmount: num7(r.drinksAmount),
-      dogCareAmount: num7(r.dogCareAmount),
-      otherAmount: num7(r.otherAmount),
-      otherDescription: r.otherDescription || "",
-      touristTaxAmount: num7(r.touristTaxAmount),
-      totalAmount: num7(r.totalAmount)
-    };
-  }
-  function sellerOf(est) {
-    const s = (v) => typeof v === "string" ? v : "";
-    const src = est.vatRates && typeof est.vatRates === "object" ? est.vatRates : {};
-    const vatRates = {};
-    for (const sv of VAT_SERVICES) {
-      const r = cleanRate(src[sv.id]);
-      if (r > 0) vatRates[sv.id] = r;
-    }
-    return {
-      ...Object.keys(vatRates).length ? { vatRates } : {},
-      name: s(est.name),
-      address: s(est.address),
-      postalCode: s(est.postalCode),
-      city: s(est.city),
-      country: s(est.country),
-      phone: s(est.phone),
-      email: s(est.email),
-      website: s(est.website),
-      siret: s(est.siret),
-      legalStatus: s(est.legalStatus),
-      vatMention: s(est.vatMention)
-    };
-  }
-  function stayOf(invoice, reservation) {
-    return invoice?.snapshot ? { ...reservation, ...invoice.snapshot, roomId: reservation.roomId ?? invoice.snapshot.roomId } : reservation;
-  }
-  function sequenceOf(number, prefix, year) {
-    const m = String(number || "").trim().match(new RegExp(`^${prefix}-(\\d{4})-(\\d+)$`, "i"));
-    return m && m[1] === year ? parseInt(m[2], 10) || 0 : 0;
-  }
-  function nextNumber(prefix, year, used, floor = 0) {
-    const max = used.reduce((n, u) => Math.max(n, sequenceOf(u, prefix, year)), floor);
-    return `${prefix}-${year}-${String(max + 1).padStart(4, "0")}`;
-  }
-  function usedCreditNumbers() {
-    return [
-      ...Object.keys(readCancelled()),
-      ...Object.values(readCancelled()).flatMap((c) => (c?.invoice?.partialCredits || []).map((p) => p.number)),
-      ...Object.values(readRegistry2()).flatMap((c) => (c?.partialCredits || []).map((p) => p.number))
-    ];
-  }
-  function usedInvoiceNumbers() {
-    const trash = readJson3(TRASH_KEY, []);
-    return [
-      ...Object.values(readRegistry2()).map((c) => c?.invoiceNumber),
-      ...Object.values(readCancelled()).map((c) => c?.invoice?.invoiceNumber),
-      ...Object.keys(readDeposits()),
-      ...Array.isArray(trash) ? trash.map((t) => t?.config?.invoiceNumber) : []
-    ].filter((n) => !!n);
-  }
-  function lastInvoiceDate(year) {
-    const dates = [
-      ...Object.values(readRegistry2()).filter((c) => sequenceOf(c?.invoiceNumber, "FA", year) > 0).map((c) => c.invoiceDate),
-      ...Object.values(readCancelled()).filter((c) => sequenceOf(c?.invoice?.invoiceNumber, "FA", year) > 0).map((c) => c.invoice.invoiceDate),
-      ...Object.values(readDeposits()).filter((c) => sequenceOf(c?.invoiceNumber, "FA", year) > 0).map((c) => c.invoiceDate)
-    ].filter(Boolean);
-    return dates.sort().pop() || "";
-  }
-  function checkMentions(seller, invoice, stay) {
-    const has = (s) => !!(s || "").trim();
-    const blocking = [];
-    const warnings = [];
-    if (!has(seller.name)) blocking.push("Nom de l'\xE9tablissement (Param\xE9trage > \xC9tablissement)");
-    if (!has(seller.address) || !has(seller.city)) blocking.push("Adresse et ville de l'\xE9tablissement (Param\xE9trage > \xC9tablissement)");
-    if (!has(seller.siret)) blocking.push("Num\xE9ro SIRET (Param\xE9trage > \xC9tablissement)");
-    if (!has(seller.vatMention)) blocking.push("Mention de TVA (Param\xE9trage > \xC9tablissement)");
-    if (!has(invoice.invoiceDate)) blocking.push("Date d'\xE9mission de la facture");
-    if (!has(invoice.guestName)) blocking.push("Nom du client");
-    if (!has(stay.checkIn) || !has(stay.checkOut)) blocking.push("Dates du s\xE9jour (fiche de r\xE9servation)");
-    if (!((invoice.totalAmount || 0) > 0)) blocking.push("Montant du s\xE9jour (fiche de r\xE9servation) : il est \xE0 z\xE9ro");
-    if (!has(invoice.guestAddress)) warnings.push("Adresse du client : \xE0 renseigner si vous la connaissez (obligatoire pour un client professionnel)");
-    return { blocking, warnings };
-  }
-  function saveDraft(reservationId, draft) {
-    if (!writeAllowed(REGISTRY_KEY2)) return false;
-    const drafts = readDrafts();
-    drafts[reservationId] = { ...draft, savedAt: (/* @__PURE__ */ new Date()).toISOString() };
-    writeJson(DRAFTS_KEY, drafts);
-    notify17();
-    return true;
-  }
-  function deleteDraft(reservationId) {
-    const drafts = readDrafts();
-    if (!(reservationId in drafts)) return;
-    delete drafts[reservationId];
-    writeJson(DRAFTS_KEY, drafts);
-    notify17();
-  }
-  function validateInvoice(reservationId, draft, snapshot, seller) {
-    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : la facture ne peut pas \xEAtre valid\xE9e." };
-    const registry = readRegistry2();
-    if (isValidated(registry[reservationId])) return { ok: false, error: `Ce s\xE9jour a d\xE9j\xE0 la facture ${registry[reservationId].invoiceNumber}.` };
-    const date = draft.invoiceDate || today6();
-    const check = checkMentions(seller, { ...draft, invoiceDate: date }, snapshot);
-    if (check.blocking.length) return { ok: false, error: "Des mentions obligatoires manquent.", missing: check.blocking };
-    const year = date.slice(0, 4);
-    const last = lastInvoiceDate(year);
-    if (last && date < last) {
-      return { ok: false, error: `La date d'\xE9mission ne peut pas \xEAtre ant\xE9rieure \xE0 celle de la derni\xE8re facture (${last.split("-").reverse().join("/")}) : la num\xE9rotation suit l'ordre des dates.` };
-    }
-    const invoice = {
-      ...draft,
-      invoiceDate: date,
-      totalAmount: round211(draft.totalAmount),
-      invoiceNumber: nextNumber("FA", year, usedInvoiceNumbers(), counterOf(year)),
-      status: "validated",
-      validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
-      snapshot,
-      seller
-    };
-    const free = depositsOf(reservationId, true);
-    if (free.length) {
-      invoice.depositsDeducted = free.map((d) => ({ number: d.invoiceNumber, date: d.invoiceDate, amount: round211(d.totalAmount) }));
-      const all2 = readDeposits();
-      free.forEach((d) => {
-        all2[d.invoiceNumber] = { ...all2[d.invoiceNumber], consumedBy: invoice.invoiceNumber };
-      });
-      writeJson(DEPOSITS_KEY, all2);
-    }
-    registry[reservationId] = invoice;
-    writeJson(REGISTRY_KEY2, registry);
-    localStorage.setItem(COUNTER_PREFIX + year, String(sequenceOf(invoice.invoiceNumber, "FA", year)));
-    const drafts = readDrafts();
-    if (reservationId in drafts) {
-      delete drafts[reservationId];
-      writeJson(DRAFTS_KEY, drafts);
-    }
-    notify17();
-    return { ok: true, invoice };
-  }
-  function updatePayment(reservationId, paymentType, paymentState) {
-    if (!writeAllowed(REGISTRY_KEY2)) return null;
-    const registry = readRegistry2();
-    const current3 = registry[reservationId];
-    if (!isValidated(current3)) return null;
-    registry[reservationId] = { ...current3, paymentType, paymentState };
-    writeJson(REGISTRY_KEY2, registry);
-    notify17();
-    return registry[reservationId];
-  }
-  function createPartialCredit(reservationId, amount, reason, date = today6()) {
-    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : l'avoir ne peut pas \xEAtre cr\xE9\xE9." };
-    const registry = readRegistry2();
-    const invoice = registry[reservationId];
-    if (!isValidated(invoice)) return { ok: false, error: "Aucune facture valid\xE9e pour ce s\xE9jour." };
-    if (!reason.trim()) return { ok: false, error: "Indiquez le motif de l'avoir : il figure sur le document." };
-    const value = round211(amount);
-    if (!(value > 0)) return { ok: false, error: "Le montant de l'avoir doit \xEAtre sup\xE9rieur \xE0 z\xE9ro." };
-    const remaining = round211((invoice.totalAmount || 0) - creditedAmount(invoice) - deductedAmount(invoice));
-    if (value > remaining) return { ok: false, error: `Le montant d\xE9passe ce qui reste \xE0 cr\xE9diter sur cette facture (${remaining.toFixed(2).replace(".", ",")} \u20AC).` };
-    if (invoice.invoiceDate && date < invoice.invoiceDate) return { ok: false, error: "L'avoir ne peut pas \xEAtre dat\xE9 avant la facture." };
-    const creditNote = { number: nextNumber("AV", date.slice(0, 4), usedCreditNumbers()), date, reason: reason.trim(), amount: value, partial: true };
-    const updated = { ...invoice, partialCredits: [...invoice.partialCredits || [], creditNote] };
-    registry[reservationId] = updated;
-    writeJson(REGISTRY_KEY2, registry);
-    notify17();
-    return { ok: true, invoice: updated, entry: { reservationId, invoice: updated, creditNote, cancelledAt: (/* @__PURE__ */ new Date()).toISOString() } };
-  }
-  function createDeposit(reservationId, amount, draft, snapshot, seller) {
-    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : la facture d'acompte ne peut pas \xEAtre cr\xE9\xE9e." };
-    if (isValidated(readRegistry2()[reservationId])) return { ok: false, error: "Ce s\xE9jour a d\xE9j\xE0 sa facture finale : un acompte ne peut plus \xEAtre factur\xE9." };
-    const value = round211(amount);
-    if (!(value > 0)) return { ok: false, error: "Le montant de l'acompte doit \xEAtre sup\xE9rieur \xE0 z\xE9ro." };
-    const remaining = round211((snapshot.totalAmount || 0) - depositedAmount(reservationId));
-    if (value > remaining) return { ok: false, error: `L'acompte d\xE9passe ce qui reste \xE0 facturer sur le s\xE9jour (${remaining.toFixed(2).replace(".", ",")} \u20AC).` };
-    const date = draft.invoiceDate || today6();
-    const check = checkMentions(seller, { ...draft, invoiceDate: date, totalAmount: value }, snapshot);
-    if (check.blocking.length) return { ok: false, error: "Des mentions obligatoires manquent.", missing: check.blocking };
-    const year = date.slice(0, 4);
-    const last = lastInvoiceDate(year);
-    if (last && date < last) return { ok: false, error: `La date d'\xE9mission ne peut pas \xEAtre ant\xE9rieure \xE0 celle de la derni\xE8re facture (${last.split("-").reverse().join("/")}).` };
-    const number = nextNumber("FA", year, usedInvoiceNumbers(), counterOf(year));
-    const deposit = {
-      ...draft,
-      invoiceDate: date,
-      totalAmount: value,
-      invoiceNumber: number,
-      status: "validated",
-      validatedAt: (/* @__PURE__ */ new Date()).toISOString(),
-      snapshot,
-      seller,
-      kind: "deposit",
-      reservationId,
-      stayTotal: round211(snapshot.totalAmount || 0)
-    };
-    const all2 = readDeposits();
-    all2[number] = deposit;
-    writeJson(DEPOSITS_KEY, all2);
-    localStorage.setItem(COUNTER_PREFIX + year, String(sequenceOf(number, "FA", year)));
-    notify17();
-    return { ok: true, deposit };
-  }
-  function cancelWithCreditNote(reservationId, reason, date = today6(), fallback) {
-    if (!writeAllowed(REGISTRY_KEY2)) return { ok: false, error: "Licence en lecture seule : la facture ne peut pas \xEAtre annul\xE9e." };
-    const registry = readRegistry2();
-    const invoice = registry[reservationId];
-    if (!isValidated(invoice)) return { ok: false, error: "Aucune facture valid\xE9e pour ce s\xE9jour." };
-    if (!reason.trim()) return { ok: false, error: "Indiquez le motif de l'annulation : il figure sur l'avoir." };
-    if (invoice.invoiceDate && date < invoice.invoiceDate) return { ok: false, error: "L'avoir ne peut pas \xEAtre dat\xE9 avant la facture qu'il annule." };
-    const deducted = deductedAmount(invoice);
-    const remaining = round211((invoice.totalAmount || 0) - creditedAmount(invoice) - deducted);
-    if (remaining < 0 || remaining === 0 && !(deducted > 0)) return { ok: false, error: "Cette facture est d\xE9j\xE0 enti\xE8rement cr\xE9dit\xE9e." };
-    const year = date.slice(0, 4);
-    const cancelledMap = readCancelled();
-    const creditNote = {
-      number: nextNumber("AV", year, usedCreditNumbers()),
-      date,
-      reason: reason.trim(),
-      amount: remaining
-      // Le reste dû : l'avoir d'annulation tient compte des avoirs partiels déjà émis
-    };
-    const frozen = { ...invoice, snapshot: invoice.snapshot || fallback?.snapshot, seller: invoice.seller || fallback?.seller };
-    const cancelled = { reservationId, invoice: frozen, creditNote, cancelledAt: (/* @__PURE__ */ new Date()).toISOString() };
-    cancelledMap[creditNote.number] = cancelled;
-    writeJson(CANCELLED_KEY, cancelledMap);
-    const deposits = readDeposits();
-    let released = false;
-    Object.keys(deposits).forEach((n) => {
-      if (deposits[n].consumedBy === invoice.invoiceNumber) {
-        const { consumedBy, ...rest } = deposits[n];
-        deposits[n] = rest;
-        released = true;
-      }
-    });
-    if (released) writeJson(DEPOSITS_KEY, deposits);
-    delete registry[reservationId];
-    writeJson(REGISTRY_KEY2, registry);
-    notify17();
-    return { ok: true, cancelled };
-  }
-  var REGISTRY_KEY2, DRAFTS_KEY, CANCELLED_KEY, DEPOSITS_KEY, TRASH_KEY, COUNTER_PREFIX, INVOICES_EVENT, readJson3, writeJson, notify17, today6, round211, readRegistry2, readDrafts, readDeposits, depositsOf, depositedAmount, deductedAmount, readCancelled, listCancelled, isValidated, snapshotAsReservation, creditedAmount, counterOf, peekInvoiceNumber;
-  var init_invoices = __esm({
-    "src/core/invoicing/invoices.ts"() {
-      "use strict";
-      init_storage();
-      init_vat();
-      REGISTRY_KEY2 = "domaine_sylvaria_invoices_registry_v1";
-      DRAFTS_KEY = "domaine_sylvaria_invoices_drafts_v1";
-      CANCELLED_KEY = "domaine_sylvaria_invoices_cancelled_v1";
-      DEPOSITS_KEY = "domaine_sylvaria_invoices_deposits_v1";
-      TRASH_KEY = "domaine_sylvaria_invoices_trash_v1";
-      COUNTER_PREFIX = "domaine_sylvaria_invoice_counter_";
-      INVOICES_EVENT = "domaine_sylvaria_trigger_sync";
-      readJson3 = (key, fallback) => {
-        try {
-          const raw = localStorage.getItem(key);
-          const parsed = raw ? JSON.parse(raw) : null;
-          return parsed && typeof parsed === "object" ? parsed : fallback;
-        } catch {
-          return fallback;
-        }
-      };
-      writeJson = (key, value) => localStorage.setItem(key, JSON.stringify(value));
-      notify17 = () => {
-        try {
-          window.dispatchEvent(new CustomEvent(INVOICES_EVENT));
-        } catch {
-        }
-      };
-      today6 = () => (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-      round211 = (n) => Math.round(n * 100) / 100;
-      readRegistry2 = () => readJson3(REGISTRY_KEY2, {});
-      readDrafts = () => readJson3(DRAFTS_KEY, {});
-      readDeposits = () => readJson3(DEPOSITS_KEY, {});
-      depositsOf = (reservationId, freeOnly = false) => Object.values(readDeposits()).filter((d) => d?.reservationId === reservationId && (!freeOnly || !d.consumedBy)).sort((a, b) => a.invoiceNumber.localeCompare(b.invoiceNumber, void 0, { numeric: true }));
-      depositedAmount = (reservationId) => round211(depositsOf(reservationId, true).reduce((n, d) => n + (d.totalAmount || 0), 0));
-      deductedAmount = (invoice) => round211((invoice?.depositsDeducted || []).reduce((n, d) => n + (d.amount || 0), 0));
-      readCancelled = () => readJson3(CANCELLED_KEY, {});
-      listCancelled = () => Object.values(readCancelled()).sort((a, b) => b.creditNote.number.localeCompare(a.creditNote.number, void 0, { numeric: true }));
-      isValidated = (c) => !!c && typeof c === "object" && !!c.invoiceNumber;
-      snapshotAsReservation = (snapshot) => ({ ...snapshot });
-      creditedAmount = (invoice) => round211((invoice?.partialCredits || []).reduce((n, c) => n + (c.amount || 0), 0));
-      counterOf = (year) => {
-        const n = parseInt(localStorage.getItem(COUNTER_PREFIX + year) || "0", 10);
-        return isNaN(n) || n < 0 ? 0 : n;
-      };
-      peekInvoiceNumber = (date) => {
-        const year = (date || today6()).slice(0, 4);
-        return nextNumber("FA", year, usedInvoiceNumbers(), counterOf(year));
-      };
-    }
-  });
-
   // src/core/export/accounting.ts
   function periodOf(year, month) {
     const y = String(year);
@@ -73494,32 +73540,36 @@ ${text}` : text });
         date: c.invoiceDate || r?.checkIn,
         ...stayLine(c, r),
         // Les acomptes déjà facturés sont comptés à leur propre ligne : la facture finale ne porte que le solde
-        total: round212((c.totalAmount !== void 0 ? c.totalAmount : r?.totalAmount || 0) - (c.depositsDeducted || []).reduce((n, d) => n + (d.amount || 0), 0)),
+        total: round213((c.totalAmount !== void 0 ? c.totalAmount : r?.totalAmount || 0) - (c.depositsDeducted || []).reduce((n, d) => n + (d.amount || 0), 0)),
         status: paid ? "R\xE9gl\xE9e" : "\xC0 r\xE9gler",
         paid,
         credit: false
       });
       (c.partialCredits || []).forEach((p) => {
-        lines2.push({ number: p.number, date: p.date, ...stayLine(c, r), total: -round212(p.amount || 0), status: `Avoir partiel sur ${c.invoiceNumber || ""}`, paid: false, credit: true });
+        lines2.push({ number: p.number, date: p.date, ...stayLine(c, r), total: -round213(p.amount || 0), status: `Avoir partiel sur ${c.invoiceNumber || ""}`, paid: false, credit: true });
       });
     });
     deposits.forEach((d) => {
       const r = d.reservationId ? byId.get(d.reservationId) : void 0;
       const paid = d.paymentState === "acquittee";
-      lines2.push({ number: d.invoiceNumber || "", date: d.invoiceDate, ...stayLine(d, r), total: round212(d.totalAmount || 0), status: paid ? "Acompte r\xE9gl\xE9" : "Acompte \xE0 r\xE9gler", paid, credit: false });
+      lines2.push({ number: d.invoiceNumber || "", date: d.invoiceDate, ...stayLine(d, r), total: round213(d.totalAmount || 0), status: paid ? "Acompte r\xE9gl\xE9" : "Acompte \xE0 r\xE9gler", paid, credit: false });
     });
     cancelled.forEach((x) => {
       const r = x.reservationId ? byId.get(x.reservationId) : void 0;
       const stay = stayLine(x.invoice, r);
-      const amount = round212(x.creditNote.amount || 0);
-      lines2.push({ number: x.invoice.invoiceNumber || "", date: x.invoice.invoiceDate, ...stay, total: round212(x.invoice.totalAmount ?? amount), status: `Annul\xE9e par ${x.creditNote.number}`, paid: false, credit: false });
+      const amount = round213(x.creditNote.amount || 0);
+      const settled = round213((x.invoice.depositsDeducted || []).reduce((n, d) => n + (d.amount || 0), 0));
+      lines2.push({ number: x.invoice.invoiceNumber || "", date: x.invoice.invoiceDate, ...stay, total: round213((x.invoice.totalAmount ?? amount) - settled), status: `Annul\xE9e par ${x.creditNote.number}`, paid: false, credit: false });
+      (x.invoice.partialCredits || []).forEach((p) => {
+        lines2.push({ number: p.number, date: p.date, ...stay, total: -round213(p.amount || 0), status: `Avoir partiel sur ${x.invoice.invoiceNumber || ""}`, paid: false, credit: true });
+      });
       lines2.push({ number: x.creditNote.number, date: x.creditNote.date, ...stay, total: -amount, status: `Avoir sur ${x.invoice.invoiceNumber || ""}`, paid: false, credit: true });
     });
     const shown = lines2.filter((l) => inPeriod(l.date, period)).sort((a, b) => Number(a.credit) - Number(b.credit) || a.number.localeCompare(b.number, void 0, { numeric: true }));
     const invoices = shown.filter((l) => !l.credit).length;
     const credits = shown.length - invoices;
-    const total = round212(shown.reduce((n, l) => n + l.total, 0));
-    const paidTotal = round212(shown.filter((l) => l.paid).reduce((n, l) => n + l.total, 0));
+    const total = round213(shown.reduce((n, l) => n + l.total, 0));
+    const paidTotal = round213(shown.filter((l) => l.paid).reduce((n, l) => n + l.total, 0));
     const count = `${invoices} facture${invoices > 1 ? "s" : ""}` + (credits ? `, ${credits} avoir${credits > 1 ? "s" : ""}` : "");
     return [
       ["N\xB0 de facture", "Date de facture", "Client", "H\xE9bergement", "Arriv\xE9e", "D\xE9part", "Nuits", "Montant (\u20AC)", "Mention TVA", "R\xE8glement"],
@@ -73533,9 +73583,9 @@ ${text}` : text });
     const byStatus = /* @__PURE__ */ new Map();
     stays.forEach((r) => {
       const s = TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer;
-      byStatus.set(s, round212((byStatus.get(s) || 0) + (r.touristTaxAmount || 0)));
+      byStatus.set(s, round213((byStatus.get(s) || 0) + (r.touristTaxAmount || 0)));
     });
-    const mine = round212(stays.filter((r) => statusOf4(r) === "a_declarer").reduce((n, r) => n + (r.touristTaxAmount || 0), 0));
+    const mine = round213(stays.filter((r) => statusOf4(r) === "a_declarer").reduce((n, r) => n + (r.touristTaxAmount || 0), 0));
     return [
       ["Arriv\xE9e", "D\xE9part", "Nuits", "H\xE9bergement", "Client", "Adultes", "Enfants", "Taxe (\u20AC)", "Statut", "\xC0 v\xE9rifier"],
       ...stays.map((r) => [
@@ -73546,22 +73596,22 @@ ${text}` : text });
         r.guestName,
         r.adultsCount,
         r.childrenCount,
-        round212(r.touristTaxAmount || 0),
+        round213(r.touristTaxAmount || 0),
         TAX_STATUS[statusOf4(r)] || TAX_STATUS.a_declarer,
         r.touristTaxNeedsVerification ? "Oui" : ""
       ]),
-      [`Total (${stays.length} s\xE9jour${stays.length > 1 ? "s" : ""})`, null, null, null, null, null, null, round212(stays.reduce((n, r) => n + (r.touristTaxAmount || 0), 0)), null, null],
+      [`Total (${stays.length} s\xE9jour${stays.length > 1 ? "s" : ""})`, null, null, null, null, null, null, round213(stays.reduce((n, r) => n + (r.touristTaxAmount || 0), 0)), null, null],
       ...[...byStatus.entries()].map(([s, v]) => [`dont ${s}`, null, null, null, null, null, null, v, null, null]),
       ["\xC0 D\xC9CLARER ET REVERSER PAR VOUS (hors plateformes)", null, null, null, null, null, null, mine, null, null]
     ];
   }
-  var inPeriod, round212, isReal, TAX_STATUS;
+  var inPeriod, round213, isReal, TAX_STATUS;
   var init_accounting = __esm({
     "src/core/export/accounting.ts"() {
       "use strict";
       init_pricing();
       inPeriod = (date, p) => !!date && date >= p.from && date <= p.to;
-      round212 = (n) => Math.round(n * 100) / 100;
+      round213 = (n) => Math.round(n * 100) / 100;
       isReal = (r) => !r.isBlocked && !/ferm|bloq/i.test(r.guestName || "");
       TAX_STATUS = {
         prise_en_charge: "Collect\xE9e et revers\xE9e par la plateforme",
@@ -77835,12 +77885,12 @@ ${establishment}`;
                             // Hébergement qui accepte moins de personnes que son tarif de base (ex. 1 adulte pour une chambre de 2)
                             /* @__PURE__ */ (0, import_jsx_runtime163.jsx)(import_jsx_runtime163.Fragment, { children: Array.from({ length: Math.max(0, ROOMS[roomId].maxAdults - ROOMS[roomId].minAdults + 1) }).map((_, i) => {
                               const n = ROOMS[roomId].minAdults + i;
-                              const base = ROOMS[roomId].baseGuestsCount;
+                              const base2 = ROOMS[roomId].baseGuestsCount;
                               return /* @__PURE__ */ (0, import_jsx_runtime163.jsxs)("option", { value: n, children: [
                                 n,
                                 " adulte",
                                 n > 1 ? "s" : "",
-                                n === ROOMS[roomId].maxAdults && n <= base ? " (max)" : n > base ? ` (+${euro6((n - base) * ROOMS[roomId].extraGuestPrice, "")}\u20AC)` : ""
+                                n === ROOMS[roomId].maxAdults && n <= base2 ? " (max)" : n > base2 ? ` (+${euro6((n - base2) * ROOMS[roomId].extraGuestPrice, "")}\u20AC)` : ""
                               ] }, n);
                             }) })
                           ) : isResourceRow(roomId) ? /* @__PURE__ */ (0, import_jsx_runtime163.jsx)(import_jsx_runtime163.Fragment, { children: Array.from({ length: 12 }).map((_, i) => /* @__PURE__ */ (0, import_jsx_runtime163.jsxs)("option", { value: i + 1, children: [
@@ -80677,17 +80727,17 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       }
       const pay = getSite().booking.payment;
       const confirmedIds = decisions.filter((d) => d.decision === "accepted").map((d) => `site_${d.id}`);
-      let base = reservationsRef.current;
+      let base2 = reservationsRef.current;
       if (confirmedIds.length > 0) {
-        const termed = base.map((r) => confirmedIds.includes(r.id) ? withDepositTerms(r, pay) : r);
-        if (termed.some((r, i) => r !== base[i])) {
-          base = termed;
-          setReservations(base);
-          saveReservations(base);
-          triggerBackgroundSync(base, externalReviewsRef.current);
+        const termed = base2.map((r) => confirmedIds.includes(r.id) ? withDepositTerms(r, pay) : r);
+        if (termed.some((r, i) => r !== base2[i])) {
+          base2 = termed;
+          setReservations(base2);
+          saveReservations(base2);
+          triggerBackgroundSync(base2, externalReviewsRef.current);
         }
       }
-      const merged = mergeSiteRequests(base, requests, pay);
+      const merged = mergeSiteRequests(base2, requests, pay);
       if (merged.added === 0) return;
       setReservations(merged.reservations);
       saveReservations(merged.reservations);
