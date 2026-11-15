@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v303</title>
-  <meta name="application-name" content="Gestyria v303" />
+  <title>Gestyria v304</title>
+  <meta name="application-name" content="Gestyria v304" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -8641,6 +8641,12 @@ footer{background:#111}
   });
 
   // src/core/invoicing/invoices.ts
+  function invoiceTotalFor(r, show) {
+    if (!show.showHebergement && !show.showRepas && !show.showAutre) return r.totalAmount || 0;
+    const v = (n) => typeof n === "number" && isFinite(n) ? n : 0;
+    const sum = (show.showHebergement ? v(r.roomAmount) : 0) + (show.showRepas ? v(r.mealsAmount) + v(r.drinksAmount) : 0) + (show.showAutre ? v(r.dogCareAmount) + v(r.otherAmount) + v(r.touristTaxAmount) : 0);
+    return round25(sum);
+  }
   function buildSnapshot(r, roomName) {
     const num7 = (n) => typeof n === "number" && isFinite(n) ? n : 0;
     return {
@@ -8733,7 +8739,7 @@ footer{background:#111}
     if (!has(invoice.invoiceDate)) blocking.push("Date d'\xE9mission de la facture");
     if (!has(invoice.guestName)) blocking.push("Nom du client");
     if (!has(stay.checkIn) || !has(stay.checkOut)) blocking.push("Dates du s\xE9jour (fiche de r\xE9servation)");
-    if (!((invoice.totalAmount || 0) > 0)) blocking.push("Montant du s\xE9jour (fiche de r\xE9servation) : il est \xE0 z\xE9ro");
+    if (!((invoice.totalAmount || 0) > 0)) blocking.push("Montant de la facture : il est \xE0 z\xE9ro (cochez un poste \xE0 facturer, ou compl\xE9tez les montants de la r\xE9servation)");
     if (!has(invoice.guestAddress)) warnings.push("Adresse du client : \xE0 renseigner si vous la connaissez (obligatoire pour un client professionnel)");
     return { blocking, warnings };
   }
@@ -8827,7 +8833,8 @@ footer{background:#111}
     if (isValidated(readRegistry2()[reservationId])) return { ok: false, error: "Ce s\xE9jour a d\xE9j\xE0 sa facture finale : un acompte ne peut plus \xEAtre factur\xE9." };
     const value = round25(amount);
     if (!(value > 0)) return { ok: false, error: "Le montant de l'acompte doit \xEAtre sup\xE9rieur \xE0 z\xE9ro." };
-    const remaining = round25((snapshot.totalAmount || 0) - depositedAmount(reservationId));
+    const stayTotal = round25(draft.totalAmount > 0 ? draft.totalAmount : snapshot.totalAmount || 0);
+    const remaining = round25(stayTotal - depositedAmount(reservationId));
     if (value > remaining) return { ok: false, error: `L'acompte d\xE9passe ce qui reste \xE0 facturer sur le s\xE9jour (${remaining.toFixed(2).replace(".", ",")} \u20AC).` };
     const date = draft.invoiceDate || today();
     const check = checkMentions(seller, { ...draft, invoiceDate: date, totalAmount: value }, snapshot);
@@ -8847,7 +8854,7 @@ footer{background:#111}
       seller,
       kind: "deposit",
       reservationId,
-      stayTotal: round25(snapshot.totalAmount || 0)
+      stayTotal
     };
     const all2 = readDeposits();
     all2[number] = deposit;
@@ -8894,7 +8901,7 @@ footer{background:#111}
     notify4();
     return { ok: true, cancelled };
   }
-  var REGISTRY_KEY2, DRAFTS_KEY, CANCELLED_KEY, DEPOSITS_KEY, TRASH_KEY, COUNTER_PREFIX, INVOICES_EVENT, readJson, writeJson, notify4, today, round25, readRegistry2, readDrafts, readDeposits, depositsOf, depositedAmount, deductedAmount, readCancelled, listCancelled, isValidated, snapshotAsReservation, creditedAmount, counterOf, peekInvoiceNumber;
+  var REGISTRY_KEY2, DRAFTS_KEY, CANCELLED_KEY, DEPOSITS_KEY, TRASH_KEY, COUNTER_PREFIX, INVOICES_EVENT, readJson, writeJson, notify4, today, round25, readRegistry2, readDrafts, readDeposits, depositsOf, depositedAmount, deductedAmount, readCancelled, listCancelled, isValidated, isPlatformBooking, snapshotAsReservation, creditedAmount, counterOf, peekInvoiceNumber;
   var init_invoices = __esm({
     "src/core/invoicing/invoices.ts"() {
       "use strict";
@@ -8934,6 +8941,7 @@ footer{background:#111}
       readCancelled = () => readJson(CANCELLED_KEY, {});
       listCancelled = () => Object.values(readCancelled()).sort((a, b) => b.creditNote.number.localeCompare(a.creditNote.number, void 0, { numeric: true }));
       isValidated = (c) => !!c && typeof c === "object" && !!c.invoiceNumber;
+      isPlatformBooking = (r) => ["airbnb", "booking", "abritel"].includes(String(r.bookingSource || "").toLowerCase());
       snapshotAsReservation = (snapshot) => ({ ...snapshot });
       creditedAmount = (invoice) => round25((invoice?.partialCredits || []).reduce((n, c) => n + (c.amount || 0), 0));
       counterOf = (year) => {
@@ -9300,7 +9308,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "303";
+      APP_VERSION = "304";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -74335,7 +74343,8 @@ ${text}` : text });
         const [guestPhone, setGuestPhone] = (0, import_react158.useState)(existingConfig.guestPhone || reservation.guestPhone || "");
         const [guestEmail, setGuestEmail] = (0, import_react158.useState)(existingConfig.guestEmail || reservation.guestEmail || "");
         const [guestResidence, setGuestResidence] = (0, import_react158.useState)(existingConfig.guestResidence || reservation.guestResidence || "");
-        const [showHebergement, setShowHebergement] = (0, import_react158.useState)(existingConfig.showHebergement !== void 0 ? existingConfig.showHebergement : true);
+        const fromPlatform = isPlatformBooking(reservation);
+        const [showHebergement, setShowHebergement] = (0, import_react158.useState)(existingConfig.showHebergement !== void 0 ? existingConfig.showHebergement : !fromPlatform);
         const [showRepas, setShowRepas] = (0, import_react158.useState)(existingConfig.showRepas !== void 0 ? existingConfig.showRepas : true);
         const [showAutre, setShowAutre] = (0, import_react158.useState)(existingConfig.showAutre !== void 0 ? existingConfig.showAutre : true);
         const [paymentType, setPaymentType] = (0, import_react158.useState)(existingConfig.paymentType || reservation.roomPaymentMethod || "Virement / Wero");
@@ -74361,7 +74370,7 @@ ${text}` : text });
             setGuestPhone(cfg.guestPhone || reservation.guestPhone || "");
             setGuestEmail(cfg.guestEmail || reservation.guestEmail || "");
             setGuestResidence(cfg.guestResidence || reservation.guestResidence || "");
-            setShowHebergement(cfg.showHebergement !== void 0 ? cfg.showHebergement : true);
+            setShowHebergement(cfg.showHebergement !== void 0 ? cfg.showHebergement : !isPlatformBooking(reservation));
             setShowRepas(cfg.showRepas !== void 0 ? cfg.showRepas : true);
             setShowAutre(cfg.showAutre !== void 0 ? cfg.showAutre : true);
             setPaymentType(cfg.paymentType || reservation.roomPaymentMethod || "Virement / Wero");
@@ -74377,7 +74386,7 @@ ${text}` : text });
         const dogCareAmount = stay.dogCareAmount || 0;
         const otherAmount = stay.otherAmount || 0;
         const touristTaxAmount = stay.touristTaxAmount || 0;
-        const calculatedTotal = validated ? validated.totalAmount : reservation.totalAmount || roomAmount + mealsAmount + drinksAmount + dogCareAmount + otherAmount + touristTaxAmount;
+        const calculatedTotal = validated ? validated.totalAmount : invoiceTotalFor(stay, { showHebergement, showRepas, showAutre });
         const draftFields = () => ({
           invoiceDate: invoiceDateInput || (/* @__PURE__ */ new Date()).toISOString().slice(0, 10),
           guestName,
@@ -74620,6 +74629,11 @@ Une facture valid\xE9e ne peut plus \xEAtre modifi\xE9e ni supprim\xE9e. Pour la
                     )
                   ] })
                 ] })
+              ] }),
+              fromPlatform && !locked && /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { "data-invoice-platform-note": true, className: "bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900", children: [
+                "R\xE9servation ",
+                String(reservation.bookingSource),
+                " : la plateforme facture elle-m\xEAme l'h\xE9bergement \xE0 votre client, il est donc d\xE9coch\xE9. Cochez \xAB Repas \xBB ou \xAB Autre \xBB pour facturer ce que le client r\xE8gle sur place."
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-3", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime157.jsxs)("div", { className: "flex items-center gap-2 text-emerald-900 font-semibold text-sm border-b border-slate-200 pb-2", children: [
