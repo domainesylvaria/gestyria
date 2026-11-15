@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v308</title>
-  <meta name="application-name" content="Gestyria v308" />
+  <title>Gestyria v309</title>
+  <meta name="application-name" content="Gestyria v309" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -9373,7 +9373,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "308";
+      APP_VERSION = "309";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -13680,7 +13680,9 @@ footer{background:#111}
             photosRef.current.filter((p) => p.fileId !== photo.fileId),
             "Photo retir\xE9e"
           );
-          setViewing(null);
+          const rest = photosRef.current.filter((p) => p.fileId !== photo.fileId);
+          const old = photos2.findIndex((p) => p.fileId === photo.fileId);
+          setViewing((rest[Math.min(old, rest.length - 1)] || null)?.fileId ?? null);
           if (!actor2) {
             try {
               await connectorPost({ action: "deletePhoto", fileId: photo.fileId });
@@ -13688,7 +13690,41 @@ footer{background:#111}
             }
           }
         };
-        const viewed = viewing ? photos2.find((p) => p.fileId === viewing) : null;
+        const viewedIndex = viewing ? photos2.findIndex((p) => p.fileId === viewing) : -1;
+        const viewed = viewedIndex >= 0 ? photos2[viewedIndex] : null;
+        const step = (delta) => {
+          const next = photos2[viewedIndex + delta];
+          if (next) setViewing(next.fileId);
+        };
+        const touch = (0, import_react6.useRef)(null);
+        const swiped = (0, import_react6.useRef)(false);
+        const onTouchStart = (e) => {
+          const t = e.touches[0];
+          touch.current = e.touches.length === 1 && t ? { x: t.clientX, y: t.clientY } : null;
+          swiped.current = false;
+        };
+        const onTouchEnd = (e) => {
+          const start = touch.current;
+          const t = e.changedTouches[0];
+          touch.current = null;
+          if (!start || !t) return;
+          const dx = t.clientX - start.x;
+          const dy = t.clientY - start.y;
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            swiped.current = true;
+            step(dx < 0 ? 1 : -1);
+          }
+        };
+        (0, import_react6.useEffect)(() => {
+          if (!viewed) return;
+          const onKey = (e) => {
+            if (e.key === "ArrowLeft") step(-1);
+            else if (e.key === "ArrowRight") step(1);
+            else if (e.key === "Escape") setViewing(null);
+          };
+          window.addEventListener("keydown", onKey);
+          return () => window.removeEventListener("keydown", onKey);
+        }, [viewing, photos2.length]);
         return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "mt-3", children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flex items-center justify-between gap-2 mb-1.5", children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "text-[11px] font-semibold text-neutral-700", children: [
@@ -13722,29 +13758,51 @@ footer{background:#111}
             },
             p.fileId
           )) }),
-          viewed && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fixed inset-0 z-[60] bg-black/85 flex flex-col", onClick: () => setViewing(null), children: [
+          viewed && /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "fixed inset-0 z-[60] bg-black/85 flex flex-col", onClick: () => setViewing(null), "data-photo-viewer": true, children: [
             /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flex items-center justify-between gap-2 px-4 py-3 text-white text-xs shrink-0", onClick: (e) => e.stopPropagation(), children: [
               /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "truncate", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { "data-photo-counter": true, className: "font-bold", children: [
+                  viewedIndex + 1,
+                  " / ",
+                  photos2.length
+                ] }),
+                " \xB7 ",
                 new Date(viewed.at).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
                 viewed.by ? ` \xB7 ${viewed.by}` : ""
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "flex items-center gap-1 shrink-0", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-                  "button",
-                  {
-                    type: "button",
-                    onClick: () => remove(viewed),
-                    className: "flex items-center gap-1 px-2.5 py-1.5 rounded-lg hover:bg-white/10 cursor-pointer",
-                    children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Trash2, { className: "w-4 h-4" }),
-                      " Retirer"
-                    ]
-                  }
-                ),
-                /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", onClick: () => setViewing(null), className: "p-1.5 rounded-lg hover:bg-white/10 cursor-pointer", "aria-label": "Fermer", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(X, { className: "w-5 h-5" }) })
-              ] })
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", onClick: () => setViewing(null), className: "p-2 rounded-lg hover:bg-white/10 cursor-pointer shrink-0", "aria-label": "Fermer", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(X, { className: "w-6 h-6" }) })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "flex-1 min-h-0 flex items-center justify-center p-3", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(PhotoImage, { fileId: viewed.fileId, className: "max-w-full max-h-full rounded-lg !object-contain" }) })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+              "div",
+              {
+                className: "relative flex-1 min-h-0 flex items-center justify-center p-3 select-none",
+                onTouchStart,
+                onTouchEnd,
+                onClick: (e) => {
+                  if (swiped.current) {
+                    swiped.current = false;
+                    e.stopPropagation();
+                  }
+                },
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime.jsx)(PhotoImage, { fileId: viewed.fileId, className: "max-w-full max-h-full rounded-lg !object-contain" }, viewed.fileId),
+                  photos2[viewedIndex + 1] && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "hidden", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(PhotoImage, { fileId: photos2[viewedIndex + 1].fileId }) }),
+                  photos2[viewedIndex - 1] && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "hidden", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(PhotoImage, { fileId: photos2[viewedIndex - 1].fileId }) }),
+                  viewedIndex > 0 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", "data-photo-prev": true, "aria-label": "Photo pr\xE9c\xE9dente", onClick: (e) => {
+                    e.stopPropagation();
+                    step(-1);
+                  }, className: "absolute left-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/50 text-white hover:bg-black/70 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChevronLeft, { className: "w-6 h-6" }) }),
+                  viewedIndex < photos2.length - 1 && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", "data-photo-next": true, "aria-label": "Photo suivante", onClick: (e) => {
+                    e.stopPropagation();
+                    step(1);
+                  }, className: "absolute right-2 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/50 text-white hover:bg-black/70 cursor-pointer", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(ChevronRight, { className: "w-6 h-6" }) })
+                ]
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "shrink-0 flex items-center justify-center px-4 py-3", onClick: (e) => e.stopPropagation(), children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", { type: "button", "data-photo-remove": true, onClick: () => remove(viewed), className: "flex items-center gap-1.5 px-3 py-2 text-xs text-white/80 border border-white/25 rounded-lg hover:bg-white/10 cursor-pointer", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Trash2, { className: "w-4 h-4" }),
+              " Retirer cette photo"
+            ] }) })
           ] })
         ] });
       };
