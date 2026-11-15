@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v307</title>
-  <meta name="application-name" content="Gestyria v307" />
+  <title>Gestyria v308</title>
+  <meta name="application-name" content="Gestyria v308" />
   
   <!-- Bibliothèques intégrées au fichier (dossier vendor/) : aucune dépendance à un service en ligne -->
   <style data-sylvaria>
@@ -3092,7 +3092,7 @@ var DomaineAppBundle = (() => {
       equipmentCategories: [...DEFAULT_EQUIPMENT_CATEGORIES],
       incidentCategories: DEFAULT_INCIDENT_CATEGORIES.map((c) => ({ ...c })),
       safetyTypes: [...DEFAULT_SAFETY_TYPES],
-      reminders: { enabled: false, hour: 8, emails: "", frequency: "daily", soonDays: 7, categories: { tasks: true, safety: true, incidents: true, stock: true, pool: true } },
+      reminders: { enabled: false, hour: 8, emails: "", frequency: "daily", soonDays: 7, categories: { tasks: true, todos: true, safety: true, incidents: true, stock: true, pool: true } },
       stockCategories: [...DEFAULT_STOCK_CATEGORIES],
       wasteTypes: [...DEFAULT_WASTE_TYPES],
       linenTracking: false,
@@ -9373,7 +9373,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "307";
+      APP_VERSION = "308";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -19723,7 +19723,7 @@ ${body}
   }
   function getAppsScriptCode() {
     return `// =========================================================================
-// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - GESTYRIA (V41)
+// CONNECTEUR UNIVERSEL GOOGLE SHEETS & PLANNING - GESTYRIA (V42)
 // =========================================================================
 // Instructions d'installation (1 minute) :
 // 1. Dans votre Google Sheet, allez dans : Extensions > Apps Script
@@ -20545,7 +20545,7 @@ function doPost(e) {
 // V10 : ACC\xC8S D\xC9DI\xC9 DES PERSONNES, PHOTOS (GOOGLE DRIVE), RAPPELS PAR E-MAIL, CL\xC9
 // =========================================================================
 
-var CONNECTOR_VERSION = 41;
+var CONNECTOR_VERSION = 42;
 var ADMIN_KEY_PROP = "CLE_ADMIN";
 var PHOTO_FOLDER_PROP = "DOSSIER_PHOTOS_MENAGE";
 var PHOTO_FOLDER_NAME = "Gestyria - Photos m\xE9nage";
@@ -22993,7 +22993,7 @@ function sitePoolOut_(pool, entry) {
 
 // Ce qui m\xE9rite un rappel. on(cat) : cat\xE9gorie demand\xE9e ; person : seulement ses interventions
 function siteDigest_(recs, today, soon, on, person) {
-  var d = { tasks: [], safety: [], incidents: [], stock: [], pool: [] };
+  var d = { tasks: [], todos: [], safety: [], incidents: [], stock: [], pool: [] };
   Object.keys(recs).forEach(function(k) {
     var r = recs[k];
     if (!isObject_(r) || r.archived === true) return;
@@ -23004,6 +23004,16 @@ function siteDigest_(recs, today, soon, on, person) {
       if (days > soon) return;
       if (person && !siteSamePerson_(r.assignee, person)) return;
       d.tasks.push({ title: textOf_(r.title), equipment: siteName_(recs, r.equipmentId), days: days, date: due, assignee: textOf_(r.assignee) });
+    }
+    // T\xE2ches \xAB \xC0 faire \xBB : en retard, \xE0 \xE9ch\xE9ance proche, ou bloqu\xE9es (jamais termin\xE9es ni archiv\xE9es)
+    if (r.kind === "todo" && on("todos") && r.status !== "done") {
+      if (person && !siteSamePerson_(r.assignee, person)) return;
+      var tdue = isoDate_(r.dueDate);
+      var tdays = tdue ? daysBetweenIso_(today, tdue) : null;
+      var blocked = r.status === "blocked";
+      if (blocked || (tdays !== null && tdays <= soon)) {
+        d.todos.push({ title: textOf_(r.title), type: textOf_(r.type), blocked: blocked, reason: blocked ? textOf_(r.blockedReason) : "", days: tdays, date: tdue, assignee: textOf_(r.assignee) });
+      }
     }
     if (person) return;
     if (r.kind === "safety" && on("safety")) {
@@ -23030,12 +23040,13 @@ function siteDigest_(recs, today, soon, on, person) {
     }
   });
   d.tasks.sort(function(a, b) { return a.days - b.days; });
+  d.todos.sort(function(a, b) { return (a.days === null ? 99999 : a.days) - (b.days === null ? 99999 : b.days); });
   d.safety.sort(function(a, b) { return (a.days === null ? 99999 : a.days) - (b.days === null ? 99999 : b.days); });
   return d;
 }
 
 function siteDigestCount_(d) {
-  return d.tasks.length + d.safety.length + d.incidents.length + d.stock.length + d.pool.length;
+  return d.tasks.length + d.todos.length + d.safety.length + d.incidents.length + d.stock.length + d.pool.length;
 }
 
 function siteWhen_(days) {
@@ -23055,6 +23066,12 @@ function siteDigestHtml_(d, estName, heading, intro) {
   };
   section("Interventions", d.tasks.map(function(t) {
     return "<b>" + esc_(t.title) + "</b>" + (t.equipment ? " <span style=\\"color:#525252\\">(" + esc_(t.equipment) + ")</span>" : "") + (t.assignee ? " \xB7 " + esc_(t.assignee) : "") + "<br><span style=\\"font-size:13px\\">" + esc_(frShort_(t.date)) + " (" + siteWhen_(t.days) + ")</span>";
+  }));
+  var todoTypes = { works: "Travaux", purchase: "Achats", admin: "Administratif", other: "Autre" };
+  section("\xC0 faire", d.todos.map(function(t) {
+    return "<b>" + esc_(t.title) + "</b> <span style=\\"color:#525252\\">(" + esc_(todoTypes[t.type] || "Autre") + ")</span>" + (t.assignee ? " \xB7 " + esc_(t.assignee) : "") +
+      (t.blocked ? "<br><b style=\\"color:#B91C1C\\">Bloqu\xE9</b>" + (t.reason ? " : " + esc_(t.reason) : "") : "") +
+      (t.date ? "<br><span style=\\"font-size:13px\\">Pour le " + esc_(frShort_(t.date)) + " (" + siteWhen_(t.days) + ")</span>" : "");
   }));
   section("V\xE9rifications de s\xE9curit\xE9", d.safety.map(function(s) {
     return "<b>" + esc_(s.name) + "</b>" + (s.anomaly ? " \xB7 <b style=\\"color:#B91C1C\\">anomalie non r\xE9solue</b>" + (s.defect ? " : " + esc_(s.defect) : "") : "") +
@@ -23122,15 +23139,16 @@ function sendSiteReminders_(test) {
       name: estName
     });
     sentTo.push(adminTo);
-    if (!test && on("tasks")) {
+    if (!test && (on("tasks") || on("todos"))) {
       listOf_(settings.people).forEach(function(p) {
         if (!isObject_(p) || p.active === false || !validEmail_(p.email) || listOf_(p.modules).indexOf("establishment") < 0) return;
-        var mine = siteDigest_(recs, today, soon, function(k) { return k === "tasks"; }, p);
-        if (mine.tasks.length === 0) return;
+        var mine = siteDigest_(recs, today, soon, function(k) { return (k === "tasks" && on("tasks")) || (k === "todos" && on("todos")); }, p);
+        var mineCount = mine.tasks.length + mine.todos.length;
+        if (mineCount === 0) return;
         MailApp.sendEmail({
           to: String(p.email).trim(),
-          subject: "Vos interventions : " + mine.tasks.length + " \xE0 faire",
-          htmlBody: siteDigestHtml_(mine, estName, "Vos interventions", "Interventions qui vous sont confi\xE9es, en retard ou \xE0 venir."),
+          subject: "Vos interventions et t\xE2ches : " + mineCount + " \xE0 faire",
+          htmlBody: siteDigestHtml_(mine, estName, "Vos interventions et t\xE2ches", "Interventions et t\xE2ches qui vous sont confi\xE9es, en retard, bloqu\xE9es ou \xE0 venir."),
           name: estName
         });
         sentTo.push(String(p.email).trim());
@@ -24089,7 +24107,7 @@ function beds24Bookings_() {
     return { status: "error", message: message };
   }
 }
-// ===== FIN DU CONNECTEUR (V41) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
+// ===== FIN DU CONNECTEUR (V42) : si cette ligne n'est pas tout en bas dans Apps Script, le code coll\xE9 est incomplet. =====
 `;
   }
   var SPREADSHEET_ID_STORAGE_KEY, AUTO_SYNC_STORAGE_KEY, APPS_SCRIPT_STORAGE_KEY, SHEET_PULLED_KEY, SHEET_PENDING_KEY, SHEET_REVISION_KEY, SHEET_CONFLICT_MESSAGE, SHEET_NOT_PULLED_MESSAGE;
@@ -61059,6 +61077,7 @@ Cliquer pour modifier le tarif` : void 0,
       };
       REMINDER_CATEGORIES = [
         { id: "tasks", label: "Interventions (en retard ou \xE0 venir)" },
+        { id: "todos", label: "T\xE2ches \xAB \xC0 faire \xBB (en retard, bloqu\xE9es ou \xE0 venir)" },
         { id: "safety", label: "V\xE9rifications de s\xE9curit\xE9 (en retard, anomalies)" },
         { id: "incidents", label: "Incidents non r\xE9solus" },
         { id: "stock", label: "Stocks sous le minimum" },
