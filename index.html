@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v319</title>
-  <meta name="application-name" content="Gestyria v319" />
+  <title>Gestyria v320</title>
+  <meta name="application-name" content="Gestyria v320" />
   <!-- Application installable (PWA) : icône, plein écran, barre du haut colorée. Chemins relatifs : valables à la racine du site. -->
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#325032" />
@@ -9404,7 +9404,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "319";
+      APP_VERSION = "320";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -22699,9 +22699,11 @@ function sendReviewRequests_(dry) {
           voyageur: greetName_(r.guestName), prenom: greetName_(r.guestName).split(/\\s+/)[0] || "", etablissement: estName, chambre: "", note: "",
           sejour: "du " + frShort_(r.checkIn) + " au " + frShort_(r.checkOut), lien_livret: link, lien_avis: reviewUrl
         });
+        var logoBlob = signatureLogo_(store);
         var html = "<div style=\\"font-family:Arial,sans-serif;font-size:14px;color:#171717;max-width:560px\\">" +
-          esc_(text).replace(/\\n/g, "<br>").replace(/(https:\\/\\/[^\\s<]+)/g, "<a href=\\"$1\\" style=\\"color:#325032\\">$1</a>") + "</div>";
+          esc_(text).replace(/\\n/g, "<br>").replace(/(https:\\/\\/[^\\s<]+)/g, "<a href=\\"$1\\" style=\\"color:#325032\\">$1</a>") + establishmentSignatureHtml_(settings, !!logoBlob) + "</div>";
         var mail = { to: String(r.guestEmail).trim(), subject: estName + " : votre avis sur votre s\xE9jour", body: text, htmlBody: html, name: estName };
+        if (logoBlob) mail.inlineImages = { logo: logoBlob };
         if (replyTo) mail.replyTo = replyTo;
         MailApp.sendEmail(mail);
         convLog_(null, { reservationId: r.id, dir: "out", channel: "email", kind: "review", subject: "votre avis sur votre s\xE9jour", text: text, name: r.guestName, email: String(r.guestEmail).trim() });
@@ -22795,9 +22797,11 @@ function sendArrivalMails_(dry) {
           sejour: "du " + frShort_(r.checkIn) + " au " + frShort_(r.checkOut || r.checkIn), arrivee: frShort_(r.checkIn), lien_livret: link
         };
         var text = fillTemplate_(template, values);
+        var logoBlob = signatureLogo_(store);
         var html = "<div style=\\"font-family:Arial,sans-serif;font-size:14px;color:#171717;max-width:560px\\">" +
-          esc_(text).replace(/\\n/g, "<br>").replace(/(https:\\/\\/[^\\s<]+)/g, "<a href=\\"$1\\" style=\\"color:#325032\\">$1</a>") + "</div>";
+          esc_(text).replace(/\\n/g, "<br>").replace(/(https:\\/\\/[^\\s<]+)/g, "<a href=\\"$1\\" style=\\"color:#325032\\">$1</a>") + establishmentSignatureHtml_(settings, !!logoBlob) + "</div>";
         var mail = { to: String(r.guestEmail).trim(), subject: fillTemplate_(subjectTpl, values), body: text, htmlBody: html, name: estName };
+        if (logoBlob) mail.inlineImages = { logo: logoBlob };
         if (replyTo) mail.replyTo = replyTo;
         MailApp.sendEmail(mail);
         convLog_(null, { reservationId: r.id, dir: "out", channel: "email", kind: "arrival", subject: fillTemplate_(subjectTpl, values), text: text, name: r.guestName, email: String(r.guestEmail).trim() });
@@ -23833,7 +23837,20 @@ function paymentHtml_(pay, d, todayIso) {
 }
 
 // Signature : coordonn\xE9es de l'\xE9tablissement
-function establishmentSignatureHtml_(settings) {
+// Logo de l'\xE9tablissement (jeu synchronis\xE9 \xAB logo \xBB, image en base64) pour la signature des e-mails : image jointe au message (cid:logo) ; jamais bloquant
+function signatureLogo_(store) {
+  try {
+    var entry = store && store.appStores && store.appStores.logo;
+    var v = entry && entry.value;
+    var m = typeof v === "string" ? v.match(/^data:(image\\/(?:png|jpeg|gif));base64,([A-Za-z0-9+\\/=]+)$/) : null;
+    if (!m || m[2].length > 1500000) return null;
+    return Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], "logo");
+  } catch(errLogo) {
+    return null;
+  }
+}
+
+function establishmentSignatureHtml_(settings, withLogo) {
   var est = settings && settings.establishment || {};
   var address = [textOf_(est.address), [textOf_(est.postalCode), textOf_(est.city)].filter(function(x) { return x; }).join(" ")].filter(function(x) { return x; }).join(", ");
   var site = textOf_(est.website).trim();
@@ -23843,7 +23860,8 @@ function establishmentSignatureHtml_(settings) {
   if (textOf_(est.phone)) lines.push("T\xE9l. : <a href=\\"tel:" + esc_(textOf_(est.phone).replace(/[^\\d+]/g, "")) + "\\" style=\\"color:#325032;text-decoration:none\\">" + esc_(est.phone) + "</a>");
   if (validEmail_(est.email)) lines.push("E-mail : <a href=\\"mailto:" + esc_(String(est.email).trim()) + "\\" style=\\"color:#325032\\">" + esc_(String(est.email).trim()) + "</a>");
   if (siteUrl && /^https?:\\/\\/[^\\s"<>]+$/.test(siteUrl)) lines.push("Site web : <a href=\\"" + esc_(siteUrl) + "\\" style=\\"color:#325032\\">" + esc_(site.replace(/^https?:\\/\\//i, "").replace(/\\/$/, "")) + "</a>");
-  return "<table role=\\"presentation\\" style=\\"margin-top:22px;border-top:2px solid #325032;padding-top:12px;width:100%\\"><tr><td style=\\"font-size:13px;color:#404040;line-height:1.6\\">" +
+  var logoCell = withLogo ? "<td style=\\"vertical-align:top;padding-right:14px;width:90px\\"><img src=\\"cid:logo\\" alt=\\"\\" width=\\"84\\" style=\\"display:block;max-width:84px;height:auto;border:0\\"></td>" : "";
+  return "<table role=\\"presentation\\" style=\\"margin-top:22px;border-top:2px solid #325032;padding-top:12px;width:100%\\"><tr>" + logoCell + "<td style=\\"font-size:13px;color:#404040;line-height:1.6\\">" +
     "<b style=\\"font-family:Georgia,serif;font-size:15px;color:#325032\\">" + esc_(textOf_(est.name) || "Mon \xE9tablissement") + "</b>" +
     (textOf_(est.subtitle) ? "<br><i>" + esc_(est.subtitle) + "</i>" : "") +
     (lines.length ? "<br>" + lines.join("<br>") : "") + "</td></tr></table>";
@@ -24002,14 +24020,16 @@ function sendRequestMail_(ss, store, settings, d, kind, note) {
         "<p style=\\"margin:0\\">Pour toute question, r\xE9pondez simplement \xE0 cet e-mail.</p>";
     }
     if (kind === "confirmed") body += talkBlockHtml_(settings, talkSettings_(store), "fr", d.name, d.arrival);
+    var logoBlob = signatureLogo_(store);
     var mail = {
       to: String(d.contact).trim(),
       subject: estName + " : " + subject,
       htmlBody: "<div style=\\"font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#171717;max-width:600px\\">" +
         "<div style=\\"background:#325032;color:#ffffff;padding:16px 20px;border-radius:10px 10px 0 0\\"><span style=\\"font-family:Georgia,serif;font-size:20px\\">" + esc_(estName) + "</span></div>" +
-        "<div style=\\"border:1px solid #dfe6df;border-top:0;padding:20px;border-radius:0 0 10px 10px\\">" + body + establishmentSignatureHtml_(settings) + "</div></div>",
+        "<div style=\\"border:1px solid #dfe6df;border-top:0;padding:20px;border-radius:0 0 10px 10px\\">" + body + establishmentSignatureHtml_(settings, !!logoBlob) + "</div></div>",
       name: estName
     };
+    if (logoBlob) mail.inlineImages = { logo: logoBlob };
     var reply = establishmentEmail_(settings);
     if (reply) mail.replyTo = reply;
     if (attachments.length > 0) mail.attachments = attachments;
@@ -24590,11 +24610,11 @@ function talkBlockHtml_(settings, talk, lang, guestName, arrival) {
   return html;
 }
 
-function mailShell_(settings, body) {
+function mailShell_(settings, body, withLogo) {
   var estName = textOf_(settings && settings.establishment && settings.establishment.name) || "Mon \xE9tablissement";
   return "<div style=\\"font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#171717;max-width:600px\\">" +
     "<div style=\\"background:#325032;color:#ffffff;padding:16px 20px;border-radius:10px 10px 0 0\\"><span style=\\"font-family:Georgia,serif;font-size:20px\\">" + esc_(estName) + "</span></div>" +
-    "<div style=\\"border:1px solid #dfe6df;border-top:0;padding:20px;border-radius:0 0 10px 10px\\">" + body + establishmentSignatureHtml_(settings) + "</div></div>";
+    "<div style=\\"border:1px solid #dfe6df;border-top:0;padding:20px;border-radius:0 0 10px 10px\\">" + body + establishmentSignatureHtml_(settings, withLogo) + "</div></div>";
 }
 
 // Texte libre -> paragraphes (rien d'autre que du texte n'est interpr\xE9t\xE9)
@@ -24619,7 +24639,9 @@ function conversationSend_(data) {
   var subject = cleanText_(data.subject, 150) || (lang === "en" ? "a message about your stay" : "un message concernant votre s\xE9jour");
   var greet = name ? (lang === "en" ? "Hello " : "Bonjour ") + esc_(name.split(/\\s+/)[0]) + "," : (lang === "en" ? "Hello," : "Bonjour,");
   var body = "<p style=\\"margin:0 0 12px\\">" + greet + "</p>" + textBlockHtml_(text) + talkBlockHtml_(settings, talkSettings_(store), lang, name, textOf_(data.arrival));
-  var mail = { to: to, subject: estName + " : " + subject, htmlBody: mailShell_(settings, body), name: estName };
+  var logoBlob = signatureLogo_(store);
+  var mail = { to: to, subject: estName + " : " + subject, htmlBody: mailShell_(settings, body, !!logoBlob), name: estName };
+  if (logoBlob) mail.inlineImages = { logo: logoBlob };
   var reply = establishmentEmail_(settings);
   if (reply) mail.replyTo = reply;
   try {
@@ -24646,8 +24668,8 @@ function conversationNote_(data) {
   return { status: "success", version: CONNECTOR_VERSION, id: id };
 }
 // ===== V45 : r\xE9ponses des clients par e-mail (lecture de Gmail) =====
-// Pour chaque adresse \xE0 qui l'\xE9tablissement a \xE9crit depuis moins de 90 jours (messages \xAB envoy\xE9s \xBB de la conversation), on cherche dans Gmail
-// les messages RE\xC7US de cette adresse, post\xE9rieurs au premier envoi. Chaque message re\xE7u est inscrit une seule fois (identifiant "g_" + num\xE9ro
+// Pour chaque adresse \xE0 qui l'\xE9tablissement a \xE9crit depuis moins de 90 jours, ou qui figure sur une r\xE9servation en cours ou r\xE9cente, on cherche dans Gmail
+// les messages RE\xC7US de cette adresse et ceux que l'\xE9tablissement lui a envoy\xE9s depuis sa messagerie, post\xE9rieurs au premier \xE9change. Chaque message re\xE7u est inscrit une seule fois (identifiant "g_" + num\xE9ro
 // du message Gmail), avec le seul texte nouveau (l'historique cit\xE9 en dessous est coup\xE9). Rien n'est modifi\xE9 ni supprim\xE9 dans Gmail.
 var CONV_REPLY_DAYS = 90;
 var CONV_REPLY_MAX_ADDR = 25;
@@ -24682,7 +24704,9 @@ function replyText_(body) {
   return text || String(body || "").trim();
 }
 
-// Lit Gmail et ajoute les r\xE9ponses des clients \xE0 leur conversation ; r\xE9serv\xE9e \xE0 l'administratrice, au plus une fois toutes les 2 minutes sauf demande forc\xE9e
+// Lit Gmail et ajoute \xE0 la conversation de chaque client : ses r\xE9ponses (re\xE7ues) ET les e-mails que l'\xE9tablissement lui a \xE9crits depuis sa messagerie
+// (sans passer par Gestyria). Cibles : les adresses \xE0 qui Gestyria a \xE9crit et celles des r\xE9servations en cours ou r\xE9centes. R\xE9serv\xE9e \xE0 l'administratrice,
+// au plus une fois toutes les 2 minutes sauf demande forc\xE9e. Les e-mails envoy\xE9s par Gestyria lui-m\xEAme ne sont pas ajout\xE9s deux fois.
 function conversationsSync_(force) {
   var props = PropertiesService.getScriptProperties();
   var nowMs = new Date().getTime();
@@ -24693,18 +24717,37 @@ function conversationsSync_(force) {
   if (!lock.tryLock(25000)) return { status: "success", version: CONNECTOR_VERSION, added: 0, skipped: "Une synchronisation est en cours." };
   try {
     var ss = getTargetSpreadsheet();
+    var store = loadAppData_(ss);
+    var settings = (store && store.appStores && store.appStores.settings) || {};
+    var systemPrefix = (textOf_(settings.establishment && settings.establishment.name) || "Mon \xE9tablissement").toLowerCase() + " : ";
+    var me = "";
+    try { me = String(Session.getEffectiveUser().getEmail() || "").toLowerCase(); } catch(errMe) {}
     var messages = conversationsList_().messages;
     var seen = {};
     var targets = {};
     var limitIso = new Date(nowMs - CONV_REPLY_DAYS * 86400000).toISOString();
+    var todayIso = new Date(nowMs).toISOString().slice(0, 10);
+    var sentTimes = {}; // adresse -> heures des e-mails d\xE9j\xE0 inscrits (ceux de Gestyria)
     messages.forEach(function(m) {
       seen[m.id] = true;
       var addr = String(m.email || "").trim().toLowerCase();
       if (m.dir !== "out" || !validEmail_(addr) || m.at < limitIso) return;
+      if (!sentTimes[addr]) sentTimes[addr] = [];
+      sentTimes[addr].push(new Date(m.at).getTime());
       var t = targets[addr];
-      if (!t) t = targets[addr] = { addr: addr, first: m.at, last: m.at, reservationId: m.reservationId, name: m.name };
+      if (!t) t = targets[addr] = { addr: addr, first: m.at, last: m.at, reservationId: m.reservationId, name: m.name, fromConv: true };
       if (m.at < t.first) t.first = m.at;
       if (m.at >= t.last) { t.last = m.at; t.reservationId = m.reservationId; t.name = m.name || t.name; }
+    });
+    // R\xE9servations en cours ou r\xE9centes (m\xEAme sans e-mail d\xE9j\xE0 envoy\xE9 par Gestyria : cas des \xE9changes d'avant les conversations)
+    listOf_(store && store.reservationsList).forEach(function(r) {
+      var addr = String(r && r.guestEmail || "").trim().toLowerCase();
+      if (!r || !r.id || r.isBlocked || r.reservationStatus === "cancelled" || !validEmail_(addr)) return;
+      if (String(r.checkOut || "") < isoShift_(todayIso, -14)) return;
+      var created = /^\\d{4}-\\d{2}-\\d{2}T/.test(String(r.createdAt || "")) && String(r.createdAt) > limitIso ? String(r.createdAt) : limitIso;
+      var t = targets[addr];
+      if (t && t.fromConv) return; // la conversation d\xE9j\xE0 ouverte garde sa r\xE9servation
+      if (!t || created >= t.last) targets[addr] = { addr: addr, first: t && t.first < created ? t.first : created, last: created, reservationId: String(r.id), name: textOf_(r.guestName), fromConv: false };
     });
     var list = Object.keys(targets).map(function(k) { return targets[k]; })
       .sort(function(a, b) { return a.last < b.last ? 1 : -1; }).slice(0, CONV_REPLY_MAX_ADDR);
@@ -24712,24 +24755,32 @@ function conversationsSync_(force) {
     var names = [];
     try {
       list.forEach(function(t) {
-        var threads = GmailApp.search("from:" + t.addr + " newer_than:" + CONV_REPLY_DAYS + "d", 0, 10);
+        var threads = GmailApp.search("(from:" + t.addr + " OR to:" + t.addr + ") newer_than:" + CONV_REPLY_DAYS + "d", 0, 10);
         threads.forEach(function(thread) {
           thread.getMessages().forEach(function(msg) {
-            if (fromAddress_(msg.getFrom()) !== t.addr) return; // adresse EXACTE de l'exp\xE9diteur (jamais une adresse voisine)
             var id = "g_" + msg.getId();
             if (seen[id]) return;
+            var sender = fromAddress_(msg.getFrom());
+            var inbound = sender === t.addr;
+            var outbound = !inbound && !!me && sender === me && String(msg.getTo() || "").toLowerCase().indexOf(t.addr) >= 0;
+            if (!inbound && !outbound) return;
             var when = msg.getDate();
             var iso = when && when.toISOString ? when.toISOString() : "";
             if (!iso || iso <= t.first) return; // ant\xE9rieur \xE0 notre premier message : sans rapport avec cette conversation
+            var subject = String(msg.getSubject() || "");
+            if (outbound && subject.toLowerCase().indexOf(systemPrefix) === 0) {
+              // E-mail envoy\xE9 par Gestyria : d\xE9j\xE0 inscrit s'il date d'apr\xE8s les conversations ; sinon (envoi plus ancien) on l'ajoute
+              var logged = (sentTimes[t.addr] || []).some(function(ms) { return Math.abs(ms - new Date(iso).getTime()) < 600000; });
+              if (logged) { seen[id] = true; return; }
+            }
             var text = replyText_(msg.getPlainBody());
             var files = 0;
             try { files = msg.getAttachments().length; } catch(errAtt) {}
             if (files > 0) text += (text ? "\\n\\n" : "") + "[" + files + " pi\xE8ce" + (files > 1 ? "s" : "") + " jointe" + (files > 1 ? "s" : "") + " : \xE0 voir dans votre bo\xEEte Gmail]";
             if (!text) return;
             seen[id] = true;
-            if (convLog_(ss, { id: id, at: iso, reservationId: t.reservationId, dir: "in", channel: "email", kind: "reply", subject: msg.getSubject(), text: text, name: t.name, email: t.addr })) {
-              added++;
-              if (names.indexOf(t.name) < 0) names.push(t.name);
+            if (convLog_(ss, { id: id, at: iso, reservationId: t.reservationId, dir: inbound ? "in" : "out", channel: "email", kind: inbound ? "reply" : "direct", subject: subject, text: text, name: t.name, email: t.addr })) {
+              if (inbound) { added++; if (names.indexOf(t.name) < 0) names.push(t.name); }
             }
           });
         });
@@ -48089,20 +48140,20 @@ Cordialement`
       notify18();
     }
   }
-  function useConversations() {
+  function useConversations(enabled = true) {
     const [, tick] = (0, import_react82.useState)(0);
     (0, import_react82.useEffect)(() => {
       const l = () => tick((n) => n + 1);
       listeners21.add(l);
-      void loadConversations();
+      if (enabled) void loadConversations();
       return () => {
         listeners21.delete(l);
       };
-    }, []);
+    }, [enabled]);
     return { messages: cache2, loading: loading2, error: lastError, refresh: () => void loadConversations(true) };
   }
   async function syncReplies(force = false) {
-    if (syncing || !force && Date.now() - syncedAt < 12e4) return 0;
+    if (syncing || !force && Date.now() - syncedAt < 1e5) return 0;
     syncing = true;
     syncedAt = Date.now();
     let added = 0;
@@ -48123,6 +48174,15 @@ Cordialement`
     await loadConversations(true);
     return added;
   }
+  function markRepliesSeen(messages) {
+    const latest = messages.filter((m) => m.dir === "in").reduce((a, m) => m.at > a ? m.at : a, "");
+    if (!latest || latest <= readSeen()) return;
+    try {
+      localStorage.setItem(SEEN_KEY, latest);
+    } catch {
+    }
+    listeners21.forEach((l) => l());
+  }
   async function sendConversationMessage(input7) {
     await requireV44();
     await connectorPost({ action: "conversationSend", ...input7, kind: "message" });
@@ -48133,7 +48193,7 @@ Cordialement`
     await connectorPost({ action: "conversationNote", reservationId, name, channel, text, dir, ...at ? { at } : {} });
     await loadConversations(true);
   }
-  var import_react82, CONNECTOR_V44_MESSAGE, cache2, loadedAt, lastError, loading2, listeners21, notify18, replies, syncedAt, syncing, getRepliesState;
+  var import_react82, CONNECTOR_V44_MESSAGE, cache2, loadedAt, lastError, loading2, listeners21, notify18, replies, syncedAt, syncing, getRepliesState, SEEN_KEY, readSeen, unreadReplies;
   var init_service = __esm({
     "src/modules/conversations/service.ts"() {
       "use strict";
@@ -48150,6 +48210,18 @@ Cordialement`
       syncedAt = 0;
       syncing = false;
       getRepliesState = () => replies;
+      SEEN_KEY = "gestyria_conv_seen_v1";
+      readSeen = () => {
+        try {
+          return localStorage.getItem(SEEN_KEY) || "";
+        } catch {
+          return "";
+        }
+      };
+      unreadReplies = (messages) => {
+        const seen = readSeen() || new Date(Date.now() - 3 * 864e5).toISOString();
+        return messages.filter((m) => m.dir === "in" && m.at > seen);
+      };
     }
   });
 
@@ -48178,7 +48250,8 @@ Cordialement`
         depositLate: "Relance d'acompte envoy\xE9e",
         arrival: "E-mail avant l'arriv\xE9e envoy\xE9",
         review: "Demande d'avis envoy\xE9e",
-        message: "Message envoy\xE9"
+        message: "Message envoy\xE9",
+        direct: "E-mail envoy\xE9 depuis votre messagerie"
       };
       CHANNEL_LABELS = { email: "E-mail", whatsapp: "WhatsApp", phone: "Appel t\xE9l\xE9phonique", sms: "SMS", other: "Autre" };
       channelLabel = (c) => CHANNEL_LABELS[c] || "Autre";
@@ -48215,6 +48288,7 @@ Cordialement`
         const [noteDir, setNoteDir] = (0, import_react83.useState)("note");
         const [noteAt, setNoteAt] = (0, import_react83.useState)("");
         const endRef = (0, import_react83.useRef)(null);
+        const textRef = (0, import_react83.useRef)(null);
         const canMail = validEmail(reservation.guestEmail);
         (0, import_react83.useEffect)(() => {
           endRef.current?.scrollIntoView?.({ block: "nearest" });
@@ -48272,7 +48346,8 @@ Cordialement`
                     " \xB7 ",
                     frDateTime(m.at)
                   ] }),
-                  m.text && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "mt-1 whitespace-pre-line text-neutral-800", children: m.text })
+                  m.text && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "mt-1 whitespace-pre-line text-neutral-800", children: m.text }),
+                  m.dir === "in" && canMail && /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("button", { type: "button", onClick: () => textRef.current?.focus(), className: "mt-1.5 text-[11px] font-bold text-sy-325032 hover:underline cursor-pointer", "data-conversation-reply": true, children: "R\xE9pondre" })
                 ]
               }
             ) }, m.id)),
@@ -48314,6 +48389,7 @@ Cordialement`
               /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(
                 "textarea",
                 {
+                  ref: textRef,
                   value: text,
                   onChange: (e) => setText(e.target.value),
                   rows: 4,
@@ -48401,6 +48477,9 @@ Cordialement`
           void checkReplies(false);
         }, []);
         const replies2 = getRepliesState();
+        (0, import_react85.useEffect)(() => {
+          markRepliesSeen(messages);
+        }, [messages]);
         const byId = (0, import_react84.useMemo)(() => new Map(reservations.map((r) => [r.id, r])), [reservations]);
         const conversations = (0, import_react84.useMemo)(() => {
           const last = /* @__PURE__ */ new Map();
@@ -73617,6 +73696,7 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
       "use strict";
       import_react158 = __require("react");
       init_connector();
+      init_service();
       init_privacy();
       init_guests();
       init_caution();
@@ -73657,6 +73737,8 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
       ] });
       TodayView = ({ reservations, onOpen, onToast }) => {
         const settings = useSettings();
+        const conversations = useConversations(isModuleEnabled("conversations", settings) && !!getStoredAppsScriptUrl());
+        const unread = (0, import_react158.useMemo)(() => unreadReplies(conversations.messages), [conversations.messages]);
         const records5 = useHygieneRecords();
         const staffMap = useStaff();
         const docsMap = useDocs();
@@ -73708,6 +73790,7 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
           const out = [];
           housekeeping.late.forEach((t) => out.push({ id: `hl${t.id}`, label: `M\xE9nage en retard : ${t.title}`, detail: `${t.zoneName} \xB7 pr\xE9vu le ${frDate3(t.dueDate || t.date)}`, tone: "red", tab: "housekeeping" }));
           housekeeping.todo.forEach((t) => out.push({ id: `ht${t.id}`, label: `M\xE9nage \xE0 faire aujourd'hui : ${t.title}`, detail: `${t.zoneName}${t.time ? ` \xB7 ${t.time}` : ""}`, tone: "amber", tab: "housekeeping" }));
+          if (unread.length > 0) out.push({ id: "conv-unread", label: `${unread.length} r\xE9ponse${unread.length > 1 ? "s" : ""} de client${unread.length > 1 ? "s" : ""} \xE0 lire`, detail: Array.from(new Set(unread.map((m) => m.name).filter(Boolean))).slice(0, 4).join(", "), tone: "red", tab: "conversations" });
           const pay = getSite(settings).booking.payment;
           if (pay.advance && pay.remindApp) depositAlerts(reservations, today7, pay.remindBefore).forEach((a) => out.push(a));
           if (mealOrders.toConfirm.length > 0) out.push({ id: "meals-new", label: `${mealOrders.toConfirm.length} commande(s) de repas \xE0 confirmer`, detail: "Voyageurs en attente de r\xE9ponse", tone: "red", tab: "meals", section: "orders" });
@@ -73738,7 +73821,7 @@ Ils remplacent les tarifs actuels de ces nuits (prix modifi\xE9s \xE0 la main, a
             complianceAlerts({ map: complianceMap, activities: cs.activities, answered: cs.answered, rooms: settings.accommodations.filter((a) => a.active).map((a) => ({ id: a.id, name: a.name })), reservations, today: today7 }).forEach((a) => out.push({ id: a.id, label: a.label, detail: a.detail, tone: a.tone, tab: "compliance" }));
           }
           return out.sort((a, b) => (a.tone === "red" ? 0 : 1) - (b.tone === "red" ? 0 : 1));
-        }, [records5, staffMap, settings, today7, hyOn, staffOn, housekeeping, mealOrders, openConnector, expiredCount, reservations, complianceMap, utilitiesMap]);
+        }, [records5, staffMap, settings, today7, hyOn, staffOn, housekeeping, mealOrders, openConnector, expiredCount, reservations, complianceMap, utilitiesMap, unread]);
         const hits = (0, import_react158.useMemo)(() => {
           if (!query.trim()) return [];
           const docs3 = [];
@@ -82753,6 +82836,24 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
         showToast(`${merged.added} nouvelle${merged.added > 1 ? "s" : ""} demande${merged.added > 1 ? "s" : ""} de r\xE9servation du site \xE0 valider.`);
       }
     };
+    const refreshReplies = async () => {
+      if (!getStoredAppsScriptUrl() || document.visibilityState === "hidden" || !isModuleEnabled("conversations", getSettings())) return;
+      const added = await syncReplies(false);
+      if (added > 0) showToast(`${added} nouvelle${added > 1 ? "s" : ""} r\xE9ponse${added > 1 ? "s" : ""} de client${added > 1 ? "s" : ""} : voir \xAB Aujourd'hui \xBB ou l'onglet Conversations.`);
+    };
+    (0, import_react172.useEffect)(() => {
+      const timer = window.setInterval(() => void refreshReplies(), 12e4);
+      const first = window.setTimeout(() => void refreshReplies(), 4e3);
+      const onVisible = () => {
+        if (document.visibilityState === "visible") void refreshReplies();
+      };
+      document.addEventListener("visibilitychange", onVisible);
+      return () => {
+        window.clearInterval(timer);
+        window.clearTimeout(first);
+        document.removeEventListener("visibilitychange", onVisible);
+      };
+    }, []);
     (0, import_react172.useEffect)(() => {
       const timer = window.setInterval(() => void refreshSiteRequests(), 12e4);
       const onVisible = () => {
@@ -83610,6 +83711,7 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       init_PlanningViewSwitch();
       init_RequestsBanner();
       init_ConversationsView();
+      init_service();
       init_requests();
       init_store13();
       init_police();
