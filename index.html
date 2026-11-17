@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v316</title>
-  <meta name="application-name" content="Gestyria v316" />
+  <title>Gestyria v317</title>
+  <meta name="application-name" content="Gestyria v317" />
   <!-- Application installable (PWA) : icône, plein écran, barre du haut colorée. Chemins relatifs : valables à la racine du site. -->
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#325032" />
@@ -769,6 +769,12 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
   display: none;
 }
 
+/* Élégant & naturel : fond de page légèrement teinté de la couleur principale, pour détacher les cartes blanches */
+html[data-theme="classic"] .sy-shell {
+  background-color: #eceeea;
+  background-color: color-mix(in srgb, rgb(var(--sy-325032)) 9%, #ffffff);
+}
+
 /* ===================================================================== */
 /* Moderne & minimaliste : fonds blancs, angles nets, barre à gauche      */
 /* ===================================================================== */
@@ -790,8 +796,10 @@ html[data-theme="moderne"] {
   --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
   --side-w: 15.5rem;
 }
+/* Fond de page teinté de la couleur principale (discret) : les cartes et tableaux blancs ressortent au lieu de se fondre dans la page */
 html[data-theme="moderne"] .sy-shell {
-  background-color: rgb(var(--c-neutral-50));
+  background-color: #e9eeee;
+  background-color: color-mix(in srgb, rgb(var(--sy-325032)) 10%, #ffffff);
 }
 
 /* ===================================================================== */
@@ -9396,7 +9404,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "316";
+      APP_VERSION = "317";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
