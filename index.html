@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v315</title>
-  <meta name="application-name" content="Gestyria v315" />
+  <title>Gestyria v316</title>
+  <meta name="application-name" content="Gestyria v316" />
   <!-- Application installable (PWA) : icône, plein écran, barre du haut colorée. Chemins relatifs : valables à la racine du site. -->
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#325032" />
@@ -9396,7 +9396,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "315";
+      APP_VERSION = "316";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -23743,11 +23743,17 @@ function siteRequestsList_() {
 
 // L'administratrice accepte ou refuse une demande : le statut est mis \xE0 jour et le client est pr\xE9venu par e-mail
 function siteRequestDecision_(data) {
-  var decision = textOf_(data.decision) === "refused" ? "refused" : textOf_(data.decision) === "released" ? "released" : "accepted";
+  var decision = textOf_(data.decision) === "refused" ? "refused" : textOf_(data.decision) === "released" ? "released" : textOf_(data.decision) === "restored" ? "restored" : "accepted";
   var ss = getTargetSpreadsheet();
   var found = null;
   readRequests_(ss).forEach(function(r) { if (r.id === textOf_(data.id)) found = r; });
   if (!found) return { status: "error", message: "Demande introuvable." };
+  // V44 : une demande lib\xE9r\xE9e \xE0 tort redevient \xAB Accept\xE9e \xBB (les nuits sont de nouveau prises sur le site), sans e-mail au client
+  if (decision === "restored") {
+    if (found.status !== "released") return { status: "error", message: "Seule une demande annul\xE9e peut \xEAtre r\xE9tablie." };
+    requestSheet_(ss).getRange(found.row, 13).setValue(REQUEST_STATUS_TEXT.accepted);
+    return { status: "success", version: CONNECTOR_VERSION };
+  }
   requestSheet_(ss).getRange(found.row, 13).setValue(REQUEST_STATUS_TEXT[decision]);
   // V33 : r\xE9servation annul\xE9e ou supprim\xE9e dans l'application : les nuits sont lib\xE9r\xE9es sur le site, sans e-mail au client
   if (decision === "released") return { status: "success", version: CONNECTOR_VERSION };
@@ -47728,12 +47734,11 @@ Cordialement`
     }).sort((a, b) => String(b.siteDecidedAt).localeCompare(String(a.siteDecidedAt)));
   }
   function pendingReleases(reservations, requests) {
-    const imported = loadImported();
     const out = [];
     requests.forEach((q) => {
       if (q.status !== "accepted" && q.status !== "auto") return;
       const r = reservations.find((x) => x.id === `${SITE_RESERVATION_PREFIX}${q.id}`);
-      if (r ? r.reservationStatus === "cancelled" : reservations.length > 0 && imported.includes(q.id)) out.push(q.id);
+      if (r && r.reservationStatus === "cancelled") out.push(q.id);
     });
     return out;
   }
@@ -70922,6 +70927,18 @@ Sitemap: ${base2}sitemap.xml
         (0, import_react148.useEffect)(() => {
           void load();
         }, []);
+        const restore = async (q) => {
+          setBusy(q.id);
+          try {
+            await decideSiteRequest(q.id, "restored");
+            onToast("Demande r\xE9tablie : les nuits sont de nouveau prises sur le site, le client n'a pas \xE9t\xE9 pr\xE9venu.");
+            await load();
+          } catch (err) {
+            onToast(err?.message || "R\xE9tablissement impossible (connecteur Google \xE0 mettre \xE0 jour ?).");
+          } finally {
+            setBusy("");
+          }
+        };
         const decide = async (q, decision) => {
           const res2 = reservations.find((r) => r.id === `${SITE_RESERVATION_PREFIX}${q.id}`);
           if (!res2) {
@@ -70988,7 +71005,14 @@ Sitemap: ${base2}sitemap.xml
                 setNoting(q.id);
                 setReason("");
               }, className: "text-[11px] text-sy-325032 font-semibold hover:underline cursor-pointer", children: "Ajouter un message pour le client" }),
-              writing && /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "space-y-1", children: [
+              q.status === "released" && (() => {
+                const res2 = reservations.find((r) => r.id === `${SITE_RESERVATION_PREFIX}${q.id}`);
+                return res2 && res2.reservationStatus !== "cancelled" ? /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "p-2.5 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-900 flex flex-wrap items-center gap-2", "data-site-restore": true, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("span", { className: "flex-1 min-w-[14rem]", children: "Cette demande est marqu\xE9e \xAB Annul\xE9e \xBB (ses nuits sont libres sur le site), mais la r\xE9servation est toujours dans votre calendrier." }),
+                  /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("button", { type: "button", disabled: busy === q.id, onClick: () => restore(q), className: "px-2.5 py-1.5 font-bold text-white bg-sy-325032 rounded-lg cursor-pointer disabled:opacity-50", children: "R\xE9tablir la demande" })
+                ] }) : null;
+              })(),
+              asking && /* @__PURE__ */ (0, import_jsx_runtime146.jsxs)("div", { className: "space-y-1", children: [
                 /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("label", { className: "text-[11px] font-semibold text-neutral-700", htmlFor: `rp-${q.id}`, children: "Message au client (facultatif, envoy\xE9 par e-mail avec l'acceptation ou le refus)" }),
                 /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("textarea", { id: `rp-${q.id}`, value: reason, onChange: (e) => setReason(e.target.value), rows: 2, className: "w-full text-xs border border-neutral-200 rounded-lg p-2" }),
                 /* @__PURE__ */ (0, import_jsx_runtime146.jsx)("button", { type: "button", onClick: () => {
