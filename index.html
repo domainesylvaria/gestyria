@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v312</title>
-  <meta name="application-name" content="Gestyria v312" />
+  <title>Gestyria v313</title>
+  <meta name="application-name" content="Gestyria v313" />
   <!-- Application installable (PWA) : icône, plein écran, barre du haut colorée. Chemins relatifs : valables à la racine du site. -->
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#325032" />
@@ -9382,7 +9382,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "312";
+      APP_VERSION = "313";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -47407,12 +47407,33 @@ Cordialement`
     });
     return out;
   }
+  function applyRequestDecisions(reservations, requests, now = (/* @__PURE__ */ new Date()).toISOString()) {
+    const accepted = [];
+    const refused2 = [];
+    const list3 = reservations.map((r) => {
+      if (!isSiteReservation(r) || r.reservationStatus !== "pending") return r;
+      const q = requests.find((x) => `${SITE_RESERVATION_PREFIX}${x.id}` === r.id);
+      if (!q || q.status !== "accepted" && q.status !== "refused") return r;
+      (q.status === "accepted" ? accepted : refused2).push(r.id);
+      return { ...r, reservationStatus: q.status === "accepted" ? "confirmed" : "cancelled", siteDecidedAt: r.siteDecidedAt || now };
+    });
+    return { reservations: accepted.length + refused2.length > 0 ? list3 : reservations, accepted, refused: refused2 };
+  }
+  function recentDecidedSiteReservations(list3, now = Date.now()) {
+    const limit = DECIDED_VISIBLE_DAYS * 864e5;
+    return list3.filter((r) => {
+      if (!isSiteReservation(r) || r.siteDecisionHidden || !r.siteDecidedAt) return false;
+      if (r.reservationStatus !== "confirmed" && r.reservationStatus !== "cancelled") return false;
+      const t = Date.parse(r.siteDecidedAt);
+      return Number.isFinite(t) && now - t >= 0 && now - t <= limit;
+    }).sort((a, b) => String(b.siteDecidedAt).localeCompare(String(a.siteDecidedAt)));
+  }
   function pendingReleases(reservations, requests) {
     const imported = loadImported();
     const out = [];
     requests.forEach((q) => {
       if (q.status !== "accepted" && q.status !== "auto") return;
-      const r = reservations.find((x) => x.id === `\\`);
+      const r = reservations.find((x) => x.id === `${SITE_RESERVATION_PREFIX}${q.id}`);
       if (r ? r.reservationStatus === "cancelled" : reservations.length > 0 && imported.includes(q.id)) out.push(q.id);
     });
     return out;
@@ -47431,7 +47452,7 @@ Cordialement`
   async function decideSiteRequest(requestId, decision, message = "") {
     await connectorPost({ action: "siteRequestDecision", id: requestId, decision, message });
   }
-  var SITE_RESERVATION_PREFIX, IMPORTED_KEY, isSiteReservation, dayCount;
+  var SITE_RESERVATION_PREFIX, IMPORTED_KEY, isSiteReservation, dayCount, DECIDED_VISIBLE_DAYS;
   var init_requests = __esm({
     "src/modules/siteweb/requests.ts"() {
       "use strict";
@@ -47440,6 +47461,7 @@ Cordialement`
       IMPORTED_KEY = "domaine_sylvaria_site_requests_imported_v1";
       isSiteReservation = (r) => r.id.startsWith(SITE_RESERVATION_PREFIX);
       dayCount = (a, b) => Math.round((Date.UTC(+b.slice(0, 4), +b.slice(5, 7) - 1, +b.slice(8, 10)) - Date.UTC(+a.slice(0, 4), +a.slice(5, 7) - 1, +a.slice(8, 10))) / 864e5);
+      DECIDED_VISIBLE_DAYS = 7;
     }
   });
 
@@ -47454,13 +47476,14 @@ Cordialement`
       import_jsx_runtime72 = __require("react/jsx-runtime");
       frDate9 = (iso) => iso.split("-").reverse().join("/");
       euro2 = (n) => `${n.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} \u20AC`;
-      RequestsBanner = ({ reservations, rooms, onOpen, onDecide }) => {
+      RequestsBanner = ({ reservations, rooms, onOpen, onDecide, onHide }) => {
         const pending2 = pendingSiteReservations(reservations);
+        const decided = recentDecidedSiteReservations(reservations);
         const [busy, setBusy] = (0, import_react81.useState)("");
         const [refusing, setRefusing] = (0, import_react81.useState)("");
         const [noting, setNoting] = (0, import_react81.useState)("");
         const [reason, setReason] = (0, import_react81.useState)("");
-        if (pending2.length === 0) return null;
+        if (pending2.length === 0 && decided.length === 0) return null;
         const decide = async (r, decision) => {
           setBusy(r.id);
           try {
@@ -47472,8 +47495,8 @@ Cordialement`
             setReason("");
           }
         };
-        return /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("section", { className: "rounded-2xl border border-amber-300 bg-amber-50 p-3 sm:p-4 space-y-3", "aria-label": "Demandes de r\xE9servation du site", "data-site-requests": true, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("h3", { className: "flex items-center gap-2 font-serif font-bold text-sm text-amber-900", children: [
+        return /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("section", { className: `rounded-2xl border p-3 sm:p-4 space-y-3 ${pending2.length > 0 ? "border-amber-300 bg-amber-50" : "border-neutral-200 bg-neutral-50"}`, "aria-label": "Demandes de r\xE9servation du site", "data-site-requests": true, children: [
+          pending2.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("h3", { className: "flex items-center gap-2 font-serif font-bold text-sm text-amber-900", children: [
             /* @__PURE__ */ (0, import_jsx_runtime72.jsx)(Globe, { className: "w-4 h-4" }),
             " Demandes du site \xE0 valider (",
             pending2.length,
@@ -47528,7 +47551,37 @@ Cordialement`
                 }, className: "text-[11px] text-neutral-500 hover:underline cursor-pointer", children: "Annuler" })
               ] })
             ] }, r.id);
-          }) })
+          }) }),
+          decided.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("div", { className: "space-y-2", "data-site-decided": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("h3", { className: "flex items-center gap-2 font-serif font-bold text-sm text-neutral-700", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime72.jsx)(CalendarCheck, { className: "w-4 h-4" }),
+              " Demandes trait\xE9es r\xE9cemment"
+            ] }),
+            decided.map((r) => {
+              const accepted = r.reservationStatus === "confirmed";
+              return /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("div", { className: "bg-white rounded-xl border border-neutral-200 p-3 flex flex-wrap items-center justify-between gap-2", "data-site-decided-item": true, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("div", { className: "min-w-0 text-xs text-neutral-800", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("p", { className: "font-bold text-sm text-neutral-900", children: [
+                    r.guestName,
+                    " ",
+                    /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("span", { className: `ml-1 text-[11px] font-bold px-2 py-0.5 rounded-full ${accepted ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`, children: accepted ? "Demande accept\xE9e" : "Demande refus\xE9e" })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("p", { children: [
+                    rooms[r.roomId.toLowerCase()] || r.roomId,
+                    " \xB7 ",
+                    r.checkIn === r.checkOut ? frDate9(r.checkIn) : `${frDate9(r.checkIn)} \u2192 ${frDate9(r.checkOut)}`
+                  ] })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("div", { className: "flex flex-wrap gap-1.5", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime72.jsxs)("button", { type: "button", onClick: () => onOpen(r), className: "px-2.5 py-1.5 text-[11px] font-bold text-white bg-sy-325032 hover:bg-sy-253d25 rounded-lg cursor-pointer flex items-center gap-1", "data-site-open-sheet": true, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime72.jsx)(CalendarCheck, { className: "w-3.5 h-3.5" }),
+                    " Voir la fiche"
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime72.jsx)("button", { type: "button", onClick: () => onHide(r), className: "px-2.5 py-1.5 text-[11px] font-semibold rounded-lg border border-neutral-200 hover:bg-neutral-50 cursor-pointer", "data-site-hide": true, children: "Masquer" })
+                ] })
+              ] }, r.id);
+            })
+          ] })
         ] });
       };
     }
@@ -81521,6 +81574,12 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
             siteAdded = siteMerged.added;
             if (!localOnly) toSync = { reservations: nextReservations, reviews: nextReviews };
           }
+          const siteDecided = applyRequestDecisions(nextReservations, siteRequests);
+          if (siteDecided.accepted.length + siteDecided.refused.length > 0) {
+            const payTerms = getSite().booking.payment;
+            nextReservations = siteDecided.reservations.map((r) => siteDecided.accepted.includes(r.id) ? withDepositTerms(r, payTerms) : r);
+            if (!localOnly) toSync = { reservations: nextReservations, reviews: nextReviews };
+          }
           const sitePaid = applyOnlinePayments(nextReservations, siteRequests);
           if (sitePaid.received.length > 0) {
             nextReservations = sitePaid.reservations;
@@ -81648,14 +81707,22 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
           triggerBackgroundSync(base2, externalReviewsRef.current);
         }
       }
+      const decidedElsewhere = applyRequestDecisions(base2, requests);
+      const decidedCount = decidedElsewhere.accepted.length + decidedElsewhere.refused.length;
+      if (decidedCount > 0) {
+        const termed = decidedElsewhere.reservations.map((r) => decidedElsewhere.accepted.includes(r.id) ? withDepositTerms(r, pay) : r);
+        base2 = termed;
+      }
       const merged = mergeSiteRequests(base2, requests, pay);
       const paid = applyOnlinePayments(merged.reservations, requests);
-      if (merged.added === 0 && paid.received.length === 0) return;
+      if (merged.added === 0 && paid.received.length === 0 && decidedCount === 0) return;
       setReservations(paid.reservations);
       saveReservations(paid.reservations);
       triggerBackgroundSync(paid.reservations, externalReviewsRef.current);
       if (paid.received.length > 0) {
         showToast(`Acompte re\xE7u en ligne : ${paid.received.map((x) => `${x.name} (${x.amount.toLocaleString("fr-FR")} \u20AC)`).join(", ")}.`);
+      } else if (merged.added === 0) {
+        showToast(`${decidedCount} demande${decidedCount > 1 ? "s" : ""} du site d\xE9j\xE0 trait\xE9e${decidedCount > 1 ? "s" : ""} sur un autre appareil.`);
       } else {
         showToast(`${merged.added} nouvelle${merged.added > 1 ? "s" : ""} demande${merged.added > 1 ? "s" : ""} de r\xE9servation du site \xE0 valider.`);
       }
@@ -81936,7 +82003,7 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
     const handleDecideSiteRequest = async (res2, decision, message) => {
       const updated = reservations.map((r) => {
         if (r.id !== res2.id) return r;
-        const next = { ...r, reservationStatus: decision === "accepted" ? "confirmed" : "cancelled" };
+        const next = { ...r, reservationStatus: decision === "accepted" ? "confirmed" : "cancelled", siteDecidedAt: (/* @__PURE__ */ new Date()).toISOString(), siteDecisionHidden: false };
         return decision === "accepted" ? withDepositTerms(next, getSite().booking.payment) : next;
       });
       setReservations(updated);
@@ -81948,6 +82015,12 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
       } catch (err) {
         showToast(`Enregistr\xE9, mais le client n'a pas pu \xEAtre pr\xE9venu : ${err?.message || "connecteur injoignable"}.`);
       }
+    };
+    const handleHideSiteDecision = (res2) => {
+      const updated = reservations.map((r) => r.id === res2.id ? { ...r, siteDecisionHidden: true } : r);
+      setReservations(updated);
+      saveReservations(updated);
+      triggerBackgroundSync(updated, externalReviews);
     };
     const handleUpdateStatus = (id, newStatus) => {
       const updated = reservations.map((r) => {
@@ -82078,7 +82151,8 @@ Que faire : r\xE9duisez ou supprimez des photos (livret, tickets de d\xE9penses)
             reservations,
             rooms: Object.fromEntries([...settings.accommodations, ...settings.resources, ...settings.services].map((x) => [x.id.toLowerCase(), x.name])),
             onOpen: (r) => setViewingReservation(r),
-            onDecide: handleDecideSiteRequest
+            onDecide: handleDecideSiteRequest,
+            onHide: handleHideSiteDecision
           }
         ),
         activeTab === "timeline" && /* @__PURE__ */ (0, import_jsx_runtime168.jsx)(PlanningViewSwitch, { view: planningView, onChange: setPlanningView }),
