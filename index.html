@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v317</title>
-  <meta name="application-name" content="Gestyria v317" />
+  <title>Gestyria v318</title>
+  <meta name="application-name" content="Gestyria v318" />
   <!-- Application installable (PWA) : icône, plein écran, barre du haut colorée. Chemins relatifs : valables à la racine du site. -->
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#325032" />
@@ -771,8 +771,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
 
 /* Élégant & naturel : fond de page légèrement teinté de la couleur principale, pour détacher les cartes blanches */
 html[data-theme="classic"] .sy-shell {
-  background-color: #eceeea;
-  background-color: color-mix(in srgb, rgb(var(--sy-325032)) 9%, #ffffff);
+  background-color: #e6eae4;
+  background-color: color-mix(in srgb, rgb(var(--sy-325032)) var(--page-tint, 16%), #ffffff);
 }
 
 /* ===================================================================== */
@@ -798,8 +798,8 @@ html[data-theme="moderne"] {
 }
 /* Fond de page teinté de la couleur principale (discret) : les cartes et tableaux blancs ressortent au lieu de se fondre dans la page */
 html[data-theme="moderne"] .sy-shell {
-  background-color: #e9eeee;
-  background-color: color-mix(in srgb, rgb(var(--sy-325032)) 10%, #ffffff);
+  background-color: #e4ecec;
+  background-color: color-mix(in srgb, rgb(var(--sy-325032)) var(--page-tint, 16%), #ffffff);
 }
 
 /* ===================================================================== */
@@ -9404,7 +9404,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "317";
+      APP_VERSION = "318";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -26818,11 +26818,16 @@ function conversationNote_(data) {
           const c = normalizeHex(raw.colors?.[id]);
           if (c) colors[id] = c;
         });
-        return { theme: raw.theme, colors };
+        const tints = {};
+        THEME_ORDER.forEach((id) => {
+          const t = raw.tints?.[id];
+          if (hasPageTint(id) && typeof t === "number" && isFinite(t)) tints[id] = Math.min(TINT_MAX, Math.max(0, Math.round(t)));
+        });
+        return { theme: raw.theme, colors, tints };
       }
     } catch {
     }
-    return { theme: "classic", colors: {} };
+    return { theme: "classic", colors: {}, tints: {} };
   }
   function saveAppearance(next) {
     try {
@@ -26834,7 +26839,7 @@ function conversationNote_(data) {
     if (id === "classic") return normalizeHex(establishmentColor) || DEFAULT_THEME_COLOR;
     return appearance.colors[id] || THEMES[id].defaultColor;
   }
-  function applyAppearance(id, color) {
+  function applyAppearance(id, color, tint2) {
     try {
       const root = document.documentElement;
       const def = THEMES[id] || THEMES.classic;
@@ -26844,6 +26849,7 @@ function conversationNote_(data) {
       appliedVars.filter((n) => !(n in vars)).forEach((n) => root.style.removeProperty(n));
       Object.entries(vars).forEach(([n, v]) => root.style.setProperty(n, v));
       appliedVars = Object.keys(vars);
+      root.style.setProperty("--page-tint", `${tint2 ?? TINT_DEFAULTS[def.id] ?? 0}%`);
       const mode = { dark: def.dark, tintHue: def.tintHue };
       applyThemeColor(color || def.defaultColor, mode);
     } catch {
@@ -26856,14 +26862,14 @@ function conversationNote_(data) {
   function applySavedAppearance(establishmentColor) {
     lastEstablishmentColor = establishmentColor;
     const a = getAppearance();
-    applyAppearance(a.theme, colorOfTheme(a.theme, a, establishmentColor));
+    applyAppearance(a.theme, colorOfTheme(a.theme, a, establishmentColor), tintOfTheme(a.theme, a));
   }
   function setAppearance(next, establishmentColor) {
     saveAppearance(next);
     applySavedAppearance(establishmentColor);
     listeners18.forEach((l) => l());
   }
-  var PALETTES, STEPS, DEFAULT_WHITE, WHITE_VAR, COOL, INK, NIGHT, THEMES, THEME_ORDER, hexToChannels, paletteVar, GREY_FAMILIES, TINT_FAMILIES, EMERALD, emeraldInverse, APPEARANCE_STORAGE_KEY, isThemeId, appliedVars, listeners18, lastEstablishmentColor;
+  var PALETTES, STEPS, DEFAULT_WHITE, WHITE_VAR, COOL, INK, NIGHT, THEMES, THEME_ORDER, hexToChannels, paletteVar, GREY_FAMILIES, TINT_FAMILIES, EMERALD, emeraldInverse, APPEARANCE_STORAGE_KEY, TINT_DEFAULTS, TINT_MAX, hasPageTint, tintOfTheme, isThemeId, appliedVars, listeners18, lastEstablishmentColor;
   var init_themes2 = __esm({
     "src/core/theme/themes.ts"() {
       "use strict";
@@ -26957,6 +26963,10 @@ function conversationNote_(data) {
       EMERALD = { "50": "#ecfdf5", "100": "#d1fae5", "200": "#a7f3d0", "300": "#6ee7b7", "400": "#34d399", "500": "#10b981", "600": "#059669", "700": "#047857", "800": "#065f46", "900": "#064e3b", "950": "#022c22" };
       emeraldInverse = (i) => EMERALD[STEPS[STEPS.length - 1 - i]];
       APPEARANCE_STORAGE_KEY = "gestyria_appearance_v1";
+      TINT_DEFAULTS = { classic: 16, moderne: 16 };
+      TINT_MAX = 40;
+      hasPageTint = (id) => id in TINT_DEFAULTS;
+      tintOfTheme = (id, appearance) => appearance.tints?.[id] ?? TINT_DEFAULTS[id] ?? 0;
       isThemeId = (v) => typeof v === "string" && v in THEMES;
       appliedVars = [];
       listeners18 = /* @__PURE__ */ new Set();
@@ -27248,12 +27258,14 @@ function conversationNote_(data) {
         const colorOf = (id) => colors[id] || THEMES[id].defaultColor;
         const def = THEMES[theme];
         const color = colorOf(theme);
+        const [tints, setTints] = (0, import_react23.useState)(() => ({ ...saved.tints }));
+        const tintOf = (id) => tintOfTheme(id, { tints });
         const [, refresh] = (0, import_react23.useState)(0);
         (0, import_react23.useEffect)(() => onAppearanceChanged(() => refresh((n) => n + 1)), []);
-        const dirty = theme !== saved.theme || THEME_ORDER.some((id) => colorOf(id) !== colorOfTheme(id, saved, establishmentColor));
+        const dirty = theme !== saved.theme || THEME_ORDER.some((id) => colorOf(id) !== colorOfTheme(id, saved, establishmentColor) || tintOf(id) !== tintOfTheme(id, saved));
         (0, import_react23.useEffect)(() => {
-          applyAppearance(theme, color);
-        }, [theme, color]);
+          applyAppearance(theme, color, tintOf(theme));
+        }, [theme, color, tints]);
         (0, import_react23.useEffect)(() => () => applySavedAppearance(getSettings().establishment.themeColor), []);
         const contrast = contrastWithWhite(color, def.white);
         const setColor = (v) => setColors({ ...colors, [theme]: normalizeHex(v) || color });
@@ -27264,7 +27276,7 @@ function conversationNote_(data) {
           if (normalizeHex(current3.establishment.themeColor) !== classicColor) {
             saveSettings({ ...current3, establishment: { ...current3.establishment, themeColor: classicColor } }, "Couleur principale modifi\xE9e.");
           }
-          setAppearance({ theme, colors: others }, getSettings().establishment.themeColor);
+          setAppearance({ theme, colors: others, tints }, getSettings().establishment.themeColor);
           onToast(`Apparence \xAB ${def.label} \xBB enregistr\xE9e sur cet appareil.`);
         };
         return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { children: [
@@ -27333,6 +27345,31 @@ function conversationNote_(data) {
               def.dark ? "Couleur sombre : les textes sur les boutons risquent d'\xEAtre peu lisibles." : "Couleur claire : les textes blancs sur les boutons risquent d'\xEAtre peu lisibles."
             ] })
           ] }),
+          hasPageTint(theme) && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "mt-3 p-3.5 rounded-xl border border-neutral-200 bg-white", "data-page-tint": true, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "font-serif font-bold text-sm text-neutral-900", children: "Fond de la page" }),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { className: "text-[11px] text-neutral-500 mt-0.5 mb-2.5", children: "Teinte de la couleur principale derri\xE8re les cartes et les tableaux, pour qu'ils se d\xE9tachent. \xC0 0 %, le fond est blanc ; plus vous augmentez, plus il est color\xE9. L'effet se voit tout de suite." }),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "flex flex-wrap items-center gap-3", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+                "input",
+                {
+                  type: "range",
+                  min: 0,
+                  max: TINT_MAX,
+                  step: 1,
+                  value: tintOf(theme),
+                  onChange: (e) => setTints({ ...tints, [theme]: Number(e.target.value) }),
+                  className: "flex-1 min-w-[12rem] max-w-md accent-sy-325032",
+                  "aria-label": "Intensit\xE9 du fond de page",
+                  "data-page-tint-range": true
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("span", { className: "text-xs font-mono font-semibold text-neutral-700 w-12 text-right", children: [
+                tintOf(theme),
+                " %"
+              ] }),
+              tintOf(theme) !== (TINT_DEFAULTS[theme] ?? 0) && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("button", { type: "button", onClick: () => setTints({ ...tints, [theme]: TINT_DEFAULTS[theme] ?? 0 }), className: "text-[11px] font-semibold text-sy-325032 hover:underline cursor-pointer", children: "Revenir \xE0 l'intensit\xE9 d'origine" })
+            ] })
+          ] }),
           /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(StickyActions, { children: [
             dirty && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("span", { className: "text-[11px] text-amber-700 font-semibold mr-auto", children: "Aper\xE7u non enregistr\xE9" }),
             /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
@@ -27341,6 +27378,7 @@ function conversationNote_(data) {
                 onClick: () => {
                   setTheme(saved.theme);
                   setColors({ ...saved.colors, classic: normalizeHex(establishmentColor) || DEFAULT_THEME_COLOR });
+                  setTints({ ...saved.tints });
                 },
                 children: "Annuler"
               }
@@ -47111,7 +47149,7 @@ Cordialement`
         const finish = () => {
           const current3 = getSettings();
           saveSettings(buildSetupSettingsWithProfile(current3, a), "Assistant de d\xE9marrage : \xE9tablissement configur\xE9.");
-          setAppearance({ theme, colors: getAppearance().colors }, getSettings().establishment.themeColor);
+          setAppearance({ theme, colors: getAppearance().colors, tints: getAppearance().tints }, getSettings().establishment.themeColor);
           markSetupDone();
           onClose(true, withDemo && !locked);
         };
