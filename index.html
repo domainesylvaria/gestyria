@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v320</title>
-  <meta name="application-name" content="Gestyria v320" />
+  <title>Gestyria v321</title>
+  <meta name="application-name" content="Gestyria v321" />
   <!-- Application installable (PWA) : icône, plein écran, barre du haut colorée. Chemins relatifs : valables à la racine du site. -->
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#325032" />
@@ -9404,7 +9404,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "320";
+      APP_VERSION = "321";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -48164,7 +48164,8 @@ Cordialement`
       } else {
         const data = await connectorPost({ action: "conversationsSync", force });
         added = Number(data?.added) || 0;
-        replies = { kind: "ok", message: "", at: (/* @__PURE__ */ new Date()).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) };
+        const checked = typeof data?.checked === "number" ? data.checked : replies.checked;
+        replies = { kind: "ok", message: "", at: data?.skipped && replies.at ? replies.at : (/* @__PURE__ */ new Date()).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }), checked };
       }
     } catch (err) {
       replies = { kind: "error", message: err?.message || "Lecture des r\xE9ponses impossible.", at: "" };
@@ -48526,7 +48527,8 @@ Cordialement`
           !error && replies2.kind === "ok" && /* @__PURE__ */ (0, import_jsx_runtime75.jsxs)("p", { className: "text-[11px] text-neutral-500", "data-replies-ok": true, children: [
             "R\xE9ponses des clients par e-mail : lues dans Gmail",
             replies2.at ? ` (v\xE9rifi\xE9 \xE0 ${replies2.at}` : "",
-            replies2.at ? ", puis toutes les heures)" : "",
+            replies2.at ? ", puis toutes les 2 minutes tant que l'application est ouverte)" : "",
+            typeof replies2.checked === "number" ? ` \xB7 ${replies2.checked} adresse${replies2.checked > 1 ? "s" : ""} de client surveill\xE9e${replies2.checked > 1 ? "s" : ""}` : "",
             "."
           ] }),
           !error && replies2.kind === "old" && /* @__PURE__ */ (0, import_jsx_runtime75.jsx)("p", { className: "text-[11px] text-neutral-500", "data-replies-old": true, children: replies2.message }),
