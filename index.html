@@ -6,8 +6,8 @@
   <!-- Politique de sécurité : l'application ne peut parler qu'à Google (connecteur, Sheets, Gemini) et GitHub (publication du site).
        Un script malveillant ne pourrait donc pas envoyer les clés et jetons enregistrés ailleurs. Pas d'objet, de formulaire ni de base modifiable. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; img-src 'self' data: blob: https:; media-src 'self' data: blob:; frame-src https://www.google.com https://maps.google.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://sheets.googleapis.com https://generativelanguage.googleapis.com https://api.openai.com https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'" />
-  <title>Gestyria v314</title>
-  <meta name="application-name" content="Gestyria v314" />
+  <title>Gestyria v315</title>
+  <meta name="application-name" content="Gestyria v315" />
   <!-- Application installable (PWA) : icône, plein écran, barre du haut colorée. Chemins relatifs : valables à la racine du site. -->
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#325032" />
@@ -9396,7 +9396,7 @@ footer{background:#111}
     "src/core/app.ts"() {
       "use strict";
       APP_NAME = "Gestyria";
-      APP_VERSION = "314";
+      APP_VERSION = "315";
       APP_VERSION_LABEL = `v${APP_VERSION}`;
       APP_FULL_NAME = `${APP_NAME} ${APP_VERSION_LABEL}`;
     }
@@ -24500,7 +24500,7 @@ function convLog_(ss, m) {
     var id = "m" + Utilities.getUuid().replace(/-/g, "").slice(0, 12);
     var range = sheet.getRange(row, 1, 1, CONV_HEADERS.length);
     range.setNumberFormat("@");
-    range.setValues([[id, new Date().toISOString(), cleanText_(m.reservationId, 80), dir, cleanText_(m.channel, 20) || "email", cleanText_(m.kind, 24) || "message",
+    range.setValues([[id, m.at ? String(m.at) : new Date().toISOString(), cleanText_(m.reservationId, 80), dir, cleanText_(m.channel, 20) || "email", cleanText_(m.kind, 24) || "message",
       cleanText_(m.subject, 200), cleanText_(m.text, 4000), cleanText_(m.name, 120), cleanText_(m.email, 200)]]);
     return id;
   } catch(errConv) {
@@ -24605,12 +24605,17 @@ function conversationSend_(data) {
   return { status: "success", version: CONNECTOR_VERSION, id: id };
 }
 
-// Note ajout\xE9e \xE0 la main (appel, WhatsApp, SMS, \xE9change sur place) : rien n'est envoy\xE9
+// Note ajout\xE9e \xE0 la main (appel, WhatsApp, SMS, \xE9change sur place, message d\xE9j\xE0 envoy\xE9, r\xE9ponse re\xE7ue) : rien n'est envoy\xE9.
+// Le sens (note, envoy\xE9, re\xE7u) et la date r\xE9elle de l'\xE9change sont facultatifs.
 function conversationNote_(data) {
   var text = cleanText_(data.text, 2000);
   if (!text) return { status: "error", message: "La note est vide." };
-  var channel = ["whatsapp", "phone", "sms", "other"].indexOf(textOf_(data.channel)) >= 0 ? textOf_(data.channel) : "other";
-  var id = convLog_(null, { reservationId: data.reservationId, dir: data.dir === "in" ? "in" : "note", channel: channel, kind: "note", subject: "", text: text, name: data.name, email: "" });
+  var channel = ["email", "whatsapp", "phone", "sms", "other"].indexOf(textOf_(data.channel)) >= 0 ? textOf_(data.channel) : "other";
+  var dir = data.dir === "in" ? "in" : data.dir === "out" ? "out" : "note";
+  var at = "";
+  var when = new Date(textOf_(data.at));
+  if (textOf_(data.at) && !isNaN(when.getTime()) && when.getTime() <= new Date().getTime() + 86400000) at = when.toISOString();
+  var id = convLog_(null, { reservationId: data.reservationId, dir: dir, channel: channel, kind: dir === "out" ? "message" : "note", subject: "", text: text, name: data.name, email: "", at: at });
   if (!id) return { status: "error", message: "La note n'a pas pu \xEAtre enregistr\xE9e." };
   return { status: "success", version: CONNECTOR_VERSION, id: id };
 }
@@ -47936,9 +47941,9 @@ Cordialement`
     await connectorPost({ action: "conversationSend", ...input7, kind: "message" });
     await loadConversations(true);
   }
-  async function addConversationNote(reservationId, name, channel, text) {
+  async function addConversationNote(reservationId, name, channel, text, dir = "note", at) {
     await requireV44();
-    await connectorPost({ action: "conversationNote", reservationId, name, channel, text });
+    await connectorPost({ action: "conversationNote", reservationId, name, channel, text, dir, ...at ? { at } : {} });
     await loadConversations(true);
   }
   var import_react82, CONNECTOR_V44_MESSAGE, cache2, loadedAt, lastError, loading2, listeners21, notify18;
@@ -47968,6 +47973,7 @@ Cordialement`
     "src/modules/conversations/types.ts"() {
       "use strict";
       NOTE_CHANNELS = [
+        { id: "email", label: "E-mail" },
         { id: "phone", label: "Appel t\xE9l\xE9phonique" },
         { id: "whatsapp", label: "WhatsApp" },
         { id: "sms", label: "SMS" },
@@ -48015,6 +48021,8 @@ Cordialement`
         const [busy, setBusy] = (0, import_react83.useState)(false);
         const [noteText, setNoteText] = (0, import_react83.useState)("");
         const [noteChannel, setNoteChannel] = (0, import_react83.useState)("phone");
+        const [noteDir, setNoteDir] = (0, import_react83.useState)("note");
+        const [noteAt, setNoteAt] = (0, import_react83.useState)("");
         const endRef = (0, import_react83.useRef)(null);
         const canMail = validEmail(reservation.guestEmail);
         (0, import_react83.useEffect)(() => {
@@ -48045,9 +48053,11 @@ Cordialement`
           if (!noteText.trim()) return;
           setBusy(true);
           try {
-            await addConversationNote(reservation.id, reservation.guestName, noteChannel, noteText.trim());
+            const when2 = noteAt ? new Date(noteAt) : null;
+            await addConversationNote(reservation.id, reservation.guestName, noteChannel, noteText.trim(), noteDir, when2 && !Number.isNaN(when2.getTime()) ? when2.toISOString() : void 0);
             setNoteText("");
-            onToast("Note ajout\xE9e \xE0 la conversation.");
+            setNoteAt("");
+            onToast("Ajout\xE9 \xE0 la conversation.");
           } catch (err) {
             onToast(err?.message || "La note n'a pas pu \xEAtre enregistr\xE9e.");
           } finally {
@@ -48136,21 +48146,31 @@ Cordialement`
                 }
               )
             ] }) : /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "text-xs text-neutral-600", children: "Pas d'adresse e-mail pour ce client : ajoutez-la dans la fiche de r\xE9servation pour pouvoir lui \xE9crire d'ici. Vous pouvez d\xE9j\xE0 noter un \xE9change ci-dessous." }),
-            /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "pt-2 border-t border-neutral-200 flex flex-wrap items-center gap-2", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("select", { value: noteChannel, onChange: (e) => setNoteChannel(e.target.value), className: "text-xs border border-neutral-200 rounded-lg py-1.5 px-2 bg-white", "aria-label": "Type d'\xE9change", "data-conversation-note-channel": true, children: NOTE_CHANNELS.map((c) => /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("option", { value: c.id, children: c.label }, c.id)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "pt-2 border-t border-neutral-200 space-y-2", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("p", { className: "text-[11px] font-semibold text-neutral-700", children: "Ajouter un \xE9change \xE0 la main (rien n'est envoy\xE9)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("div", { className: "flex flex-wrap items-center gap-2", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("select", { value: noteDir, onChange: (e) => setNoteDir(e.target.value), className: "text-xs border border-neutral-200 rounded-lg py-1.5 px-2 bg-white", "aria-label": "Sens de l'\xE9change", "data-conversation-note-dir": true, children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("option", { value: "note", children: "Une note" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("option", { value: "out", children: "Un message que j'ai envoy\xE9" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("option", { value: "in", children: "Une r\xE9ponse du client" })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("select", { value: noteChannel, onChange: (e) => setNoteChannel(e.target.value), className: "text-xs border border-neutral-200 rounded-lg py-1.5 px-2 bg-white", "aria-label": "Moyen utilis\xE9", "data-conversation-note-channel": true, children: NOTE_CHANNELS.map((c) => /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("option", { value: c.id, children: c.label }, c.id)) }),
+                /* @__PURE__ */ (0, import_jsx_runtime74.jsx)("input", { type: "datetime-local", value: noteAt, onChange: (e) => setNoteAt(e.target.value), className: "text-xs border border-neutral-200 rounded-lg py-1.5 px-2 bg-white", "aria-label": "Date et heure de l'\xE9change (vide = maintenant)", title: "Date et heure de l'\xE9change (vide = maintenant)", "data-conversation-note-at": true })
+              ] }),
               /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(
-                "input",
+                "textarea",
                 {
                   value: noteText,
                   onChange: (e) => setNoteText(e.target.value),
-                  placeholder: "Noter un \xE9change (ex. appel\xE9, arrive vers 17 h)",
-                  className: "flex-1 min-w-[12rem] text-xs border border-neutral-200 rounded-lg py-1.5 px-2 bg-white",
+                  rows: 2,
+                  placeholder: "Texte (par exemple coll\xE9 depuis votre bo\xEEte \xAB Envoy\xE9s \xBB ou depuis la r\xE9ponse du client)",
+                  className: "w-full text-xs border border-neutral-200 rounded-lg py-1.5 px-2 bg-white",
                   "data-conversation-note-text": true
                 }
               ),
               /* @__PURE__ */ (0, import_jsx_runtime74.jsxs)("button", { type: "button", onClick: addNote, disabled: busy || !noteText.trim(), className: "flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-bold border border-neutral-300 rounded-lg hover:bg-white cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed", "data-conversation-note-add": true, children: [
                 /* @__PURE__ */ (0, import_jsx_runtime74.jsx)(MessageSquarePlus, { className: "w-3.5 h-3.5" }),
-                " Ajouter la note"
+                " Ajouter \xE0 la conversation"
               ] })
             ] })
           ] })
